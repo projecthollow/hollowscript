@@ -1,0 +1,5 @@
+constant top = 9223372036854775807
+
+constant bottom = -9223372036854775808
+
+return [top - 1, bottom + 1, top + bottom, 4611686018427387904 + 4611686018427387903]

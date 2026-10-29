@@ -1,0 +1,9 @@
+record P = { name: String, age: Int }
+
+constant people: [P] = [{ name: "b", age: 30 }, { name: "a", age: 20 }, { name: "c", age: 25 }]
+
+return people.sort(fn(x: P, y: P): Int {
+    return x.age - y.age
+}).map(fn(p: P): String {
+    return p.name
+})

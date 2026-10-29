@@ -1,0 +1,5 @@
+fn count(m: Map<Float, Int>): Int {
+    return m.length()
+}
+
+return 0

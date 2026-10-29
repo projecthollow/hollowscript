@@ -1,0 +1,9 @@
+uses print
+
+fn wrap<T>(items: [T]): [T] {
+    return items.map(fn(x: T): T {
+        return x
+    })
+}
+
+effect print("${wrap([1, 2]).length()}")

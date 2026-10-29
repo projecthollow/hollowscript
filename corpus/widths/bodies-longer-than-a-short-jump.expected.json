@@ -1,0 +1,11 @@
+{
+  "title": "A for, a while and an if whose bodies are longer than 32,767 instructions branch and loop correctly",
+  "spec": "4.3",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(79200), Int(0)]"
+  }
+}

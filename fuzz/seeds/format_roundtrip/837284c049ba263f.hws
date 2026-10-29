@@ -1,0 +1,21 @@
+uses print
+
+constant s = "  Hello, World  "
+
+effect print(s.trim())
+
+effect print(s.trim().toUpper())
+
+effect print(s.trim().toLower())
+
+effect print(
+    "${s.trim().length()} ${s.contains("World")} ${s.trim().startsWith("Hello")} ${s.trim().endsWith("x")}"
+)
+
+effect print(s.trim().replace("l", "L"))
+
+effect print(s.trim().substring(0, 5))
+
+effect print(s.trim().substring(7, 100))
+
+return s.trim().split(", ")

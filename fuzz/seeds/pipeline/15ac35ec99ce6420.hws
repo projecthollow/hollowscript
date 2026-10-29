@@ -1,0 +1,11 @@
+fn label(n: Int): String {
+    if n < 0 {
+        return "neg"
+    } else if n == 0 {
+        return "zero"
+    } else {
+        return "pos"
+    }
+}
+
+return [label(-1), label(0), label(1)]

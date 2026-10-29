@@ -1,0 +1,3 @@
+uses clock
+
+constant t = effect clock.now // HS0403

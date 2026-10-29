@@ -1,0 +1,17 @@
+{
+  "title": "A host that merely starts with the granted host is denied",
+  "parse": [],
+  "check": [],
+  "grants": [
+    "http=api.example.com"
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": ["denied"],
+    "result": "Int(0)"
+  }
+}

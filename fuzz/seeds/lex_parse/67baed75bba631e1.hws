@@ -1,0 +1,5 @@
+uses print
+
+for x in [3, 1, 2] {
+    effect print("${x}")
+}

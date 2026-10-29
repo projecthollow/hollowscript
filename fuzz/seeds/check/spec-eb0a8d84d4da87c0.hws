@@ -1,0 +1,12 @@
+fn isMinimum(n: Int): Bool {
+    match n {
+        -9223372036854775808 {
+            return true
+        }
+        else {
+            return false
+        }
+    }
+}
+
+return [isMinimum(-9223372036854775808), isMinimum(0)]

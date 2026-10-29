@@ -1,0 +1,18 @@
+uses sink
+uses echo
+
+export fn spread() {
+    constant a = [1, 2, 3]
+    constant row = range(0, 50).map(fn(i: Int): [Int] { return a })
+    constant grid = range(0, 50).map(fn(i: Int): [[Int]] { return row })
+    constant cube = range(0, 50).map(fn(i: Int): [[[Int]]] { return grid })
+    effect sink(cube)
+}
+
+export fn exact() {
+    effect sink([[[[9007199254740993, 9223372036854775807, 9007199254740991]]]])
+}
+
+export fn bounce(n: Int): Int {
+    return effect echo(n)
+}

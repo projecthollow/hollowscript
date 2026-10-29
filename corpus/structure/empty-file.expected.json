@@ -1,0 +1,14 @@
+{
+  "title": "An empty file is valid and produces no result",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": null
+  }
+}

@@ -1,0 +1,9 @@
+uses print, http
+
+match effect http.get("https://other.example.com/") {
+    Err(Denied(m)) { effect print("denied") }
+    Ok(r) { effect print("ok") }
+    Err(e) { effect print("other") }
+}
+
+return 0

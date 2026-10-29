@@ -1,0 +1,19 @@
+{
+  "title": "Guide sample 1 from the getting started page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant name = \"world\"",
+      "",
+      "return \"Hello, ${name}!\"",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"Hello, world!\")"
+  }
+}

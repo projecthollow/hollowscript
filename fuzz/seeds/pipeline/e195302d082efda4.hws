@@ -1,0 +1,7 @@
+uses print
+
+effect print("before")
+
+constant a = 1 / 0
+
+effect print("after")

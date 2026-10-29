@@ -1,0 +1,29 @@
+fn describe(n: Int): String {
+    match n {
+        0 {
+            return "zero"
+        }
+        1, -1 {
+            return "one, either sign"
+        }
+        else {
+            return "something else"
+        }
+    }
+}
+
+fn ownerLine(owner: String?): String {
+    match owner {
+        none {
+            return "unowned"
+        }
+        "root" {
+            return "owned by the administrator"
+        }
+        name {
+            return "owned by ${name}"
+        }
+    }
+}
+
+return [describe(-1), ownerLine(none), ownerLine("root"), ownerLine("ada")]

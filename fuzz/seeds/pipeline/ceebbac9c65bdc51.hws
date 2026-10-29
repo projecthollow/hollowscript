@@ -1,0 +1,25 @@
+enum Light {
+    Off,
+    On,
+}
+
+enum Fan {
+    Off,
+    On,
+}
+
+fn light(state: Light): String {
+    match state {
+        Off { return "dark" }
+        On { return "lit" }
+    }
+}
+
+fn fan(state: Fan): String {
+    match state {
+        Off { return "still" }
+        On { return "turning" }
+    }
+}
+
+return [light(Light.On), fan(Fan.Off)]

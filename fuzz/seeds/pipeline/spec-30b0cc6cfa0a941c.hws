@@ -1,0 +1,19 @@
+enum Maybe<T> {
+    Nothing,
+    Just(T),
+}
+
+fn orElse<T>(m: Maybe<T>, fallback: T): T {
+    match m {
+        Just(v) {
+            return v
+        }
+        Nothing {
+            return fallback
+        }
+    }
+}
+
+constant a: Maybe<Int> = Maybe.Just(4)
+constant b: Maybe<Int> = Maybe.Nothing
+return orElse(a, 0) + orElse(b, 10)

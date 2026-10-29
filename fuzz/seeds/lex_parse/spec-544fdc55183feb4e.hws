@@ -1,0 +1,5 @@
+uses print
+
+constant p = print
+
+p("x") // HS0401

@@ -1,0 +1,21 @@
+[package]
+name = "hollowscript-compiler"
+description = "Compiles HollowScript HIR to the versioned bytecode container."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+hollowscript-bytecode.workspace = true
+hollowscript-check.workspace = true
+hollowscript-core.workspace = true
+
+[dev-dependencies]
+hollowscript-syntax.workspace = true
+
+[lints]
+workspace = true

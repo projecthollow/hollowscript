@@ -1,0 +1,21 @@
+{
+  "title": "A match that leaves a variant uncovered is an error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 9
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 9
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "title": "has reports membership and without returns a smaller set, leaving the original unchanged",
+  "spec": "14.3",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"true false true 2 1\")"
+  }
+}

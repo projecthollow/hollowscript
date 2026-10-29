@@ -1,0 +1,17 @@
+{
+  "title": "A read outside the granted path is a runtime error",
+  "parse": [],
+  "check": [],
+  "grants": [
+    "fs:read=./data"
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": ["denied"],
+    "result": "Int(0)"
+  }
+}

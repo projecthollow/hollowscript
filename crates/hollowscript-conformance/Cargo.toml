@@ -1,0 +1,19 @@
+[package]
+name = "hollowscript-conformance"
+description = "Runs the shared conformance corpus through the embedding facade and reports the outcome. Development tool only; not published."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "hollowscript-conformance"
+path = "src/main.rs"
+
+[dependencies]
+hollowscript.workspace = true
+hollowscript-core.workspace = true
+
+[lints]
+workspace = true

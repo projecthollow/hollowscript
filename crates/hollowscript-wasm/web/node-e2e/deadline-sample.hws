@@ -1,0 +1,8 @@
+export fn spin() {
+    while true {
+    }
+}
+
+export fn quick(n: Int): Int {
+    return n + 1
+}

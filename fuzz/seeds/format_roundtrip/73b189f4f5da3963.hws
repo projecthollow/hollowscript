@@ -1,0 +1,5 @@
+uses print, clock, random
+
+effect print("the time is ${effect clock.now()}")
+constant roll = effect random.int(1, 7)
+return roll

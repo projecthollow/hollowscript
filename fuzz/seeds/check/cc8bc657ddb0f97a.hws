@@ -1,0 +1,3 @@
+constant low = -9223372036854775807 - 1
+
+return low

@@ -1,0 +1,5 @@
+uses print
+
+effect print("before")
+
+return 42

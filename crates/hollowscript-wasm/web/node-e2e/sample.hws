@@ -1,0 +1,24 @@
+uses print
+uses clock
+uses cache
+
+export fn run(): String {
+    effect print("hello from wasm")
+    return effect clock.now()
+}
+
+export fn today(): String {
+    return effect clock.today()
+}
+
+export fn lookup(key: String): String {
+    match effect cache(key) {
+        Ok(value) { return value }
+        Err(reason) { return "missing: ${reason}" }
+    }
+}
+
+export fn spin() {
+    while true {
+    }
+}

@@ -1,0 +1,59 @@
+{
+  "title": "There is no field or element assignment",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0109"
+    },
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0101"
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0109"
+    },
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0101"
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0109"
+      },
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0101"
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0109"
+      },
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0101"
+      }
+    ]
+  }
+}

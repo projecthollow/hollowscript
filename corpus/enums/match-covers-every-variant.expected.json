@@ -1,0 +1,10 @@
+{
+  "title": "A match that names every variant needs no else and binds each payload",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(9), Int(12), Int(0)]"
+  }
+}

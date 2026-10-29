@@ -1,0 +1,10 @@
+{
+  "title": "An else branch may stand for every variant not named",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(14), Int(0), Int(0)]"
+  }
+}

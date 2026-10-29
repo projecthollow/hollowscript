@@ -1,0 +1,9 @@
+uses print
+
+constant a = 7 / 2
+constant b = 7 + 2.5
+constant c = 2 * 3
+constant d = div(-7, 2)
+constant e = mod(-7, 2)
+constant f = remainder(-7, 2)
+effect print("${a} ${b} ${c} ${d} ${e} ${f}")

@@ -1,0 +1,39 @@
+{
+  "title": "A reserved word is not an identifier",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0101"
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0101"
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0101"
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0101"
+      }
+    ]
+  }
+}

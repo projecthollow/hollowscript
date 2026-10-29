@@ -1,0 +1,5 @@
+record Point = { x: Int, y: Int }
+
+constant origin: Point = { x: 0, y: 0 }
+constant moved: Point = { x: origin.x + 1, y: origin.y }
+return "${moved.x}, ${moved.y}"

@@ -1,0 +1,14 @@
+{
+  "title": "Splitting an emoji string yields whole characters, never lone surrogates",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"a\"), String(\"😀\"), String(\"b\")]"
+  }
+}

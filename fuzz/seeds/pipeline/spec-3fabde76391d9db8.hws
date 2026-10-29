@@ -1,0 +1,4 @@
+record P = { x: Int, y: Int }
+constant p: P = { x: 1, y: 2 }
+export constant { x, y } = p // HS0108
+return x + y

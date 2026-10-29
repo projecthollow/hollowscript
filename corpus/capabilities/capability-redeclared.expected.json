@@ -1,0 +1,33 @@
+{
+  "title": "A capability name may not be redeclared",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3
+    },
+    {
+      "severity": "warning",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      },
+      {
+        "severity": "warning",
+        "line": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+fn pair(): [Int] {
+    return [10, 20]
+}
+
+constant [first, second] = pair()
+
+return first - second

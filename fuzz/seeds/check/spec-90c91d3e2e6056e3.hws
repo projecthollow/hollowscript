@@ -1,0 +1,6 @@
+uses print
+
+record Task = { title: String, priority: Int }
+
+constant t: Task = { title: "Ship", priority: 2 }
+effect print("${keys(t).join(",")} ${has(t, "title")} ${has(t, "owner")}")

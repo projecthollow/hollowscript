@@ -1,0 +1,15 @@
+{
+  "title": "A top-level binding narrows exactly as a function local does, including across the closure boundary of section 4.8's own worked example",
+  "spec": "4.8",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(6)"
+  }
+}

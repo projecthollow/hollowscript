@@ -1,0 +1,13 @@
+fn size(): Int {
+    variable name: String? = "abc"
+    constant clear = fn() {
+        name = none
+    }
+    if name != none {
+        clear()
+        return name.length()
+    }
+    return 0
+}
+
+return size()

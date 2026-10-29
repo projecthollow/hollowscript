@@ -1,0 +1,9 @@
+variable n = 1
+
+constant read = fn(): Int {
+    return n
+}
+
+n = 5
+
+return read()

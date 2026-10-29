@@ -1,0 +1,14 @@
+{
+  "title": "Int compares equal to Float",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(true), Bool(true), Bool(true), Bool(true)]"
+  }
+}

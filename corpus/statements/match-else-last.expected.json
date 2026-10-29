@@ -1,0 +1,39 @@
+{
+  "title": "The else branch must be last",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0101"
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0101"
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0101"
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0101"
+      }
+    ]
+  }
+}

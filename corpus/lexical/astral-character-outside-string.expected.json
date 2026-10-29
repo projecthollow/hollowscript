@@ -1,0 +1,35 @@
+{
+  "title": "An astral character outside a string is one diagnostic, not two",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

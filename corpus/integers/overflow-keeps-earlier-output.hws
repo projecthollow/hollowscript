@@ -1,0 +1,9 @@
+uses print
+
+variable n = 4611686018427387904
+
+effect print("before")
+
+n = n * 2
+
+effect print("after")

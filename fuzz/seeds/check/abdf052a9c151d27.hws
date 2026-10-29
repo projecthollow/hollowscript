@@ -1,0 +1,11 @@
+constant a = (1 + 2) * 3
+
+constant b = 10 - (4 - 3)
+
+constant c = not (a > 1 and b > 1)
+
+if c {
+    return [0]
+}
+
+return [a, b]

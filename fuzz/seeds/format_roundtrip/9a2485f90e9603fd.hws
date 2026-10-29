@@ -1,0 +1,6 @@
+fn pair<T>(a: T, b: T): [T] {
+    constant xs: [T] = [a, b]
+    return xs
+}
+
+return pair(1, 2)

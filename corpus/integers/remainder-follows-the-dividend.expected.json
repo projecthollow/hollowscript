@@ -1,0 +1,14 @@
+{
+  "title": "remainder is truncating: a non-zero result takes the sign of the dividend",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(1), Int(-1), Int(1), Int(-1)]"
+  }
+}

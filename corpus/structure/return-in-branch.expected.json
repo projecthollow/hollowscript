@@ -1,0 +1,14 @@
+{
+  "title": "A top-level return inside an if ends the script",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(7)"
+  }
+}

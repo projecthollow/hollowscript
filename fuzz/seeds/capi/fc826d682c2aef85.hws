@@ -1,0 +1,5 @@
+uses print
+
+effect print("quote \" backslash \\ dollar \${1} tab[\t] cr[\r]")
+
+return "line1\nline2"

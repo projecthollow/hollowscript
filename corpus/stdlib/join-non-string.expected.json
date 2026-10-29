@@ -1,0 +1,33 @@
+{
+  "title": "join on a non-String list is a compile error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 1
+    },
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 1
+      },
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

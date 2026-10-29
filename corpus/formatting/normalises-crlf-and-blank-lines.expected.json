@@ -1,0 +1,21 @@
+{
+  "title": "CRLF input and repeated blank lines format to the canonical LF form",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant a = 1",
+      "",
+      "constant b = 2",
+      "",
+      "return a + b",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

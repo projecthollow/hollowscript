@@ -1,0 +1,21 @@
+{
+  "title": "A variant named twice in one match is an error on its second occurrence",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 10
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 10
+      }
+    ]
+  }
+}

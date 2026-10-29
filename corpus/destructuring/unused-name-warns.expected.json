@@ -1,0 +1,15 @@
+{
+  "title": "An unused destructured name is reported like any unused constant",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 4
+    }
+  ],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

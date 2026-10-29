@@ -1,0 +1,18 @@
+uses print, fs
+
+match effect fs.read("./data/notes.txt") {
+    Ok(text) { effect print(text) }
+    Err(NotFound(m)) { effect print(m) }
+    Err(e) { effect print("other") }
+}
+
+constant r = effect fs.read("./data/other.txt")
+
+match r {
+    Ok([first, ..rest]) { effect print("never") }
+    Ok({ size }) { effect print("never") }
+    Ok(text) { effect print(text) }
+    Err(e) { effect print("other") }
+}
+
+return 0

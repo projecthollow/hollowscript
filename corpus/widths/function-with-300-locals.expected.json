@@ -1,0 +1,11 @@
+{
+  "title": "A function with 300 locals, one of them captured and assigned by a closure, evaluates",
+  "spec": "5.4",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(45151)"
+  }
+}

@@ -1,0 +1,3 @@
+constant a = b + 1
+
+constant b = 2

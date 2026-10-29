@@ -1,0 +1,3 @@
+export constant f = fn(): Int { // HS0606
+    return 1
+}

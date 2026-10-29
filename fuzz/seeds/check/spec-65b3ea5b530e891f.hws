@@ -1,0 +1,6 @@
+// file: shapes.hws
+export record Point = { x: Int, y: Int }
+
+export fn origin(): Point {
+    return { x: 0, y: 0 }
+}

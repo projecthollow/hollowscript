@@ -1,0 +1,33 @@
+{
+  "title": "Importing a module that does not exist is an error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    },
+    {
+      "severity": "warning",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      },
+      {
+        "severity": "warning",
+        "line": 3
+      }
+    ]
+  }
+}

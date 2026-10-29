@@ -1,0 +1,27 @@
+{
+  "title": "break outside a loop at top level is a diagnostic",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "contains": "loop"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "contains": "loop"
+      }
+    ]
+  }
+}

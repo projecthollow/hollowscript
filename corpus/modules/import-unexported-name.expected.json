@@ -1,0 +1,27 @@
+{
+  "title": "Importing a name the module does not export is an error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "contains": "'b'"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "contains": "'b'"
+      }
+    ]
+  }
+}

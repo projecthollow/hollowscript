@@ -1,0 +1,8 @@
+fn half(n: Int): Result<Int, String> {
+    if remainder(n, 2) != 0 {
+        return failure("odd")
+    }
+    return success(div(n, 2))
+}
+
+return half(4)

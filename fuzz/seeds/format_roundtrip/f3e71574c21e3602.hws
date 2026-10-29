@@ -1,0 +1,9 @@
+uses print
+
+constant xs = [9007199254740994, 9007199254740993, 9007199254740992]
+
+effect print(xs.sort().map(fn(n: Int): String {
+    return "${n}"
+}).join(" "))
+
+effect print("${xs.contains(9007199254740995)} ${[9007199254740993].contains(9007199254740992)}")

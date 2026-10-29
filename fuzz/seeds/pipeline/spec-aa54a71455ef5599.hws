@@ -1,0 +1,21 @@
+uses print
+
+variable frames = 0
+variable position = 0.0
+
+export fn load() {
+    position = 10.0
+}
+
+export fn update(dt: Float) {
+    frames = frames + 1
+    position = position + dt * 60.0
+}
+
+export fn draw() {
+    effect print("frame ${frames} at ${position}")
+}
+
+export fn frameCount(): Int {
+    return frames
+}

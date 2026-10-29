@@ -1,0 +1,9 @@
+fn firstOr<T>(items: [T], fallback: T): T {
+    constant head = items.first()
+    if head == none {
+        return fallback
+    }
+    return head
+}
+
+return [firstOr([1, 2], 0), firstOr([], 9)]

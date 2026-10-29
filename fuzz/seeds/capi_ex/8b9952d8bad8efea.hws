@@ -1,0 +1,6 @@
+constant a = 1
+
+if true {
+    constant a = 2
+    return a
+}

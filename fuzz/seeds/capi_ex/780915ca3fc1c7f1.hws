@@ -1,0 +1,23 @@
+enum Shape {
+    Square(Int),
+    Rectangle(Int, Int),
+    Point,
+}
+
+fn area(shape: Shape): Int {
+    match shape {
+        Square(side) {
+            return side * side
+        }
+        Rectangle(width, height) {
+            return width * height
+        }
+        Point {
+            return 0
+        }
+    }
+}
+
+constant shapes = [Shape.Square(2), Shape.Rectangle(2, 5), Shape.Point]
+
+return shapes.map(fn(shape: Shape): Int { return area(shape) })

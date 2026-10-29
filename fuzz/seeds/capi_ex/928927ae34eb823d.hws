@@ -1,0 +1,7 @@
+fn short(): [Int] {
+    return [10]
+}
+
+constant [first, second] = short()
+
+return first + second

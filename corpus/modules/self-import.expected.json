@@ -1,0 +1,27 @@
+{
+  "title": "A file importing itself is an import cycle",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "contains": "ycle"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "contains": "ycle"
+      }
+    ]
+  }
+}

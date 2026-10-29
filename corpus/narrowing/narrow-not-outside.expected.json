@@ -1,0 +1,25 @@
+{
+  "title": "A T? is not narrowed outside its guard",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5
+      }
+    ]
+  }
+}

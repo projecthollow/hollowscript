@@ -1,0 +1,11 @@
+{
+  "title": "A list literal of 300 elements is charged no steps and 16 + 8 * 300 bytes, as one literal",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(300)"
+  }
+}

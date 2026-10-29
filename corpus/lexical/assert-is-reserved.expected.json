@@ -1,0 +1,35 @@
+{
+  "title": "assert is a reserved word",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

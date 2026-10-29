@@ -1,0 +1,14 @@
+{
+  "title": "Guide sample 11 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"unowned\")"
+  }
+}

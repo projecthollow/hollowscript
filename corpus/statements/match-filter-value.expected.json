@@ -1,0 +1,25 @@
+{
+  "title": "A Filter value cannot be matched",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Adding a key returns a new map and leaves the original unchanged",
+  "spec": "14.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(0), Int(1), Int(2), Int(1), Int(2)]"
+  }
+}

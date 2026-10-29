@@ -1,0 +1,11 @@
+{
+  "title": "Removing a key returns a smaller map, and removing an absent key changes nothing",
+  "spec": "14.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"2 1 1 false true\")"
+  }
+}

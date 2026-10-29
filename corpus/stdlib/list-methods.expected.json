@@ -1,0 +1,17 @@
+{
+  "title": "List methods",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "3 false true false",
+      "false false true true"
+    ],
+    "result": "[[Int(3), Int(1), Int(2), Int(4)], [Int(3), Int(1), Int(2), Int(9), Int(8)], [Int(2), Int(1), Int(3)], [Int(1), Int(2), Int(3)]]"
+  }
+}

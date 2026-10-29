@@ -1,0 +1,8 @@
+fn show(n: Int?): Int {
+    if n == none {
+        return 0
+    }
+    return n * 2
+}
+
+return show(4)

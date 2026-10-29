@@ -1,0 +1,8 @@
+uses print
+
+constant scores = ["grace": 5, "ada": 3]
+constant more = scores.with("linus", 4)
+for entry in more {
+    effect print("${entry.key}=${entry.value}")
+}
+effect print("${set([3, 1, 2, 3]).length()}")

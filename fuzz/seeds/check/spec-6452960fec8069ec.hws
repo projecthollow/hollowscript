@@ -1,0 +1,18 @@
+fn parsePair(a: String, b: String): Result<Int, String> {
+    constant x = parseInt(a)?
+    constant y = parseInt(b)?
+    return success(x + y)
+}
+
+fn show(r: Result<Int, String>): String {
+    match r {
+        Ok(n) {
+            return "sum ${n}"
+        }
+        Err(message) {
+            return "error: ${message}"
+        }
+    }
+}
+
+return [show(parsePair("4", "5")), show(parsePair("4", "x"))]

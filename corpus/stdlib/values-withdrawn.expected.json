@@ -1,0 +1,33 @@
+{
+  "title": "There is no values function for records",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "line": 3
+      }
+    ]
+  }
+}

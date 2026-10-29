@@ -1,0 +1,10 @@
+{
+  "title": "Inside a closure, ? returns from the closure and not from the enclosing function",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"ok 2\"), String(\"error negative\"), String(\"ok 6\")]"
+  }
+}

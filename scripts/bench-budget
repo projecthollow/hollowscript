@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Checks the binary size half of docs/design/performance.md's budget table:
+# fast and stable enough to run on every change, unlike the full throughput
+# suite (`cargo xtask bench`), which takes tens of seconds, rebuilds two
+# release profiles and reports a number that moves with the machine it runs
+# on. Not part of scripts/check yet for that reason; run it by hand, or wire
+# it in once it has proven stable across more than one machine.
+#
+#   scripts/bench-budget            hollowscript-cli only
+#   scripts/bench-budget --wasm     hollowscript-cli and hollowscript-wasm
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+# Honours the same override every worktree in this workspace already sets
+# its own cargo commands with (see the shared workstream preamble), so this
+# script finds what it just built rather than assuming the default location.
+target_dir="${CARGO_TARGET_DIR:-target}"
+
+# Bytes. See docs/design/performance.md's "Budgets" table for where these
+# numbers come from: measured size plus headroom, not today's exact figure.
+CLI_BUDGET=$((4 * 1000 * 1000))
+WASM_BUDGET=$((2 * 1000 * 1000))
+
+step() {
+    printf '\n==> %s\n' "$*"
+}
+
+check_size() {
+    local label="$1" path="$2" budget="$3"
+    if [ ! -f "$path" ]; then
+        echo "bench-budget: $path does not exist" >&2
+        exit 1
+    fi
+    local size
+    size=$(wc -c < "$path" | tr -d ' ')
+    if [ "$size" -gt "$budget" ]; then
+        printf 'bench-budget: %s is %d bytes, over the %d byte budget\n' \
+            "$label" "$size" "$budget" >&2
+        exit 1
+    fi
+    printf '%-20s %10d bytes (budget %d)\n' "$label" "$size" "$budget"
+}
+
+step "cargo build --profile min-size -p hollowscript-cli"
+cargo build --profile min-size -p hollowscript-cli
+check_size "hollowscript-cli" "$target_dir/min-size/hollowscript" "$CLI_BUDGET"
+
+if [ "${1:-}" = "--wasm" ]; then
+    step "cargo build --profile min-size --target wasm32-unknown-unknown -p hollowscript-wasm"
+    cargo build --profile min-size --target wasm32-unknown-unknown -p hollowscript-wasm
+    check_size "hollowscript-wasm" \
+        "$target_dir/wasm32-unknown-unknown/min-size/hollowscript_wasm.wasm" "$WASM_BUDGET"
+fi
+
+printf '\nBinary size within budget.\n'

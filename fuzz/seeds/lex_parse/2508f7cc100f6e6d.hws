@@ -1,0 +1,10 @@
+record Point = { x: Int, y: Int, }
+
+fn add(a: Int, b: Int,): Int {
+    return a + b
+}
+
+constant list = [1, 2, 3, 4,]
+constant point: Point = { x: 1, y: 2, }
+
+return [add(1, 2,), list.length(), point.x + point.y]

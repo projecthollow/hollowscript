@@ -1,0 +1,17 @@
+{
+  "title": "Precedence and left associativity",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "7 3 9 26",
+      "true true true"
+    ],
+    "result": null
+  }
+}

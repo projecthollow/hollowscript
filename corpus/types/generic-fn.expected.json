@@ -1,0 +1,14 @@
+{
+  "title": "A generic fn is inferred at the call site",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(1), Int(9)]"
+  }
+}

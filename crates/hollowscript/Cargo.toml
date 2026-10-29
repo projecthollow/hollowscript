@@ -1,0 +1,21 @@
+[package]
+name = "hollowscript"
+description = "The Rust embedding facade for HollowScript: check, load, call, read, cancel and dispose an instance, with options, grants and limits."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+hollowscript-bytecode.workspace = true
+hollowscript-check.workspace = true
+hollowscript-compiler.workspace = true
+hollowscript-core.workspace = true
+hollowscript-syntax.workspace = true
+hollowscript-vm.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+{
+  "filterSchema": {
+    "fields": {
+      "status": {
+        "type": "enum",
+        "values": ["waiting", "doing", "done"],
+        "aliases": { "open": "waiting" }
+      },
+      "priority": {
+        "type": "enum",
+        "values": ["low", "medium", "high"]
+      },
+      "points": {
+        "type": "number"
+      }
+    }
+  }
+}

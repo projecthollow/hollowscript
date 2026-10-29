@@ -1,0 +1,43 @@
+{
+  "title": "export may not prefix variable",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      }
+    ]
+  }
+}

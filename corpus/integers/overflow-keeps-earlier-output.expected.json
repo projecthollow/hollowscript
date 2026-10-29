@@ -1,0 +1,22 @@
+{
+  "title": "Output written before an overflow is kept when the run aborts",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [
+      "before"
+    ],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 7
+      }
+    ]
+  }
+}

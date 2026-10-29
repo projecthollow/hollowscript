@@ -1,0 +1,23 @@
+{
+  "title": "Guide sample 3 from the getting started page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "effect print(\"Hello from the command line!\")",
+      "",
+      "return 0",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "Hello from the command line!"
+    ],
+    "result": "Int(0)"
+  }
+}

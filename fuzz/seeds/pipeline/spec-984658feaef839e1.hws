@@ -1,0 +1,6 @@
+constant good: Result<Int, String> = success(4)
+constant bad: Result<Int, String> = failure("no")
+constant doubled = good.map(fn(n) {
+    return n * 2
+})
+return [doubled.unwrapOr(0) == 8, bad.unwrapOr(7) == 7, bad.isErr(), good.ok() == 4, bad.err() == "no"]

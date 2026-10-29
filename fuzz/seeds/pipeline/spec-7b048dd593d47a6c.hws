@@ -1,0 +1,12 @@
+constant n = 1
+match n {
+    1 {
+        return 1
+    }
+    1 { // HS0502
+        return 2
+    }
+    else {
+        return 0
+    }
+}

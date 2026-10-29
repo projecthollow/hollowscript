@@ -1,0 +1,4 @@
+uses clock
+
+constant length = (effect clock.now()).length()
+return length

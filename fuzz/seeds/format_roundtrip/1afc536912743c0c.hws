@@ -1,0 +1,4 @@
+import a from "./m"
+import b from "./sub/../m"
+
+return a + b

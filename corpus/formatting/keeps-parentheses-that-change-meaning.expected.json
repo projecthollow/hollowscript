@@ -1,0 +1,14 @@
+{
+  "title": "Parentheses that change meaning survive formatting",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(9), Int(9)]"
+  }
+}

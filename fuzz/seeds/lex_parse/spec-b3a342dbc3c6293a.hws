@@ -1,0 +1,4 @@
+uses print, clock
+
+constant now = effect clock.now()
+effect print("started at ${now}")

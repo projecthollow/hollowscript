@@ -1,0 +1,148 @@
+{
+  "name": "hollowscript",
+  "displayName": "HollowScript",
+  "description": "Preview: HollowScript language support. Syntax highlighting, plus diagnostics, formatting, hover, go to definition, references, rename and more from the HollowScript language server.",
+  "version": "0.1.0",
+  "preview": true,
+  "publisher": "hollowscript",
+  "license": "Apache-2.0 OR MIT",
+  "homepage": "https://hollowscript.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/projecthollow/hollowscript",
+    "directory": "editors/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/projecthollow/hollowscript/issues"
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1c1c1c",
+    "theme": "dark"
+  },
+  "keywords": [
+    "hollowscript",
+    "hws",
+    "language server",
+    "lsp",
+    "scripting"
+  ],
+  "private": true,
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:hollowscript"
+  ],
+  "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "The language server only reads and checks HollowScript files; it never runs them. The path to the 'hollowscript' command is taken from user settings only, never from a workspace.",
+      "restrictedConfigurations": [
+        "hollowscript.executablePath"
+      ]
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "The language server reads files and resolves imports from the local file system."
+    }
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "hollowscript",
+        "aliases": [
+          "HollowScript",
+          "hollowscript"
+        ],
+        "extensions": [
+          ".hws"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "hollowscript",
+        "scopeName": "source.hollowscript",
+        "path": "./syntaxes/hollowscript.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "hollowscript",
+        "path": "./snippets/hollowscript.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "hollowscript.restartServer",
+        "title": "Restart Language Server",
+        "category": "HollowScript"
+      },
+      {
+        "command": "hollowscript.showOutput",
+        "title": "Show Language Server Output",
+        "category": "HollowScript"
+      }
+    ],
+    "configuration": {
+      "title": "HollowScript",
+      "properties": {
+        "hollowscript.executablePath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Full path to the `hollowscript` command, whose `lsp` subcommand starts the language server. Leave empty to search `PATH`, then the default install directory (`~/.hollowscript/bin`, or `%LOCALAPPDATA%\\hollowscript\\bin` on Windows). User settings only: a workspace cannot choose which program this extension runs."
+        },
+        "hollowscript.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "scope": "window",
+          "description": "Logs the JSON-RPC traffic between VS Code and the language server to the 'HollowScript Language Server Trace' output channel."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node scripts/build.mjs",
+    "build": "node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --dev",
+    "typecheck": "tsc -p .",
+    "test": "npm run typecheck && npm run test:unit",
+    "test:unit": "node --test test/unit/",
+    "test:integration": "node scripts/build.mjs --dev && node test/integration/run.mjs",
+    "smoke:lsp": "node scripts/lsp-smoke.mjs",
+    "notices": "node scripts/notices.mjs",
+    "package": "vsce package --no-dependencies",
+    "check:vsix": "node scripts/check-vsix.mjs",
+    "ls": "vsce ls --no-dependencies",
+    "audit": "npm audit --omit=dev && npm audit",
+    "clean": "node -e \"const fs=require('fs');for(const p of ['dist','.vscode-test'])fs.rmSync(p,{recursive:true,force:true});for(const f of fs.readdirSync('.'))if(f.endsWith('.vsix'))fs.rmSync(f)\""
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "@types/vscode": "1.91.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "ovsx": "1.2.0",
+    "typescript": "6.0.3",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
+  }
+}

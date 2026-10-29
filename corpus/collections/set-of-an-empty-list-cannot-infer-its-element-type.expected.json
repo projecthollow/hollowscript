@@ -1,0 +1,28 @@
+{
+  "title": "set of an empty list literal with no expected type is HS0308, the call's own unbound type parameter, not the list literal's HS0304",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0308"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0308"
+      }
+    ]
+  }
+}

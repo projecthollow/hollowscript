@@ -1,0 +1,18 @@
+{
+  "title": "A list literal of 300 elements faults with HS1002 when maxMemoryBytes is one byte short of 16 + 8 * 300",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS1002"
+      }
+    ]
+  }
+}

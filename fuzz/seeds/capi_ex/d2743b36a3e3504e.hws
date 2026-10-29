@@ -1,0 +1,9 @@
+uses clock, random, print
+
+effect print(effect clock.today())
+
+effect print(effect clock.now())
+
+effect print("${effect random.int(0, 10)}")
+
+effect print("${effect random.float()}")

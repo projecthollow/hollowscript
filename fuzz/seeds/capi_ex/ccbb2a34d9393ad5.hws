@@ -1,0 +1,7 @@
+constant n = 1
+
+fn f(n: Int): Int {
+    return n
+}
+
+return f(2)

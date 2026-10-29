@@ -1,0 +1,6 @@
+uses print
+
+effect print("${round(-2.5)} ${round(2.5)} ${floor(-0.5)} ${ceil(0.2)} ${trunc(-3.9)}")
+effect print("${abs(-3)} ${abs(-2.5)} ${min(1, 2.5)} ${max(3, 9)} ${clamp(15, 0, 10)}")
+effect print("${div(7, 2)} ${mod(-7, 3)} ${remainder(-7, 3)} ${ipow(2, 62)}")
+effect print("${sqrt(16)} ${sqrt(2)} ${pow(2, 10)} ${toFloat(3)}")

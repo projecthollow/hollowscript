@@ -1,0 +1,14 @@
+{
+  "title": "A record literal is usable where the same field set is expected",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(7)"
+  }
+}

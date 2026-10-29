@@ -1,0 +1,4 @@
+export constant base = 21
+export fn double(n: Int): Int {
+  return n * 2
+}

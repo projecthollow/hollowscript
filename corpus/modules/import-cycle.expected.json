@@ -1,0 +1,27 @@
+{
+  "title": "An import cycle is a load-time error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0603"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0603"
+      }
+    ]
+  }
+}

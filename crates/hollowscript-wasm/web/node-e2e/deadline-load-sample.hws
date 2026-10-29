@@ -1,0 +1,6 @@
+export fn quick(n: Int): Int {
+    return n + 1
+}
+
+while true {
+}

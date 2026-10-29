@@ -1,0 +1,13 @@
+fn lookup(table: Map<String, Int>, name: String): Int {
+    constant found = table.get(name)
+    if found == none {
+        return -1
+    }
+    return found
+}
+
+constant empty: Map<String, Int> = [:]
+
+constant scores = empty.with("ada", 3).with("grace", 5)
+
+return [lookup(scores, "ada"), lookup(scores, "grace"), lookup(scores, "linus")]

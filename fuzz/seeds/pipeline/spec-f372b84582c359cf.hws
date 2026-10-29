@@ -1,0 +1,2 @@
+constant max = max(3, 2)
+return max

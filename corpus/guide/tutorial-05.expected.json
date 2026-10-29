@@ -1,0 +1,25 @@
+{
+  "title": "Guide sample 5 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant makeAdder = fn(n: Int): fn(Int): Int {",
+      "    return fn(x: Int): Int {",
+      "        return x + n",
+      "    }",
+      "}",
+      "",
+      "constant addFive = makeAdder(5)",
+      "",
+      "return addFive(10)",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(15)"
+  }
+}

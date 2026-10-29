@@ -1,0 +1,14 @@
+{
+  "title": "A line ending after an operator continues the expression",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(6)"
+  }
+}

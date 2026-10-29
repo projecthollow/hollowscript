@@ -1,0 +1,14 @@
+{
+  "title": "div rounds towards negative infinity",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(3), Int(-4), Int(-4), Int(3)]"
+  }
+}

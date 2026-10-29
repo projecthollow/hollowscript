@@ -1,0 +1,2 @@
+constant s = set([]) // HS0308
+return s

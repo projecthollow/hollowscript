@@ -1,0 +1,22 @@
+{
+  "title": "Each evaluation of an interpolated string is charged, at the node cost of the final string, unlike a plain literal",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": ["n0", "n1", "n2"],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 6,
+        "code": "HS1002"
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "title": "A variable that a closure assigns is shared-mutable and never narrowed, even in the function that declares it",
+  "spec": "4.8",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 8,
+      "contains": "String?"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 8,
+        "contains": "String?"
+      }
+    ]
+  }
+}

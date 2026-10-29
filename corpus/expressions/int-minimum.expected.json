@@ -1,0 +1,14 @@
+{
+  "title": "The 64-bit minimum is representable",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(-9223372036854775808)"
+  }
+}

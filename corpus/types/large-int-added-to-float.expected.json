@@ -1,0 +1,14 @@
+{
+  "title": "A large Int constant added to a Float gives a Float",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Float(9007199254740994.0)"
+  }
+}

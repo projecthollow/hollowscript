@@ -1,0 +1,28 @@
+uses print
+
+fn checked(n: Int): Result<Int, String> {
+    if n < 0 {
+        return failure("negative")
+    }
+    return success(n)
+}
+
+fn show(result: Result<Int, String>): String {
+    match result {
+        Ok(value) { return "ok ${value}" }
+        Err(message) { return "error ${message}" }
+    }
+}
+
+fn traced(n: Int): Result<Int, String> {
+    effect print("checking ${n}")
+    return checked(n)
+}
+
+fn sum(a: Int, b: Int): Result<Int, String> {
+    constant x = traced(a)?
+    constant y = traced(b)?
+    return success(x + y)
+}
+
+return show(sum(-1, 2))

@@ -1,0 +1,10 @@
+{
+  "title": "Matching a Result binds the value of a success and the error of a failure",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"ok 4\"), String(\"error negative\")]"
+  }
+}

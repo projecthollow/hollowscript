@@ -1,0 +1,7 @@
+uses print
+
+fn apply(f: fn(String), s: String) {
+    f(s)
+}
+
+apply(print, "x") // HS0301

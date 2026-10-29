@@ -1,0 +1,5 @@
+enum Box<T> { Empty, Full(T) }
+
+constant x = Box.Empty
+
+return x

@@ -1,0 +1,28 @@
+{
+  "title": "Matching on the result of a capability that was not granted reports only the missing grant",
+  "spec": "2.11",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0404"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0404"
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Adding an element already present does not grow a set",
+  "spec": "14.3",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

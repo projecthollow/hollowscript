@@ -1,0 +1,7 @@
+uses print
+
+constant r = { name: "x", size: 2 }
+
+effect print("${has(r, "size")} ${has(r, "nope")}")
+
+return keys(r)

@@ -1,0 +1,7 @@
+variable count = 0
+count = count + 1
+
+constant task = { title: "Ship", priority: 2 }
+constant renamed = { title: "Ship it", priority: task.priority }
+
+return count + renamed.priority

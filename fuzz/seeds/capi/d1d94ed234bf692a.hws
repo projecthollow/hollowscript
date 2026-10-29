@@ -1,0 +1,10 @@
+fn checked(n: Int): Result<Int, String> {
+    if n < 0 {
+        return failure("negative")
+    }
+    return success(n)
+}
+
+constant checkedValue = checked(-1)?
+
+return checkedValue

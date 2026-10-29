@@ -1,0 +1,11 @@
+{
+  "title": "A set can be the accumulator of a reduce",
+  "spec": "14.3",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

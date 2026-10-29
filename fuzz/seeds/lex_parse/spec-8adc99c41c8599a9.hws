@@ -1,0 +1,20 @@
+record Point = { x: Int, y: Int }
+record Segment = { start: Point, end: Point }
+
+constant s: Segment = { start: { x: 1, y: 2 }, end: { x: 4, y: 6 } }
+constant { start: { x: x1, y: y1 }, end: { x: x2, y: y2 } } = s
+constant people = [{ name: "Ada", age: 36 }, { name: "Grace", age: 45 }]
+
+variable total = 0
+for { age } in people {
+    total = total + age
+}
+
+constant [first, second, ..rest] = [10, 20, 30, 40]
+constant pairs = [[1, 2], [3, 4]]
+variable dot = 0
+for [a, b] in pairs {
+    dot = dot + a * b
+}
+
+return [x2 - x1, y2 - y1, total, first + second, rest.length(), dot]

@@ -1,0 +1,5 @@
+// file: b.hws
+uses print
+
+effect print("init b")
+export constant b = 2

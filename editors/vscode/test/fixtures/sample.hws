@@ -1,0 +1,6 @@
+fn double(n: Int): Int {
+    return n * 2
+}
+
+constant answer   =double( 21 )
+return answer

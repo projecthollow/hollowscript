@@ -1,0 +1,31 @@
+{
+  "title": "A record type that a capability mentions has no name, even when the capability is granted",
+  "spec": "9.7",
+  "grants": [
+    "http=example.com"
+  ],
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0208"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0208"
+      }
+    ]
+  }
+}

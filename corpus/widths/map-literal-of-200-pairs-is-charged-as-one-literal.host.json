@@ -1,0 +1,6 @@
+{
+  "limits": {
+    "maxSteps": 3,
+    "maxMemoryBytes": 4832
+  }
+}

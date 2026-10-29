@@ -1,0 +1,21 @@
+fn checked(n: Int): Result<Int, String> {
+    if n < 0 {
+        return failure("negative")
+    }
+    return success(n)
+}
+
+fn show(result: Result<Int, String>): String {
+    match result {
+        Ok(value) { return "ok ${value}" }
+        Err(message) { return "error ${message}" }
+    }
+}
+
+fn sum(a: Int, b: Int): Result<Int, String> {
+    constant x = checked(a)?
+    constant y = checked(b)?
+    return success(x + y)
+}
+
+return [show(sum(1, 2)), show(sum(-1, 2)), show(sum(1, -2))]

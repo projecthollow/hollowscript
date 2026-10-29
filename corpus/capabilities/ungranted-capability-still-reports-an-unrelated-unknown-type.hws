@@ -1,0 +1,11 @@
+uses fs, print
+
+fn show(r: Result<Int, IoError>, n: Count): Int {
+    match r {
+        Ok(bytes) { return bytes }
+        Err(Denied(_)) { return 0 }
+        Err(_) { return 1 }
+    }
+}
+
+effect print("${show(effect fs.write("a", "b"), 1)}")

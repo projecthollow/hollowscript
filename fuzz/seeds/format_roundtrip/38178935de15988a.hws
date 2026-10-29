@@ -1,0 +1,14 @@
+enum Shape {
+    Square(Int),
+    Rectangle(Int, Int),
+    Point,
+}
+
+fn rectanglePerimeter(shape: Shape): Int {
+    match shape {
+        Rectangle(width, height) { return 2 * (width + height) }
+        else { return 0 }
+    }
+}
+
+return [rectanglePerimeter(Shape.Rectangle(3, 4)), rectanglePerimeter(Shape.Square(3)), rectanglePerimeter(Shape.Point)]

@@ -1,0 +1,14 @@
+{
+  "title": "mod of the 64-bit minimum by -1 is zero",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(0)"
+  }
+}

@@ -1,0 +1,8 @@
+uses print
+
+// todo: tidy this up
+// note: notes survive
+constant a = 1
+
+// explain: trailing tagged comment
+effect print("a is ${a}")

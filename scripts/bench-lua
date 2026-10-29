@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Runs bench-lua/run.lua, the Lua 5.4 equivalents of the eight programs
+# `cargo xtask bench` measures (see docs/design/performance.md's "Compared
+# against Lua"). Needs a Lua 5.4 interpreter on PATH as `lua5.4`, `lua-5.4`
+# or `lua` (checked in that order, since a system `lua` may be a different
+# version):
+#
+#   brew install lua@5.4   # macOS; keg-only, not on PATH by default
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+for candidate in lua5.4 lua-5.4 lua; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        LUA="$candidate"
+        break
+    fi
+done
+
+if [ -z "${LUA:-}" ]; then
+    echo "bench-lua: no lua5.4, lua-5.4 or lua found on PATH" >&2
+    echo "install one, for example: brew install lua@5.4" >&2
+    exit 1
+fi
+
+if ! "$LUA" -v 2>&1 | grep -q "Lua 5.4"; then
+    echo "bench-lua: warning: '$LUA' does not report as Lua 5.4:" >&2
+    "$LUA" -v >&2
+fi
+
+exec "$LUA" bench-lua/run.lua

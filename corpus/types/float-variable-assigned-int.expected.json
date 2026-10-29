@@ -1,0 +1,14 @@
+{
+  "title": "A Float variable holds a Float after assignment of an Int",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Float(2.0)"
+  }
+}

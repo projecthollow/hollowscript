@@ -1,0 +1,16 @@
+{
+  "title": "Int and Float literals, underscores, exponents",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "1000"
+    ],
+    "result": "[Float(2.5), Float(1000.0), Float(0.015), Float(10.25)]"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "title": "An exported constant of the entry module whose type is a function type is HS0606, because a host cannot read a function value",
+  "spec": "12.4",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0606"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0606"
+      }
+    ]
+  }
+}

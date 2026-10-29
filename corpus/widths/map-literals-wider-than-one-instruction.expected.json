@@ -1,0 +1,11 @@
+{
+  "title": "A map literal of 300 or 400 pairs holds every key, and a later pair replaces an earlier one with the same key, in any key order",
+  "spec": "3.8",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(300), Int(0), Int(299), Int(300), Int(0), Int(299), Int(200), Int(1000), Int(1199)]"
+  }
+}

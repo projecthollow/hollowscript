@@ -1,0 +1,19 @@
+fn first<T>(items: [T]): T? {
+    if items.isEmpty() {
+        return none
+    }
+    return items[0]
+}
+
+record Pair<A, B> = { left: A, right: B }
+
+fn swap<A, B>(p: Pair<A, B>): Pair<B, A> {
+    return { left: p.right, right: p.left }
+}
+
+constant a = first([10, 20])
+constant b = first(["x"])
+constant empty: [Int] = []
+constant c = first(empty)
+constant swapped = swap({ left: 1, right: "one" })
+return [a == 10, b == "x", c == none, swapped.left == "one"]

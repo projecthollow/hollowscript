@@ -1,0 +1,13 @@
+fn outer(): Int {
+    return inner()
+}
+
+fn inner(): Int {
+    return base
+}
+
+constant early = outer()
+
+constant base = 5
+
+return early + base

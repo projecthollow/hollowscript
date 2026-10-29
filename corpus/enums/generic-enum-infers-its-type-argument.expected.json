@@ -1,0 +1,15 @@
+{
+  "title": "A generic enum's variant, with or without a payload, infers the enum's type argument from the expected type",
+  "spec": "6.3",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(10)"
+  }
+}

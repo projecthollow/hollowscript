@@ -1,0 +1,11 @@
+variable x: Int? = 1
+if x == none {
+    return 0
+}
+
+fn read(): Int {
+    return x // HS0301
+}
+
+x = none
+return read()

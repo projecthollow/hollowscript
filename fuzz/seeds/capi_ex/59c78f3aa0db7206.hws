@@ -1,0 +1,11 @@
+record Task = { title: String, owner: String? }
+
+fn describe(task: Task): String {
+    if task.owner != none {
+        return "${task.title}, owned by ${task.owner}"
+    }
+    return "${task.title}, unowned"
+}
+
+constant assigned: Task = { title: "Ship it", owner: "Ada" }
+return describe(assigned)

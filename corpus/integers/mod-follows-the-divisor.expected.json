@@ -1,0 +1,14 @@
+{
+  "title": "mod is floor-based: a non-zero result takes the sign of the divisor",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(1), Int(2), Int(-2), Int(-1)]"
+  }
+}

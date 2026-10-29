@@ -1,0 +1,10 @@
+{
+  "title": "A record pattern may bind a field to a different name",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(34)"
+  }
+}

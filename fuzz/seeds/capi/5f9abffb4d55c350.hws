@@ -1,0 +1,12 @@
+variable count: Int? = 1
+
+constant bump = fn() {
+    count = none
+}
+
+if count != none {
+    bump()
+    return count + 1
+}
+
+return 0

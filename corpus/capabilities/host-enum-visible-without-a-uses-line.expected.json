@@ -1,0 +1,20 @@
+{
+  "title": "An enum type that a granted capability declares is visible in a file with no uses line for that capability",
+  "spec": "9.7",
+  "grants": [
+    "fs:read=./data"
+  ],
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "ok"
+    ],
+    "result": null
+  }
+}

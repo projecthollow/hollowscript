@@ -1,0 +1,14 @@
+{
+  "title": "Narrowing works on a field path",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"sam\"), String(\"unassigned\")]"
+  }
+}

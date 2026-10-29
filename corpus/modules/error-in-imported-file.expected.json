@@ -1,0 +1,29 @@
+{
+  "title": "A diagnostic from an imported file names that file and its own line",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "file": "m.hws",
+      "contains": "Int"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "file": "m.hws",
+        "contains": "Int"
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "title": "A script with no executed top-level return produces no result",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": null
+  }
+}

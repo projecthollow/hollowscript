@@ -1,0 +1,9 @@
+record Branch = { tree: Tree }
+
+enum Tree {
+    Leaf,
+    Node(Branch),
+}
+
+constant t = Tree.Node({ tree: Tree.Leaf })
+return t == Tree.Node({ tree: Tree.Leaf })

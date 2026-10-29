@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" role="img">
+  <title>HollowScript</title>
+  <rect width="480" height="480" rx="105.6" fill="#1c1c1c"/>
+  <rect x="93" y="93" width="84" height="84" rx="10.5" fill="#f4f4f5"/>
+  <rect x="303" y="93" width="84" height="84" rx="10.5" fill="#f4f4f5"/>
+  <rect x="93" y="198" width="84" height="84" rx="10.5" fill="#f4f4f5"/>
+  <rect x="198" y="198" width="84" height="84" rx="10.5" fill="#3fb27f"/>
+  <rect x="303" y="198" width="84" height="84" rx="10.5" fill="#f4f4f5"/>
+  <rect x="93" y="303" width="84" height="84" rx="10.5" fill="#f4f4f5"/>
+  <rect x="303" y="303" width="84" height="84" rx="10.5" fill="#f4f4f5"/>
+</svg>

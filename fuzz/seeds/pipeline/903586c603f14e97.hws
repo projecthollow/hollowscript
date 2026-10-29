@@ -1,0 +1,7 @@
+record Point = { x: Int, y: Int }
+
+constant point: Point = { x: 3, y: 4 }
+variable { x, y } = point
+x = x + 1
+
+return x * 10 + y

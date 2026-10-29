@@ -1,0 +1,10 @@
+constant xs = [1, 2]
+constant ys = ["a", "b"]
+constant grid = xs.map(fn(x) {
+    return ys.map(fn(y) {
+        return "${x}${y}"
+    })
+})
+return grid.flatMap(fn(row) {
+    return row
+}).join(",")

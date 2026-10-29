@@ -1,0 +1,14 @@
+{
+  "title": "A closure sees the current value of an enclosing binding when it runs",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(5)"
+  }
+}

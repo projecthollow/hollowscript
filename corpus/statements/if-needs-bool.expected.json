@@ -1,0 +1,25 @@
+{
+  "title": "if requires a Bool condition",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

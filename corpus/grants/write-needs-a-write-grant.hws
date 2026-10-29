@@ -1,0 +1,9 @@
+uses print, fs
+
+match effect fs.write("./data/out.txt", "x") {
+    Err(Denied(m)) { effect print("denied") }
+    Ok(n) { effect print("ok") }
+    Err(e) { effect print("other") }
+}
+
+return 0

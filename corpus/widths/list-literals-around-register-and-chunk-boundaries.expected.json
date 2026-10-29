@@ -1,0 +1,11 @@
+{
+  "title": "A list literal of 63 to 257 elements holds every element in order, whatever the width",
+  "spec": "1.10",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(63), Int(1953), Int(64), Int(2016), Int(65), Int(2080), Int(127), Int(8001), Int(128), Int(8128), Int(129), Int(8256), Int(255), Int(32385), Int(256), Int(32640), Int(257), Int(32896)]"
+  }
+}

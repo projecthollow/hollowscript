@@ -1,0 +1,4 @@
+uses print
+effect print("init")
+export constant a = 1
+export constant b = 2

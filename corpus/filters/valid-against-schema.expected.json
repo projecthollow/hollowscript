@@ -1,0 +1,15 @@
+{
+  "title": "A filter that suits the host's schema, including an alias, validates cleanly (section A.7)",
+  "spec": "A.7",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Filter(\"status:open priority:high\")"
+  }
+}

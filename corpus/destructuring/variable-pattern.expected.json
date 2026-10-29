@@ -1,0 +1,10 @@
+{
+  "title": "A variable pattern binds reassignable names",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(44)"
+  }
+}

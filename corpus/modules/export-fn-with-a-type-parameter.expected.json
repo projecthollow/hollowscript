@@ -1,0 +1,28 @@
+{
+  "title": "An exported fn of the entry module with a type parameter is HS0606, even one never named in its own signature",
+  "spec": "12.4",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0606"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0606"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+uses print
+
+fn show(r: Result<Int, String>): String {
+    match r {
+        Ok(n) { return "Ok(${n})" }
+        Err(e) { return "Err(${e})" }
+    }
+}
+
+fn showf(r: Result<Float, String>): String {
+    match r {
+        Ok(n) { return "Ok(${n})" }
+        Err(e) { return "Err(${e})" }
+    }
+}
+
+effect print(
+    "${show(parseInt("42"))} ${show(parseInt("4x2"))} ${show(parseInt("9223372036854775808"))} ${show(parseInt("-0"))}"
+)
+
+effect print(
+    "${showf(parseFloat("2.5e2"))} ${showf(parseFloat(".5"))} ${showf(parseFloat("1e400"))} ${showf(parseFloat("1e-400"))}"
+)
+
+effect print(
+    "${parseInt("42").unwrapOr(0)} ${parseInt("4x2").isErr()} ${parseFloat("2.5e2").unwrapOr(0.0)} ${fixed(3.14159, 2)}"
+)

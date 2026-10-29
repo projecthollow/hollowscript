@@ -1,0 +1,5 @@
+constant a = 1_000_000
+constant b = 2.5e-3
+constant c = 1E3
+constant d = -9223372036854775808
+return [a, d]

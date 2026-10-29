@@ -1,0 +1,25 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node tooling used by the conformance harness
+node_modules/
+.npmrc
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Release output of scripts/release-build.sh
+/dist/
+
+# Local scratch
+/scratch/
+*.log
+__pycache__/
+
+# Written by earlier versions of `cargo xtask third-party-licenses`; release
+# notices are now generated per archive by scripts/release-build.sh.
+/THIRD-PARTY-LICENSES

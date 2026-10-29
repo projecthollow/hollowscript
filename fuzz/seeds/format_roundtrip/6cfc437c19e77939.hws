@@ -1,0 +1,7 @@
+constant xs = [1, 2, 3]
+
+constant r = { a: 1, b: 2 }
+
+return xs.map(fn(x: Int): Int {
+    return x * 2
+})

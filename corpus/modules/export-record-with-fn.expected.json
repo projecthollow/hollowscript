@@ -1,0 +1,14 @@
+{
+  "title": "An exported record and an exported fn that returns it import together",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(0)"
+  }
+}

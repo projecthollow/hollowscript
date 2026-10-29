@@ -1,0 +1,24 @@
+uses print
+
+constant xs = [1, 2, 3, 4]
+
+xs.each(fn(x: Int) {
+    effect print("${x}")
+})
+
+effect print("${xs.reduce(
+    0,
+    fn(a: Int, x: Int): Int {
+        return a + x
+    }
+)}")
+
+constant squares = xs.map(fn(x: Int): Int {
+    return x * x
+})
+
+constant evens = xs.filter(fn(x: Int): Bool {
+    return remainder(x, 2) == 0
+})
+
+return squares.concat(evens)

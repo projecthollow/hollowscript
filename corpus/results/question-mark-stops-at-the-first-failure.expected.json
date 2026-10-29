@@ -1,0 +1,12 @@
+{
+  "title": "Nothing after a failing ? is evaluated",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [
+      "checking -1"
+    ],
+    "result": "String(\"error negative\")"
+  }
+}

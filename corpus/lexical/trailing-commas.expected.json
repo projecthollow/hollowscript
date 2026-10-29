@@ -1,0 +1,10 @@
+{
+  "title": "A trailing comma is allowed in every comma separated list",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(3), Int(4), Int(3)]"
+  }
+}

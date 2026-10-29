@@ -1,0 +1,3 @@
+uses print
+
+constant print = 1

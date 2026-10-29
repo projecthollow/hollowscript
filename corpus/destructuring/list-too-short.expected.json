@@ -1,0 +1,16 @@
+{
+  "title": "A list pattern against a list with too few elements is a runtime error",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5
+      }
+    ]
+  }
+}

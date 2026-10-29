@@ -1,0 +1,3 @@
+uses print
+
+print("no effect")

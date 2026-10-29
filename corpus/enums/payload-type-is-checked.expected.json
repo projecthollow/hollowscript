@@ -1,0 +1,21 @@
+{
+  "title": "A payload of the wrong type is rejected at construction",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 21
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 21
+      }
+    ]
+  }
+}

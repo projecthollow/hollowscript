@@ -1,0 +1,20 @@
+{
+  "title": "Runaway recursion is the runtime error call depth exceeded",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "title": "An unresolved import is an error even when it is never used",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "contains": "'b'"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "contains": "'b'"
+      }
+    ]
+  }
+}

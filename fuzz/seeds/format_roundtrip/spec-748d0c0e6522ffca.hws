@@ -1,0 +1,3 @@
+constant big = 9223372036854775807
+constant over = big + 1 // HS1007
+return over

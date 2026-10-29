@@ -1,0 +1,3 @@
+constant s = "abc"
+
+constant c = s[0]

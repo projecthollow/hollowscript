@@ -1,0 +1,21 @@
+{
+  "title": "A pattern must bind as many names as the variant has payload values",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 9
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 9
+      }
+    ]
+  }
+}

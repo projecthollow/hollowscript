@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+# Behavioural tests for scripts/release-upload.sh and scripts/release-mirror.sh,
+# with no network and no real key: a fixture release signed with a throwaway
+# key is uploaded to a temporary directory standing in for the bucket.
+#
+#   scripts/test-release
+#
+# Needs bash, python3, minisign and ssh-keygen (OpenSSH 8.0 or newer): the
+# upload script itself needs both verifiers, so there is nothing to test
+# without them, and this exits non-zero if either is missing.
+#
+# HOLLOWSCRIPT_TEST_RELEASE_UPLOAD=FILE runs the upload scenarios against
+# another copy of the script (to see which of them an older one fails).
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+repo_root="$(pwd -P)"
+# shellcheck source=scripts/lib/fixture-release.sh
+. "$repo_root/scripts/lib/fixture-release.sh"
+
+for t in python3 minisign ssh-keygen; do
+    command -v "$t" >/dev/null 2>&1 || { printf '%s is required by scripts/test-release\n' "$t" >&2; exit 1; }
+done
+fixture_tools
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+passed=0
+failed=0
+pass() { passed=$((passed + 1)); printf 'ok   %s\n' "$1"; }
+fail() {
+    failed=$((failed + 1))
+    printf 'FAIL %s\n' "$1"
+    [ -z "${2:-}" ] || printf '%s\n' "$2" | sed 's/^/       /'
+}
+
+target=x86_64-unknown-linux-musl
+keys="$tmp/keys"
+fixture_keys "$keys"
+
+# A copy of the scripts this test may edit (the installers' floor, say)
+# without touching the real ones. The upload script works from the directory
+# above its own, so the copy is a repository in miniature.
+mini_repo() {
+    rm -rf "$1"
+    mkdir -p "$1/scripts"
+    cp "$repo_root/scripts/release-upload.sh" "$repo_root/scripts/install.sh" "$repo_root/scripts/install.ps1" \
+        "$repo_root/scripts/hollowscript-release.pub" "$1/scripts/"
+    if [ -n "${HOLLOWSCRIPT_TEST_RELEASE_UPLOAD:-}" ]; then
+        cp "$HOLLOWSCRIPT_TEST_RELEASE_UPLOAD" "$1/scripts/release-upload.sh"
+    fi
+}
+
+new_source() {
+    # new_source DIR VERSION: DIR holds a signed release for VERSION.
+    rm -rf "$1.parent"
+    fixture_release "$1.parent" "$2" "$target" "$keys"
+    rm -rf "$1"
+    mv "$1.parent/$2" "$1"
+    rm -rf "$1.parent"
+}
+
+out=""
+rc=0
+upload() {
+    # upload REPO ARGS...: runs REPO's copy of the script.
+    local repo="$1"
+    shift
+    set +e
+    out="$("$repo/scripts/release-upload.sh" "$@" 2>&1)"
+    rc=$?
+    set -e
+}
+test_key=(--public-key "$keys/one.pub" --allow-unpinned-public-key-for-testing)
+
+# --- the pinned key ---------------------------------------------------------------------
+printf '\n== release-upload.sh: the key ==\n'
+mini_repo "$tmp/repo"
+new_source "$tmp/src" v0.1.0
+mkdir "$tmp/bucket1"
+upload "$tmp/repo" v0.1.0 --source "$tmp/src" --bucket "$tmp/bucket1" --public-key "$keys/one.pub"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'not the key the installers pin' && [ -z "$(ls -A "$tmp/bucket1")" ]; then
+    pass "--public-key with a key that is not the pinned one is refused, and nothing is uploaded"
+else
+    fail "an unpinned --public-key" "$out"
+fi
+upload "$tmp/repo" v0.1.0 --source "$tmp/src" --bucket gs://example-bucket-that-does-not-exist --dry-run "${test_key[@]}"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'cannot be used with a real bucket'; then
+    pass "the test flag is refused for a gs:// bucket"
+else
+    fail "test flag with a real bucket" "$out"
+fi
+upload "$tmp/repo" v0.1.0 --source "$tmp/src" --bucket "$tmp/bucket1" "${test_key[@]}"
+if [ "$rc" -eq 0 ] && [ -f "$tmp/bucket1/v0.1.0/SHA256SUMS.sshsig" ] && [ -f "$tmp/bucket1/v0.1.0/SHA256SUMS.minisig" ] \
+    && [ "$(cat "$tmp/bucket1/latest.txt")" = v0.1.0 ]; then
+    pass "a release signed in both formats uploads, both signatures included, and latest.txt moves"
+else
+    fail "a good upload" "$out"
+fi
+if grep -q 'text/plain' "$tmp/bucket1/v0.1.0/SHA256SUMS.sshsig.metadata" 2>/dev/null; then
+    pass "SHA256SUMS.sshsig gets a text content type"
+else
+    fail "the sshsig content type" "$(cat "$tmp/bucket1/v0.1.0/SHA256SUMS.sshsig.metadata" 2>&1)"
+fi
+
+# --- the SSH signature -------------------------------------------------------------------
+printf '\n== release-upload.sh: the SSH signature ==\n'
+new_source "$tmp/src2" v0.1.0
+rm "$tmp/src2/SHA256SUMS.sshsig"
+mkdir "$tmp/bucket2"
+upload "$tmp/repo" v0.1.0 --source "$tmp/src2" --bucket "$tmp/bucket2" "${test_key[@]}"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'SHA256SUMS.sshsig does not exist' && [ -z "$(ls -A "$tmp/bucket2")" ]; then
+    pass "a release with no SSH signature is refused"
+else
+    fail "a missing sshsig" "$out"
+fi
+new_source "$tmp/src3" v0.1.1
+new_source "$tmp/src3b" v0.1.0
+cp "$tmp/src3/SHA256SUMS.sshsig" "$tmp/src3b/SHA256SUMS.sshsig"
+mkdir "$tmp/bucket3"
+upload "$tmp/repo" v0.1.0 --source "$tmp/src3b" --bucket "$tmp/bucket3" "${test_key[@]}"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'sshsig does not verify' && [ -z "$(ls -A "$tmp/bucket3")" ]; then
+    pass "an SSH signature made for another version is refused"
+else
+    fail "a wrong-namespace sshsig" "$out"
+fi
+
+# --- a source that changes while the script runs ---------------------------------------------
+printf '\n== release-upload.sh: the source is copied before it is checked ==\n'
+new_source "$tmp/src4" v0.1.0
+signed_sum="$(sha256_file "$tmp/src4/hollowscript-0.1.0-$target.tar.gz")"
+mkdir -p "$tmp/fakebin" "$tmp/bucket4"
+real_shasum="$(command -v shasum || command -v sha256sum)"
+cat >"$tmp/fakebin/shasum" <<EOF
+#!/bin/sh
+# Hashes as shasum does, then changes the source archive: whatever is hashed
+# or read from the source afterwards is not what was signed.
+"$real_shasum" "\$@"
+rc=\$?
+printf x >>"$tmp/src4/hollowscript-0.1.0-$target.tar.gz"
+exit \$rc
+EOF
+chmod 755 "$tmp/fakebin/shasum"
+set +e
+out="$(PATH="$tmp/fakebin:$PATH" "$tmp/repo/scripts/release-upload.sh" v0.1.0 --source "$tmp/src4" --bucket "$tmp/bucket4" "${test_key[@]}" 2>&1)"
+rc=$?
+set -e
+uploaded="$tmp/bucket4/v0.1.0/hollowscript-0.1.0-$target.tar.gz"
+if [ -f "$uploaded" ] && [ "$(sha256_file "$uploaded")" = "$signed_sum" ]; then
+    pass "what is uploaded is what was signed, even if the source changes during the run"
+elif [ ! -f "$uploaded" ]; then
+    pass "a source that changes during the run is not uploaded"
+else
+    fail "the uploaded archive differs from the signed one (exit $rc)" "$out"
+fi
+
+# --- the installers and the floor ----------------------------------------------------------------
+printf '\n== release-upload.sh: the installers ==\n'
+mini_repo "$tmp/repo2"
+sed -i.bak "s/printf '%s' 'v0.1.0'/printf '%s' 'v0.2.0'/" "$tmp/repo2/scripts/install.sh"
+new_source "$tmp/src5" v0.1.0
+mkdir "$tmp/bucket5"
+upload "$tmp/repo2" v0.1.0 --source "$tmp/src5" --bucket "$tmp/bucket5" "${test_key[@]}"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'must agree'; then
+    pass "installers that disagree on the floor are refused"
+else
+    fail "floor disagreement" "$out"
+fi
+sed -i.bak "s/\$releaseFloor = 'v0.1.0'/\$releaseFloor = 'v0.2.0'/" "$tmp/repo2/scripts/install.ps1"
+upload "$tmp/repo2" v0.1.0 --source "$tmp/src5" --bucket "$tmp/bucket5" "${test_key[@]}"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'older than v0.2.0' && [ -z "$(ls -A "$tmp/bucket5")" ]; then
+    pass "a stable release below the installers' floor is refused, before anything is uploaded"
+else
+    fail "a release below the floor" "$out"
+fi
+new_source "$tmp/src6" v0.2.1
+upload "$tmp/repo2" v0.2.1 --source "$tmp/src6" --bucket "$tmp/bucket5" "${test_key[@]}"
+if [ "$rc" -eq 0 ] && [ "$(cat "$tmp/bucket5/latest.txt")" = v0.2.1 ]; then
+    pass "a release at or above the floor uploads"
+else
+    fail "a release above the floor" "$out"
+fi
+mini_repo "$tmp/repo3"
+sed -i.bak 's/^RWTEd\/MMbolY.*$/RWQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/' "$tmp/repo3/scripts/install.sh"
+upload "$tmp/repo3" v0.1.0 --source "$tmp/src5" --bucket "$tmp/bucket5" "${test_key[@]}"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'does not pin the key'; then
+    pass "an installer that does not pin the release key is refused"
+else
+    fail "an installer with another key" "$out"
+fi
+
+# --- release-mirror.sh: which directories it will replace ---------------------------------------------
+printf '\n== release-mirror.sh: the mirror directory ==\n'
+mirror() {
+    set +e
+    out="$("$repo_root/scripts/release-mirror.sh" HEAD --mirror "$1" --check-mirror-only 2>&1)"
+    rc=$?
+    set -e
+}
+expect_mirror_refused() {
+    if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'refusing to use'; then pass "$1"; else fail "$1 (exit $rc)" "$out"; fi
+}
+expect_mirror_ok() {
+    if [ "$rc" -eq 0 ]; then pass "$1"; else fail "$1 (exit $rc)" "$out"; fi
+}
+mkdir "$tmp/m-files"
+printf 'precious\n' >"$tmp/m-files/notes.txt"
+mirror "$tmp/m-files"
+if [ "$rc" -ne 0 ] && [ "$(cat "$tmp/m-files/notes.txt")" = precious ]; then
+    pass "a directory with files and no .git is refused, and its files are kept"
+else
+    fail "a directory with files and no .git" "$out"
+fi
+mkdir "$tmp/m-empty"
+mirror "$tmp/m-empty"
+expect_mirror_ok "an empty directory is accepted"
+mirror "$tmp/m-does-not-exist"
+expect_mirror_ok "a directory that does not exist yet is accepted"
+mkdir "$tmp/m-foreign"
+git -C "$tmp/m-foreign" init -q
+printf 'mine\n' >"$tmp/m-foreign/work.txt"
+mirror "$tmp/m-foreign"
+expect_mirror_refused "a git repository this script did not make is refused"
+git -C "$tmp/m-foreign" config --local hollowscript.release-mirror true
+mirror "$tmp/m-foreign"
+expect_mirror_ok "the same repository, once marked as a mirror, is accepted"
+mirror "$repo_root"
+expect_mirror_refused "this checkout is refused"
+mirror "$(dirname "$repo_root")"
+expect_mirror_refused "a directory containing this checkout is refused"
+mirror "$repo_root/docs"
+expect_mirror_refused "a directory inside this checkout is refused"
+printf 'x\n' >"$tmp/a-file"
+mirror "$tmp/a-file"
+expect_mirror_refused "a file is refused"
+mkdir -p "$tmp/m-nested/inner"
+git -C "$tmp/m-nested" init -q
+git -C "$tmp/m-nested" config --local hollowscript.release-mirror true
+mirror "$tmp/m-nested/inner"
+if [ "$rc" -eq 0 ]; then
+    pass "an empty directory inside another repository is accepted (it is empty)"
+else
+    fail "an empty nested directory" "$out"
+fi
+printf 'y\n' >"$tmp/m-nested/inner/file"
+mirror "$tmp/m-nested/inner"
+expect_mirror_refused "a non-empty subdirectory of a repository, not its top, is refused"
+
+printf '\n%d passed, %d failed\n' "$passed" "$failed"
+[ "$failed" -eq 0 ]

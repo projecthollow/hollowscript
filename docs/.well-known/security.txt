@@ -1,0 +1,18 @@
+# security.txt (RFC 9116) for the future hollowscript.org site.
+#
+# This file is not served anywhere yet: this implementation has no deployed
+# site. It is kept here, at the path a site would need to serve it from
+# (/.well-known/security.txt), so that when hollowscript.org exists, the
+# release process only has to copy it rather than write it under pressure.
+# The Contact and Policy values below point at the site's own future pages
+# and its published repository, neither of which is named in this workspace
+# today (see docs/design/release-and-milestones.md for the release mirror
+# process); the owner must fill in the real addresses alongside a real
+# Expires date before this is ever served. RFC 9116 requires Expires, and a
+# stale or absent one is treated as no security.txt at all.
+
+Contact: mailto:PLACEHOLDER-OWNER-MUST-SET-A-SECURITY-CONTACT-ADDRESS@hollowscript.org
+Expires: PLACEHOLDER-OWNER-MUST-SET-A-REAL-DATE
+Preferred-Languages: en
+Policy: https://hollowscript.org/security
+Canonical: https://hollowscript.org/.well-known/security.txt

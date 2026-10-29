@@ -1,0 +1,27 @@
+{
+  "title": "continue in a closure does not reach the enclosing loop",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "contains": "loop"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "contains": "loop"
+      }
+    ]
+  }
+}

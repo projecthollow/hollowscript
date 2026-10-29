@@ -1,0 +1,11 @@
+uses print
+
+variable x: Int? = 5
+
+if x != none {
+    constant read = fn(): Int {
+        return x
+    }
+    x = none
+    effect print("${read()}")
+}

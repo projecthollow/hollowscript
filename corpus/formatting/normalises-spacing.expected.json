@@ -1,0 +1,31 @@
+{
+  "title": "The formatter prints one canonical form regardless of input spacing",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "constant a = 1 + 2 * 3",
+      "",
+      "if a > 5 {",
+      "    effect print(\"big ${a}\")",
+      "}",
+      "",
+      "fn add(x: Int, y: Int): Int {",
+      "    return x + y",
+      "}",
+      "",
+      "return add(a, 1)",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "big 7"
+    ],
+    "result": "Int(8)"
+  }
+}

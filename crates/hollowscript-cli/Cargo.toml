@@ -1,0 +1,28 @@
+[package]
+name = "hollowscript-cli"
+description = "The hollowscript command: check, format, run, build and lsp, with a --json mode for tooling, and the standard capabilities for a host process."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "hollowscript"
+path = "src/main.rs"
+
+[dependencies]
+cap-std = "4.0.3"
+hollowscript.workspace = true
+hollowscript-core.workspace = true
+hollowscript-hostfs.workspace = true
+hollowscript-syntax.workspace = true
+# Pinned exactly, not a range: the custom resolver (crate::http::SafeResolver)
+# uses ureq's `unversioned` API, which the crate does not treat as covered
+# by semver (see docs/design/dependencies.md).
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls", "gzip"] }
+
+[lints]
+workspace = true

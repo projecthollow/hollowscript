@@ -1,0 +1,27 @@
+{
+  "title": "break inside a fn but outside any loop is a diagnostic",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "contains": "loop"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "contains": "loop"
+      }
+    ]
+  }
+}

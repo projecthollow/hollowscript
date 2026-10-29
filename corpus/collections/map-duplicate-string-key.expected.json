@@ -1,0 +1,28 @@
+{
+  "title": "A repeated literal String key in a map literal is HS0203",
+  "spec": "3.8",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0203"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0203"
+      }
+    ]
+  }
+}

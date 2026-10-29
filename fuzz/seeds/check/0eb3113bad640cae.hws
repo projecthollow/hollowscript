@@ -1,0 +1,7 @@
+record Point = { x: Int, y: Int }
+
+fn norm1(p: Point): Int {
+    return p.x + p.y
+}
+
+return norm1({ x: 3, y: 4, z: 5 })

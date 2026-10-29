@@ -1,0 +1,8 @@
+fn ownerLine(owner: String?): String {
+    match owner {
+        none { return "unowned" }
+        else { return "owned by ${owner}" }
+    }
+}
+
+return ownerLine(none)

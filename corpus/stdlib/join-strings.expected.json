@@ -1,0 +1,14 @@
+{
+  "title": "join on a String list",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"a-b-c\")"
+  }
+}

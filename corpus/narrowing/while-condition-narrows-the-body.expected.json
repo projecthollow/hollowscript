@@ -1,0 +1,14 @@
+{
+  "title": "A while condition that tests != none narrows the body when the name is not reassigned there",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(2), Int(0)]"
+  }
+}

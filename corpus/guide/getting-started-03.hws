@@ -1,0 +1,4 @@
+uses print
+
+effect print("Hello from the command line!")
+return 0

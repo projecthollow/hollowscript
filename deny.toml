@@ -1,0 +1,59 @@
+# cargo-deny configuration (run by `scripts/check`).
+#
+# This workspace distributes under "Apache-2.0 OR MIT" (see
+# `[workspace.package].license` in Cargo.toml), so every dependency's own
+# licence must be compatible with that choice, and `docs/design/dependencies.md`
+# records each one as it is added. The shipped third-party dependencies all
+# come in through `hollowscript-cli` (`cap-std`, and `ureq` with `rustls`);
+# every crate linked into a release artefact, with its licence text, is
+# listed in that artefact's own THIRD-PARTY-LICENSES
+# (`cargo xtask third-party-licenses`, run by `scripts/release-build.sh`).
+
+[graph]
+# Exactly the targets `scripts/release-build.sh` ships (docs/design/release.md,
+# section 1), so this gate checks the dependency graph a release actually
+# links, including each platform's own transitive dependencies, and nothing
+# a release never builds.
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-musl",
+    "x86_64-pc-windows-gnu",
+    "wasm32-unknown-unknown",
+]
+
+[licenses]
+# Plain permissive licences a dependency of an Apache-2.0 OR MIT project can
+# carry without a considered decision (see dependencies.md's own list).
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    # The Mozilla-curated root certificate bundle `webpki-roots` ships
+    # (a dependency of `ureq`'s `rustls` TLS backend) is data, not code,
+    # under this permissive Community Data License Agreement; recorded in
+    # docs/design/dependencies.md.
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.93
+
+[bans]
+# Not policy here: this gate is about licences and advisories, not about
+# which crates may be used, which xtask's own crate-graph check already
+# governs for the workspace's own crates.
+multiple-versions = "warn"
+
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

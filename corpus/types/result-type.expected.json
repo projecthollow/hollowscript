@@ -1,0 +1,15 @@
+{
+  "title": "A Result value carries the declared value type",
+  "spec": "8.2",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Result.Ok(Int(2))"
+  }
+}

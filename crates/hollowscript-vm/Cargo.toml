@@ -1,0 +1,17 @@
+[package]
+name = "hollowscript-vm"
+description = "The HollowScript virtual machine: values, the heap, the interpreter, resource limits, cancellation and the native standard library."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+hollowscript-bytecode.workspace = true
+hollowscript-core.workspace = true
+
+[lints]
+workspace = true

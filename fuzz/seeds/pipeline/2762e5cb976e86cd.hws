@@ -1,0 +1,15 @@
+fn checked(n: Int): Result<Int, String> {
+    if n < 0 {
+        return failure("negative")
+    }
+    return success(n)
+}
+
+fn show(result: Result<Int, String>): String {
+    match result {
+        Ok(value) { return "ok ${value}" }
+        Err(message) { return "error ${message}" }
+    }
+}
+
+return [show(checked(4)), show(checked(-1))]

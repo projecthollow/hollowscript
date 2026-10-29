@@ -1,0 +1,12 @@
+record Person = { name: String, age: Int }
+
+constant fallback: Person = { name: "unknown", age: 0 }
+
+fn isFallback(p: Person): Bool {
+    if (p == { name: "unknown", age: 0 }) {
+        return true
+    }
+    return false
+}
+
+return isFallback(fallback)

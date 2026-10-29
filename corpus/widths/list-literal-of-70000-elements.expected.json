@@ -1,0 +1,11 @@
+{
+  "title": "A list literal of 70,000 elements on one line is bounded only by the size of its source",
+  "spec": "1.10",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(70000), Int(315000)]"
+  }
+}

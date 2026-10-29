@@ -1,0 +1,5 @@
+match [1, 2, 3] {
+    [] { return 0 }
+    [a] { return a }
+    [a, b] { return a + b }
+}

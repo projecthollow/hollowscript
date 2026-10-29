@@ -1,0 +1,19 @@
+{
+  "title": "An unused local constant warns and the file still runs",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 2
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(2)"
+  }
+}

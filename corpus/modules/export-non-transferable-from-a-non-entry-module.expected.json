@@ -1,0 +1,15 @@
+{
+  "title": "A non-transferable export is only restricted in the entry module: a non-entry module's export of a closure-taking fn is still importable and usable",
+  "spec": "12.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(7)"
+  }
+}

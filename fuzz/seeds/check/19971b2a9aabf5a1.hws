@@ -1,0 +1,2 @@
+constant a = "value ${1 +
+return a

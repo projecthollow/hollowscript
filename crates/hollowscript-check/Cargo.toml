@@ -1,0 +1,17 @@
+[package]
+name = "hollowscript-check"
+description = "The HollowScript checker: modules and name resolution, types, inference, narrowing, effects and exhaustiveness. Produces a typed HIR and diagnostics."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+hollowscript-core.workspace = true
+hollowscript-syntax.workspace = true
+
+[lints]
+workspace = true

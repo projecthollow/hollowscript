@@ -1,0 +1,14 @@
+{
+  "title": "Guide sample 4 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(5)"
+  }
+}

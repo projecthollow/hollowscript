@@ -1,0 +1,19 @@
+{
+  "title": "A leading UTF-8 byte order mark is ignored",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant a = 1",
+      "",
+      "return a",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(1)"
+  }
+}

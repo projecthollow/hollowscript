@@ -1,0 +1,8 @@
+record Person = { name: String, age: Int }
+
+constant people = [
+    { name: "Priya", age: 34 },
+    { name: "Alex", age: 29 }
+]
+constant byAge = people.sort(fn(a: Person, b: Person): Int { return a.age - b.age })
+return byAge.map(fn(p: Person): String { return p.name }).join(", ")

@@ -1,0 +1,23 @@
+{
+  "title": "Guide sample 2 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "variable total = 0",
+      "",
+      "total = total + 1",
+      "",
+      "total = total + 1",
+      "",
+      "return total",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(2)"
+  }
+}

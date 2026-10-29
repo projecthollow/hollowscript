@@ -1,0 +1,12 @@
+variable makers: [fn(): Int] = []
+for i in range(0, 3) {
+    makers = makers.append(fn(): Int {
+        return i * 10
+    })
+}
+
+variable results: [Int] = []
+for make in makers {
+    results = results.append(make())
+}
+return results

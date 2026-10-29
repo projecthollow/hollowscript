@@ -1,0 +1,41 @@
+{
+  "title": "A top-level constant may not be used before its declaration",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 1
+    },
+    {
+      "severity": "warning",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 1
+      },
+      {
+        "severity": "warning",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+export fn bad(): Int {
+    return "text"
+}

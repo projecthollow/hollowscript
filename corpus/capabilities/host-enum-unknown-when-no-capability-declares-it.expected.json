@@ -1,0 +1,28 @@
+{
+  "title": "The name of a capability's enum type is unknown in a run that grants no capability declaring it",
+  "spec": "9.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0208"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0208"
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+uses print
+
+import double, base from "./util"
+
+effect print("${double(base)}")
+
+return double(base)

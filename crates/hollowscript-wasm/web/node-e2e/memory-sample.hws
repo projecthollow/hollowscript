@@ -1,0 +1,17 @@
+// Allocates for real: each pass doubles a list, so a loop of a few dozen
+// passes asks for more memory than any ceiling could give.
+export fn doubling(n: Int): Int {
+    variable xs = [1]
+    for i in range(0, n) { xs = xs.concat(xs) }
+    return xs.length()
+}
+
+export fn small(): Int {
+    return 7
+}
+
+// 600,000 pairs: about 24 MB by the language's own size formula, under a
+// 32 MiB memory limit, and many times that in the module's linear memory.
+export fn pairs(): [[Int]] {
+    return range(0, 600000).map(fn(i: Int): [Int] { return [i, i] })
+}

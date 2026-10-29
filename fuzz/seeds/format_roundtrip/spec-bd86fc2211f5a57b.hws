@@ -1,0 +1,14 @@
+enum Light {
+    Red,
+    Green,
+}
+
+fn go(l: Light): Bool {
+    match l { // HS0501
+        Red {
+            return false
+        }
+    }
+}
+
+return go(Light.Green)

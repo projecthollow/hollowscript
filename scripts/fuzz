@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Runs the libFuzzer targets of fuzz/ (see docs/design/fuzzing.md), which is
+# a separate cargo-fuzz crate, not part of this workspace and not shipped.
+# Needs nightly and cargo-fuzz:
+#
+#   rustup toolchain install nightly
+#   cargo install cargo-fuzz
+#
+#   scripts/fuzz list                     list the targets
+#   scripts/fuzz build                    build every target, instrumented
+#   scripts/fuzz run <target> [seconds]   run one target (default 60s)
+#   scripts/fuzz run-all [seconds]        run every target, one after another
+#   scripts/fuzz seeds                    regenerate the bytecode seed corpus
+set -euo pipefail
+
+cd "$(dirname "$0")/../fuzz"
+
+TARGETS=(lex_parse format_roundtrip check pipeline bytecode_verify capi capi_ex wasm_abi filter)
+
+step() {
+    printf '\n==> %s\n' "$*"
+}
+
+cmd="${1:-}"
+case "$cmd" in
+    list)
+        printf '%s\n' "${TARGETS[@]}"
+        ;;
+    build)
+        step "cargo +nightly fuzz build"
+        cargo +nightly fuzz build
+        ;;
+    run)
+        target="${2:-}"
+        seconds="${3:-60}"
+        if [ -z "$target" ]; then
+            echo "scripts/fuzz run <target> [seconds]" >&2
+            exit 2
+        fi
+        mkdir -p "corpus/$target"
+        step "cargo +nightly fuzz run $target (${seconds}s)"
+        # libFuzzer writes new inputs into the first directory it is given,
+        # so corpus/ (gitignored) must come before seeds/ (committed).
+        # cargo-fuzz only prepends its own corpus/ when no directory is
+        # passed at all; otherwise it appends it after these.
+        cargo +nightly fuzz run "$target" -- "-max_total_time=$seconds" -rss_limit_mb=4096 "corpus/$target" "seeds/$target"
+        ;;
+    run-all)
+        seconds="${2:-60}"
+        for target in "${TARGETS[@]}"; do
+            mkdir -p "corpus/$target"
+            step "cargo +nightly fuzz run $target (${seconds}s)"
+            # corpus/ first, as in `run` above.
+            cargo +nightly fuzz run "$target" -- "-max_total_time=$seconds" -rss_limit_mb=4096 "corpus/$target" "seeds/$target"
+        done
+        ;;
+    seeds)
+        step "cargo run --bin gen_seeds"
+        cargo run --bin gen_seeds
+        ;;
+    *)
+        cat <<'EOF'
+Usage: scripts/fuzz <command>
+
+Commands:
+  list                     List the fuzz targets.
+  build                    Build every target with libFuzzer instrumentation.
+  run <target> [seconds]   Run one target for a bounded time (default 60s).
+  run-all [seconds]        Run every target, one after another.
+  seeds                    Rebuild the seeds/ directories that take raw
+                           bytecode (bytecode_verify, capi, wasm_abi) from
+                           corpus/*.hws in the repository root.
+
+Each target's corpus/<target>/ (where libFuzzer grows what it finds while
+running) is local and gitignored; seeds/<target>/ (committed) is what a
+fresh run starts from, passed as an extra, read-only seed directory
+after it (libFuzzer writes only into the first directory it is given).
+EOF
+        exit 2
+        ;;
+esac

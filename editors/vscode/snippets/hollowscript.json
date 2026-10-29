@@ -1,0 +1,62 @@
+{
+  "Function": {
+    "prefix": "fn",
+    "body": ["fn ${1:name}(${2:param}: ${3:Int}): ${4:Int} {", "\t$0", "}"],
+    "description": "Function declaration (section 18.4)"
+  },
+  "Closure": {
+    "prefix": "fnc",
+    "body": ["fn(${1:x}) {", "\t$0", "}"],
+    "description": "Closure expression"
+  },
+  "Record": {
+    "prefix": "record",
+    "body": ["record ${1:Name} = { ${2:field}: ${3:String} }"],
+    "description": "Record type declaration"
+  },
+  "Enum": {
+    "prefix": "enum",
+    "body": ["enum ${1:Name} {", "\t${2:First},", "\t${3:Second}(${4:Int}),", "}"],
+    "description": "Enum declaration"
+  },
+  "If": {
+    "prefix": "if",
+    "body": ["if ${1:condition} {", "\t$0", "}"],
+    "description": "If statement"
+  },
+  "If else": {
+    "prefix": "ifelse",
+    "body": ["if ${1:condition} {", "\t$2", "} else {", "\t$0", "}"],
+    "description": "If statement with an else block ('else' stays on the line of the closing brace)"
+  },
+  "Match": {
+    "prefix": "match",
+    "body": ["match ${1:value} {", "\t${2:pattern} {", "\t\t$0", "\t}", "\telse {", "\t}", "}"],
+    "description": "Match statement"
+  },
+  "For loop": {
+    "prefix": "for",
+    "body": ["for ${1:item} in ${2:items} {", "\t$0", "}"],
+    "description": "For loop"
+  },
+  "While loop": {
+    "prefix": "while",
+    "body": ["while ${1:condition} {", "\t$0", "}"],
+    "description": "While loop"
+  },
+  "Import": {
+    "prefix": "import",
+    "body": "import ${1:name} from \"./${2:module}\"",
+    "description": "Import names from another module (no .hws extension)"
+  },
+  "Uses capability": {
+    "prefix": "uses",
+    "body": "uses ${1|print,clock,random,env,args,fs,stdin,http|}",
+    "description": "Declare a capability the program needs"
+  },
+  "Effect call": {
+    "prefix": "effect",
+    "body": "effect ${1:print}($0)",
+    "description": "Call through a capability"
+  }
+}

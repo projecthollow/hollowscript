@@ -1,0 +1,27 @@
+{
+  "title": "Narrowing does not carry into a later fn body",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 8,
+      "contains": "Int"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 8,
+        "contains": "Int"
+      }
+    ]
+  }
+}

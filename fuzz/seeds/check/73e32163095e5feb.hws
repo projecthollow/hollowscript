@@ -1,0 +1,3 @@
+constant f: Float = 1
+
+return f

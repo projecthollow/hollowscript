@@ -1,0 +1,11 @@
+{
+  "title": "A call with 300 arguments, a record with 300 fields and a variant with 300 payload values each keep every value",
+  "spec": "1.10",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(449), Int(150), Int(299), Int(299)]"
+  }
+}

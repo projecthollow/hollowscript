@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Runs the conformance corpus and the specification's examples with
+# HOLLOWSCRIPT_GC_STRESS=1 (see hollowscript-conformance's `gc_stress_enabled`
+# and hollowscript::Options::gc_stress_mode), which forces the collector to
+# run at every safepoint instead of only when the heap has grown past its
+# usual threshold (docs/design/performance.md, "stress mode").
+#
+# The collector's whole safety argument is that a collection never changes
+# what a program observes (docs/design/security.md, section 11.4): running
+# the same cases through the same pass/fail baselines under this mode, and
+# seeing the identical counts scripts/check's ordinary run reports, is that
+# argument checked against the whole corpus and every specification example,
+# not only the handful of cases hollowscript-vm's own unit tests build by
+# hand. Kept out of scripts/check itself because a stress run is markedly
+# slower than an ordinary one (every safepoint tries to collect, and a
+# collection is an O(live objects) sweep); this script is the gate's second
+# half, run separately.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+step() {
+    printf '\n==> %s\n' "$*"
+}
+
+export HOLLOWSCRIPT_GC_STRESS=1
+
+step "conformance corpus, gc stress mode"
+cargo run --quiet -p hollowscript-conformance -- corpus
+
+step "examples of the specification (section 19.6), gc stress mode"
+cargo run --quiet -p hollowscript-conformance -- --spec docs/spec
+
+printf '\nAll checks passed under HOLLOWSCRIPT_GC_STRESS=1.\n'

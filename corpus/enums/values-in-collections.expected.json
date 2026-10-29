@@ -1,0 +1,10 @@
+{
+  "title": "Enum values are ordinary values that lists and closures can carry",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(4), Int(10), Int(0)]"
+  }
+}

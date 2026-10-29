@@ -1,0 +1,5 @@
+fn count(s: Set<Float>): Int {
+    return s.length()
+}
+
+return 0

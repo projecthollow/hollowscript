@@ -1,0 +1,22 @@
+uses fs
+
+fn describe(e: IoError): String {
+    match e {
+        NotFound(path) {
+            return "missing: ${path}"
+        }
+        Denied(path) {
+            return "denied: ${path}"
+        }
+        else {
+            return "io failure"
+        }
+    }
+}
+
+fn lineCount(path: String): Result<Int, String> {
+    constant text = (effect fs.read(path)).mapError(describe)?
+    return success(text.lines().length())
+}
+
+return lineCount("data/input.txt")

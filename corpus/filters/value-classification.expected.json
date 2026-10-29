@@ -1,0 +1,15 @@
+{
+  "title": "A predicate's value is classified without a schema: number, float, relative date, date range, none, any and a quoted string (section A.4)",
+  "spec": "A.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Filter(\"n:1 f:1.5 r:today+3 d:2026-07-01..2026-07-31 e:none any:any t:\\\"none\\\"\")"
+  }
+}

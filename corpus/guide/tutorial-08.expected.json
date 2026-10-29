@@ -1,0 +1,27 @@
+{
+  "title": "Guide sample 8 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant numbers = [3, 1, 4, 1, 5, 9]",
+      "",
+      "constant doubled = numbers.map(fn(n: Int): Int {",
+      "    return n * 2",
+      "})",
+      "",
+      "constant large = numbers.filter(fn(n: Int): Bool {",
+      "    return n > 3",
+      "})",
+      "",
+      "return \"${doubled.length()} doubled, ${large.length()} above three\"",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"6 doubled, 3 above three\")"
+  }
+}

@@ -1,0 +1,8 @@
+fn min(a: Int, b: Int): Int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
+return min(3, 2)

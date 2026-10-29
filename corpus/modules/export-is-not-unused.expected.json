@@ -1,0 +1,14 @@
+{
+  "title": "An exported constant is not reported as unused",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(1)"
+  }
+}

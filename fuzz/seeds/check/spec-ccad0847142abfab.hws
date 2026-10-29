@@ -1,0 +1,8 @@
+uses print
+
+constant xs = [10, 20]
+constant a = xs[1]
+constant b = xs[2]
+constant c = xs[-1]
+constant ages = ["ada": 36, "grace": 45]
+effect print("${a == none} ${b == none} ${c == none} ${ages["ada"] == 36} ${ages["linus"] == none}")

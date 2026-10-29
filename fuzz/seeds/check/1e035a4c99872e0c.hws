@@ -1,0 +1,19 @@
+fn start(): fn(): Int {
+    variable n = 10
+    constant outer = fn(): fn(): Int {
+        return fn(): Int {
+            n = n + 1
+            return n
+        }
+    }
+    constant bump = outer()
+    bump()
+    bump()
+    return fn(): Int {
+        return n
+    }
+}
+
+constant read = start()
+
+return read()

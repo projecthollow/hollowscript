@@ -1,0 +1,18 @@
+[package]
+name = "hollowscript-ide"
+description = "Editor services for HollowScript over the syntax and check crates: no transport and no disk."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+hollowscript-check.workspace = true
+hollowscript-core.workspace = true
+hollowscript-syntax.workspace = true
+
+[lints]
+workspace = true

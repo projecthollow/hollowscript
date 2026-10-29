@@ -1,0 +1,16 @@
+{
+  "title": "A host capability that declares a Float parameter receives a Float when given an Int",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "Float"
+    ],
+    "result": null
+  }
+}

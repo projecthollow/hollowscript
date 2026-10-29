@@ -1,0 +1,13 @@
+variable x: Int? = 1
+
+if x == none {
+    return 0
+}
+
+fn read(): Int {
+    return x
+}
+
+x = none
+
+return read()

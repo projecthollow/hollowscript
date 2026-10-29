@@ -1,0 +1,16 @@
+{
+  "title": "Interpolations nest strings which nest interpolations",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "hello dear world, 3"
+    ],
+    "result": null
+  }
+}

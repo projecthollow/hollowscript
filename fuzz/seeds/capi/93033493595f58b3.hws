@@ -1,0 +1,11 @@
+uses print
+
+variable x: Int? = 5
+
+if x != none {
+    constant f = fn(): Int {
+        return x + 1
+    }
+    x = none
+    effect print("${f()}")
+}

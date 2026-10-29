@@ -1,0 +1,16 @@
+{
+  "title": "An import binds an exported fn and constant by name",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "42"
+    ],
+    "result": "Int(42)"
+  }
+}

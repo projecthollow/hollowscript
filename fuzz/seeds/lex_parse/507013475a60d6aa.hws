@@ -1,0 +1,14 @@
+enum Shape {
+    Square(Int),
+    Rectangle(Int, Int),
+    Point,
+}
+
+fn widthOf(shape: Shape): Int {
+    match shape {
+        Rectangle(width) { return width }
+        else { return 0 }
+    }
+}
+
+return widthOf(Shape.Point)

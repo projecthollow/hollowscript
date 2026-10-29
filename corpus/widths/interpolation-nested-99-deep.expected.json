@@ -1,0 +1,11 @@
+{
+  "title": "An interpolation nested 99 deep inside one string evaluates",
+  "spec": "1.10",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"x\")"
+  }
+}

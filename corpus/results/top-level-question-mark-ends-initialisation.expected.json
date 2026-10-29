@@ -1,0 +1,15 @@
+{
+  "title": "A top-level ? that meets Err(x) ends initialisation with the result Result.Err(x)",
+  "spec": "4.7",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Result.Err(String(\"negative\"))"
+  }
+}

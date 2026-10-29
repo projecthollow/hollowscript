@@ -1,0 +1,4 @@
+// note: this line is a tagged comment
+// this one is a plain comment
+constant answer = 42 // trailing comments are allowed
+return answer

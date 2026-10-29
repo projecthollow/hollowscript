@@ -1,0 +1,20 @@
+{
+  "title": "An unused import is a warning and the file still runs",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 1,
+      "code": "HS0802"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(1)"
+  }
+}

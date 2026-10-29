@@ -1,0 +1,3 @@
+// file: main.hws
+import secret from "./m" // HS0604
+return secret

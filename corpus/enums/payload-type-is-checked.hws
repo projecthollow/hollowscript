@@ -1,0 +1,21 @@
+enum Shape {
+    Square(Int),
+    Rectangle(Int, Int),
+    Point,
+}
+
+fn area(shape: Shape): Int {
+    match shape {
+        Square(side) {
+            return side * side
+        }
+        Rectangle(width, height) {
+            return width * height
+        }
+        Point {
+            return 0
+        }
+    }
+}
+
+return area(Shape.Square("big"))

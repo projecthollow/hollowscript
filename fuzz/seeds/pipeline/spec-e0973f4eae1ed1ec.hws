@@ -1,0 +1,13 @@
+fn makeCounter(): fn(): Int {
+    variable n = 0
+    return fn(): Int {
+        n = n + 1
+        return n
+    }
+}
+
+constant next = makeCounter()
+constant first = next()
+constant second = next()
+constant third = next()
+return [first, second, third]

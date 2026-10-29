@@ -1,0 +1,6 @@
+variable n: Int? = 1
+
+if n != none {
+    n = none
+    constant x: Int = n
+}

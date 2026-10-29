@@ -1,0 +1,19 @@
+{
+  "title": "Guide sample 3 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant wholeDivision = 7 / 2",
+      "",
+      "return wholeDivision",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Float(3.5)"
+  }
+}

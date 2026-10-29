@@ -1,0 +1,16 @@
+{
+  "title": "Two spellings of one module path load it once",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "init"
+    ],
+    "result": "Int(3)"
+  }
+}

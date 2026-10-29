@@ -1,0 +1,2 @@
+constant r = success(1)? // HS0308
+return r

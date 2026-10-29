@@ -1,0 +1,33 @@
+{
+  "title": "A pattern name may not redeclare a visible name",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 3,
+      "code": "HS0801"
+    },
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0201"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 3,
+        "code": "HS0801"
+      },
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0201"
+      }
+    ]
+  }
+}

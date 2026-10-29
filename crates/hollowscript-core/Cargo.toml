@@ -1,0 +1,16 @@
+[package]
+name = "hollowscript-core"
+description = "Shared vocabulary of the HollowScript implementation: source text, diagnostics and their registry, limits, faults, cancellation and host value types."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+# The specification cross-check reads files of the repository, which are not
+# part of the published package.
+exclude = ["tests/spec_registry.rs", "tests/spec_natives.rs"]
+
+[lints]
+workspace = true

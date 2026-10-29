@@ -1,0 +1,33 @@
+{
+  "title": "Declaring a visible name again is an error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 4
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 4
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      }
+    ]
+  }
+}

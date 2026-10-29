@@ -1,0 +1,14 @@
+{
+  "title": "split with an empty separator splits by code point, consistent with length",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(3), Int(1)]"
+  }
+}

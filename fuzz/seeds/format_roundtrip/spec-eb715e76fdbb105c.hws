@@ -1,0 +1,18 @@
+enum Tree {
+    Leaf,
+    Node(Tree, Int, Tree),
+}
+
+fn sum(t: Tree): Int {
+    match t {
+        Leaf {
+            return 0
+        }
+        Node(left, value, right) {
+            return sum(left) + value + sum(right)
+        }
+    }
+}
+
+constant tree = Tree.Node(Tree.Node(Tree.Leaf, 1, Tree.Leaf), 2, Tree.Leaf)
+return sum(tree)

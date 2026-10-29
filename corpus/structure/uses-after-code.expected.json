@@ -1,0 +1,43 @@
+{
+  "title": "uses lines must precede everything else",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 2
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      }
+    ]
+  }
+}

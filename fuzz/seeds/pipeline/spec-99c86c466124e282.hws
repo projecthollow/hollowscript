@@ -1,0 +1,7 @@
+uses print
+
+constant s = "  Hello, World  "
+constant t = s.trim()
+effect print("${t.length()} ${t.byteLength()} ${t.toUpper()} ${t.substring(7, 100)}")
+effect print("${"a😀b".length()} ${"a😀b".byteLength()} ${"a😀b".split("").length()}")
+effect print("${"a,b,,c".split(",").length()} ${"x".repeat(3)} ${"7".padStart(3, "0")}")

@@ -1,0 +1,16 @@
+{
+  "title": "and and or short-circuit",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "done false true"
+    ],
+    "result": null
+  }
+}

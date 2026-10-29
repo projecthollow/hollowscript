@@ -1,0 +1,10 @@
+{
+  "title": "A destructured optional field narrows like any other optional",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"nobody\"), String(\"Ada\")]"
+  }
+}

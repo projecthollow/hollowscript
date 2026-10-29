@@ -1,0 +1,46 @@
+[package]
+name = "hollowscript-wasm"
+description = "A WebAssembly build of the HollowScript VM only: loads verified bytecode, with no parser or checker in the browser."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+hollowscript-bytecode.workspace = true
+hollowscript-core.workspace = true
+hollowscript-vm.workspace = true
+# Optional, behind the `tooling` feature only: the front end and checker an
+# editor needs for check(source) and compile(source), and the front end
+# format(source) needs. The default, feature-less build (what a published
+# game ships) never pulls these in; see src/tooling.rs.
+hollowscript = { workspace = true, optional = true }
+# Also optional, behind `tooling` only: the editor services (highlighting,
+# hover, completion, definition, outline) a browser editor asks for. They sit
+# over the same front end and checker as the facade and add no dependency of
+# their own; see src/tooling/ide.rs.
+hollowscript-ide = { workspace = true, optional = true }
+
+[dev-dependencies]
+# Only for tests: a real compiler to produce real bytecode that calls a
+# capability, to test the batched suspend/resume path against. Never linked
+# into the shipped library or the cdylib a page loads; see src/abi.rs's own
+# tests, which are the only thing that uses it.
+hollowscript.workspace = true
+
+[features]
+default = []
+# Checking, formatting and compiling source in the browser, without a
+# server: a separate, larger build for an editor page, never linked
+# into the VM-only build a published game ships. See src/tooling.rs and
+# web/README.md.
+tooling = ["dep:hollowscript", "dep:hollowscript-ide"]
+
+[lints]
+workspace = true

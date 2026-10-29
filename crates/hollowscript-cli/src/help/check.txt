@@ -1,0 +1,15 @@
+Usage: hollowscript check [--json] [--allow GRANT]... FILE
+
+Checks the program whose entry module is FILE, and every module it
+imports, and prints its diagnostics as FILE:LINE:COLUMN: severity[code]:
+message. Nothing is run.
+
+The grants given decide which capabilities the program's 'uses' may
+name; one that is not granted is HS0404.
+
+Options:
+  --json         Print one document, {"diagnostics": [...]}.
+  --allow GRANT  Grant a capability; see 'hollowscript help'.
+
+Exit status: 0 when there are no errors (warnings allowed), 1 when there
+are, 2 when FILE cannot be read.

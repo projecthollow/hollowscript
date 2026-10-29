@@ -1,0 +1,13 @@
+constant total = 10
+
+fn report(limit: Int): Int {
+    if limit > 0 {
+        constant label = 1
+        return label
+    } else {
+        constant label = 2
+        return label + total
+    }
+}
+
+return report(1)

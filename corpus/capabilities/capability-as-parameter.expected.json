@@ -1,0 +1,25 @@
+{
+  "title": "A capability name may not be shadowed by a parameter",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      }
+    ]
+  }
+}

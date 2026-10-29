@@ -1,0 +1,106 @@
+[package]
+name = "hollowscript-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+# Not a workspace member (the root `Cargo.toml` excludes this directory) and
+# never shipped: see `docs/design/fuzzing.md`. libFuzzer needs nightly, which
+# the rest of the workspace does not, and `cargo-fuzz` needs its own crate
+# layout (one binary per target, discovered by `[[bin]]` below), which is a
+# different shape to every other crate here.
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+hollowscript = { path = "../crates/hollowscript" }
+hollowscript-core = { path = "../crates/hollowscript-core" }
+hollowscript-syntax = { path = "../crates/hollowscript-syntax" }
+hollowscript-check = { path = "../crates/hollowscript-check" }
+hollowscript-compiler = { path = "../crates/hollowscript-compiler" }
+hollowscript-bytecode = { path = "../crates/hollowscript-bytecode" }
+hollowscript-vm = { path = "../crates/hollowscript-vm" }
+hollowscript-capi = { path = "../crates/hollowscript-capi" }
+hollowscript-wasm = { path = "../crates/hollowscript-wasm" }
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "lex_parse"
+path = "fuzz_targets/lex_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "format_roundtrip"
+path = "fuzz_targets/format_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "check"
+path = "fuzz_targets/check.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pipeline"
+path = "fuzz_targets/pipeline.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bytecode_verify"
+path = "fuzz_targets/bytecode_verify.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capi"
+path = "fuzz_targets/capi.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capi_ex"
+path = "fuzz_targets/capi_ex.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wasm_abi"
+path = "fuzz_targets/wasm_abi.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "filter"
+path = "fuzz_targets/filter.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "gen_seeds"
+path = "tools/gen_seeds.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "leak_check"
+path = "tools/leak_check.rs"
+test = false
+doc = false
+bench = false

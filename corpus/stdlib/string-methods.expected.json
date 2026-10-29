@@ -1,0 +1,22 @@
+{
+  "title": "String methods",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "Hello, World",
+      "HELLO, WORLD",
+      "hello, world",
+      "12 true true false",
+      "HeLLo, WorLd",
+      "Hello",
+      "World"
+    ],
+    "result": "[String(\"Hello\"), String(\"World\")]"
+  }
+}

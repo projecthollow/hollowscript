@@ -1,0 +1,10 @@
+{
+  "title": "Two enums may use the same variant name",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"lit\"), String(\"still\")]"
+  }
+}

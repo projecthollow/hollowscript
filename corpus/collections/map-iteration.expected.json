@@ -1,0 +1,11 @@
+{
+  "title": "A map is visited by looping over its keys",
+  "spec": "14.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(15)"
+  }
+}

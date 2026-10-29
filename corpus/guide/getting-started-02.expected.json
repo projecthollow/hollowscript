@@ -1,0 +1,16 @@
+{
+  "title": "Guide sample 2 from the getting started page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "Hello, world!"
+    ],
+    "result": null
+  }
+}

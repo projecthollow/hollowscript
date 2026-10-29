@@ -1,0 +1,4 @@
+record Point = { x: Int, y: Int }
+constant p: Point = { x: 1, y: 2 }
+constant { x: 0, y } = p // HS0509
+return y

@@ -1,0 +1,24 @@
+Usage: hollowscript run [--json] [--allow GRANT]... FILE [ARGUMENT]...
+
+Checks, compiles and runs the program whose entry module is FILE. FILE
+may also be a bytecode container that 'build' produced; it is verified
+before it runs, and must be run with the grants it was built with.
+Words after FILE are the program's own arguments, read with args()
+under --allow args.
+
+Each print() reaches standard output as it happens. A runtime fault is
+reported on standard error as FILE:LINE:COLUMN: error[code]: message.
+If standard output is closed early (hollowscript run app.hws | head -1),
+the program is stopped quietly.
+
+Options:
+  --json         Print one document when the run ends, {"ok": ...,
+                 "output": [lines], "diagnostics": [...]}, with
+                 "stage": "check" or "run" when it did not complete
+                 (section 19.5's shape). Output is collected into the
+                 document rather than streamed.
+  --allow GRANT  Grant a capability; see 'hollowscript help'.
+
+Exit status: 0 when the program ran to completion, 1 when it did not
+check or its run faulted, 2 when FILE cannot be read or is a damaged
+container.

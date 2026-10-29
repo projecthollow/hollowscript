@@ -1,0 +1,34 @@
+fn describe(xs: [Int]): String {
+    match xs {
+        [] {
+            return "empty"
+        }
+        [only] {
+            return "one: ${only}"
+        }
+        [first, ..rest] {
+            return "${first} then ${rest.length()} more"
+        }
+    }
+}
+
+record Point = { x: Int, y: Int }
+
+fn where(p: Point): String {
+    match p {
+        { x: 0, y: 0 } {
+            return "origin"
+        }
+        { x: 0 } {
+            return "on the y axis"
+        }
+        { y: 0 } {
+            return "on the x axis"
+        }
+        { x, y } {
+            return "at ${x}, ${y}"
+        }
+    }
+}
+
+return [describe([]), describe([7]), describe([1, 2, 3]), where({ x: 0, y: 5 }), where({ x: 2, y: 3 })]

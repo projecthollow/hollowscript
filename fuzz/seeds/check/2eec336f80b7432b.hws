@@ -1,0 +1,17 @@
+fn lookup(scores: Map<String, Int>, name: String): Int {
+    constant found = scores.get(name)
+    if found == none {
+        return -1
+    }
+    return found
+}
+
+constant empty: Map<String, Int> = [:]
+constant prices = empty.with("tea", 3).with("cake", 5).with("jam", 7)
+variable total = 0
+
+for name in prices.keys() {
+    total = total + lookup(prices, name)
+}
+
+return total

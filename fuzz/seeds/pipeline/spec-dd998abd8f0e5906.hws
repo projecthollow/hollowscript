@@ -1,0 +1,2 @@
+constant x = ) // HS0102
+return 1

@@ -1,0 +1,11 @@
+{
+  "title": "A chain of 500 additions, the most one chain may have, evaluates",
+  "spec": "1.10",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(501)"
+  }
+}

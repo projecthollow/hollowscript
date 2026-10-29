@@ -1,0 +1,3 @@
+uses kind, print
+
+effect print(effect kind(3))

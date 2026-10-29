@@ -1,0 +1,28 @@
+{
+  "title": "A generic enum's payload-free variant with no expected type to bind its type argument is HS0308",
+  "spec": "6.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0308"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0308"
+      }
+    ]
+  }
+}

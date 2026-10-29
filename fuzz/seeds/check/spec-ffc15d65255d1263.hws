@@ -1,0 +1,32 @@
+uses print
+
+constant parsed = json.parse("{\"b\": [1, 2.5, true], \"a\": null}")
+match parsed {
+    Ok(value) {
+        effect print(json.stringify(value))
+    }
+    Err(error) {
+        effect print("bad json at ${error.offset}: ${error.message}")
+    }
+}
+
+constant doc = Json.Object(["name": Json.String("Ada"), "age": Json.Int(36)])
+effect print(json.stringify(doc))
+
+match json.field(doc, "name") {
+    String(name) {
+        effect print("hello ${name}")
+    }
+    else {
+        effect print("no name")
+    }
+}
+
+match json.parse("{") {
+    Ok(_) {
+        effect print("parsed")
+    }
+    Err(error) {
+        effect print("${error.message} at ${error.offset}")
+    }
+}

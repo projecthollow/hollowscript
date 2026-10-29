@@ -1,0 +1,382 @@
+#!/usr/bin/env bash
+# Behavioural tests for scripts/install.sh, with no network: a fixture release
+# signed with throwaway keys is served from a temporary directory on
+# 127.0.0.1, and the installer is run against it under controlled PATHs, so
+# "a machine with no signature verifier" is a PATH that has none.
+#
+#   scripts/test-install
+#
+# What it needs: bash, python3 (for the loopback server), ssh-keygen from
+# OpenSSH 8.0 or newer, and the usual tools. minisign is optional: the
+# scenarios that need it are skipped, loudly, without it, and so is the
+# openssl one without an OpenSSL that can verify Ed25519.
+#
+# HOLLOWSCRIPT_TEST_INSTALL_SH=FILE runs the same scenarios against another
+# copy of the installer (to see which of them an older one fails).
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+repo_root="$(pwd)"
+install_sh="${HOLLOWSCRIPT_TEST_INSTALL_SH:-$repo_root/scripts/install.sh}"
+# shellcheck source=scripts/lib/fixture-release.sh
+. "$repo_root/scripts/lib/fixture-release.sh"
+
+command -v python3 >/dev/null 2>&1 || { printf 'python3 is required (it serves the fixture release)\n' >&2; exit 1; }
+fixture_tools
+
+tmp="$(mktemp -d)"
+server_pid=""
+cleanup() {
+    if [ -n "$server_pid" ]; then
+        kill "$server_pid" 2>/dev/null || true
+        wait "$server_pid" 2>/dev/null || true
+    fi
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+passed=0
+failed=0
+skipped=0
+pass() { passed=$((passed + 1)); printf 'ok   %s\n' "$1"; }
+fail() {
+    failed=$((failed + 1))
+    printf 'FAIL %s\n' "$1"
+    [ -z "${2:-}" ] || printf '%s\n' "$2" | sed 's/^/       /'
+}
+skip() { skipped=$((skipped + 1)); printf 'SKIP %s\n' "$1"; }
+
+target=x86_64-unknown-linux-musl
+site="$tmp/site"
+keys="$tmp/keys"
+mkdir -p "$site"
+fixture_keys "$keys"
+
+# --- the fixture releases ---------------------------------------------------------
+# v0.1.0 and v0.1.1: genuine, signed. v0.1.2: an attacker's, with an archive
+# of their own and a SHA256SUMS that matches it, carrying the signatures of
+# the genuine v0.1.0 (they cannot sign). v0.1.3: the same, with no signature
+# files at all.
+fixture_release "$site" v0.1.0 "$target" "$keys"
+fixture_release "$site" v0.1.1 "$target" "$keys"
+for v in v0.1.2 v0.1.3; do
+    fixture_release "$site" "$v" "$target" "$keys"
+    bare="${v#v}"
+    stage="$(mktemp -d)"
+    mkdir "$stage/hollowscript-$bare-$target"
+    for b in hollowscript hollowscript-lsp; do
+        printf '#!/bin/sh\necho "hollowscript %s"\necho attacker >&2\n' "$bare" >"$stage/hollowscript-$bare-$target/$b"
+        chmod 755 "$stage/hollowscript-$bare-$target/$b"
+    done
+    (cd "$stage" && tar -czf "$site/$v/hollowscript-$bare-$target.tar.gz" "hollowscript-$bare-$target")
+    rm -rf "$stage"
+    printf '%s  %s\n' "$(sha256_file "$site/$v/hollowscript-$bare-$target.tar.gz")" "hollowscript-$bare-$target.tar.gz" >"$site/$v/SHA256SUMS"
+done
+rm -f "$site"/v0.1.3/SHA256SUMS.minisig "$site"/v0.1.3/SHA256SUMS.sshsig
+printf 'v0.1.1\n' >"$site/latest.txt"
+
+# --- the loopback server ---------------------------------------------------------------
+cat >"$tmp/serve.py" <<'EOF'
+import functools, http.server, sys
+
+class Quiet(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *args):
+        pass
+
+handler = functools.partial(Quiet, directory=sys.argv[1])
+server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+print(server.server_address[1], flush=True)
+server.serve_forever()
+EOF
+python3 "$tmp/serve.py" "$site" >"$tmp/port" 2>/dev/null &
+server_pid=$!
+for _ in $(seq 1 50); do
+    [ -s "$tmp/port" ] && break
+    sleep 0.1
+done
+[ -s "$tmp/port" ] || { printf 'the fixture server did not start\n' >&2; exit 1; }
+base="http://127.0.0.1:$(cat "$tmp/port")"
+
+# --- PATHs -------------------------------------------------------------------------------
+# A directory of links to just the tools the installer needs. Whatever else a
+# test puts on PATH (minisign, openssl, ssh-keygen) is added in a directory of
+# its own, so "no verifier" is an honest PATH and not a hope.
+mkbin() {
+    mkdir -p "$1"
+    local t p
+    for t in "${@:2}"; do
+        p="$(command -v "$t" 2>/dev/null || true)"
+        [ -z "$p" ] || ln -sf "$p" "$1/$t"
+    done
+}
+core_tools=(sh uname mktemp tr sed awk cat cp mv rm mkdir rmdir chmod dd od wc tail head tar gzip gunzip grep dirname
+    sha256sum shasum perl basename readlink ls id date sleep base64 printf test expr)
+mkbin "$tmp/bin-core" "${core_tools[@]}" curl
+mkbin "$tmp/bin-nocurl" "${core_tools[@]}"
+mkbin "$tmp/bin-minisign" minisign
+mkbin "$tmp/bin-ssh" ssh-keygen
+# An OpenSSL that can verify Ed25519 (the system's may be LibreSSL, which
+# cannot): the first of these that signs and verifies with it.
+ed_openssl=""
+for cand in "$(command -v openssl 2>/dev/null || true)" /opt/homebrew/opt/openssl@3/bin/openssl /usr/local/opt/openssl@3/bin/openssl; do
+    [ -n "$cand" ] && [ -x "$cand" ] || continue
+    if "$cand" genpkey -algorithm ed25519 -out "$tmp/probe.pem" >/dev/null 2>&1; then
+        ed_openssl="$cand"
+        break
+    fi
+done
+if [ -n "$ed_openssl" ]; then
+    mkdir -p "$tmp/bin-openssl"
+    ln -sf "$ed_openssl" "$tmp/bin-openssl/openssl"
+fi
+# A wget that says what BusyBox's says, standing in for it (fetching with the
+# real curl underneath).
+mkdir -p "$tmp/bin-busybox"
+real_curl="$(command -v curl)"
+cat >"$tmp/bin-busybox/wget" <<EOF
+#!/bin/sh
+case "\$1" in
+    --help) echo "BusyBox v1.36.1 (2026-01-01 00:00:00 UTC) multi-call binary."; exit 0 ;;
+esac
+# wget -q -O OUT URL
+exec "$real_curl" -fsSL -o "\$3" "\$4"
+EOF
+chmod 755 "$tmp/bin-busybox/wget"
+
+# --- running the installer -------------------------------------------------------------------
+home_n=0
+out=""
+rc=0
+last_home=""
+# run_install PATH_DIRS ENV... -- ARGS...: one install into a fresh HOME, with
+# PATH made of the colon-separated PATH_DIRS and the given environment.
+run_install() {
+    local dirs="$1"
+    shift
+    local -a envs=()
+    while [ $# -gt 0 ] && [ "$1" != -- ]; do
+        envs+=("$1")
+        shift
+    done
+    [ $# -eq 0 ] || shift
+    home_n=$((home_n + 1))
+    last_home="$tmp/home-$home_n"
+    mkdir -p "$last_home"
+    set +e
+    out="$(env -i HOME="$last_home" PATH="$dirs" TMPDIR="$tmp" \
+        HOLLOWSCRIPT_BASE_URL="$base" HOLLOWSCRIPT_TARGET="$target" \
+        HOLLOWSCRIPT_PUBLIC_KEY_FILE="${EXTRA_KEY:-$keys/one.pub}" \
+        ${envs[@]+"${envs[@]}"} \
+        /bin/sh "$install_sh" --no-modify-path "$@" 2>&1)"
+    rc=$?
+    set -e
+}
+installed() { [ -x "$last_home/.hollowscript/bin/hollowscript" ]; }
+installed_version() { "$last_home/.hollowscript/bin/hollowscript" --version 2>/dev/null; }
+
+core="$tmp/bin-core"
+
+# expect_refused NAME PATTERN: the last run failed, installed nothing, and
+# said PATTERN.
+expect_refused() {
+    if [ "$rc" -ne 0 ] && ! installed && printf '%s' "$out" | grep -qE "$2"; then
+        pass "$1"
+    else
+        fail "$1 (exit $rc, installed: $(installed && echo yes || echo no))" "$out"
+    fi
+}
+# expect_installed NAME VERSION [PATTERN]
+expect_installed() {
+    if [ "$rc" -eq 0 ] && installed && [ "$(installed_version)" = "hollowscript ${2#v}" ] \
+        && { [ -z "${3:-}" ] || printf '%s' "$out" | grep -qE "$3"; }; then
+        pass "$1"
+    else
+        fail "$1 (exit $rc)" "$out"
+    fi
+}
+
+# --- no verifier: the installer fails closed -----------------------------------------------------
+printf '\n== a machine with no signature verifier ==\n'
+run_install "$core" -- --version v0.1.3
+expect_refused "unsigned release with matching sums is refused by default" 'no signature verifier'
+run_install "$core" -- --version v0.1.2
+expect_refused "attacker release with the genuine release's signature is refused by default" 'no signature verifier'
+run_install "$core" --
+expect_refused "latest, no verifier: refused" 'HOLLOWSCRIPT_ALLOW_UNSIGNED=1'
+run_install "$core" HOLLOWSCRIPT_ALLOW_UNSIGNED=1 -- --version v0.1.1
+expect_installed "HOLLOWSCRIPT_ALLOW_UNSIGNED=1 installs, with a loud notice" v0.1.1 'WARNING: HOLLOWSCRIPT_ALLOW_UNSIGNED=1'
+if printf '%s' "$out" | grep -q 'the signature on SHA256SUMS was NOT checked'; then pass "the opt-out also prints the notice at the end"; else fail "the opt-out notice" "$out"; fi
+for v in yes true Yes 2 on; do
+    run_install "$core" "HOLLOWSCRIPT_ALLOW_UNSIGNED=$v" -- --version v0.1.1
+    expect_refused "HOLLOWSCRIPT_ALLOW_UNSIGNED=$v is not the documented value" 'exactly 1'
+done
+run_install "$core" HOLLOWSCRIPT_ALLOW_UNSIGNED=0 -- --version v0.1.1
+expect_refused "HOLLOWSCRIPT_ALLOW_UNSIGNED=0 means off" 'no signature verifier'
+for v in 1 true yes YES; do
+    run_install "$core" "HOLLOWSCRIPT_REQUIRE_SIGNATURE=$v" -- --version v0.1.1
+    expect_refused "HOLLOWSCRIPT_REQUIRE_SIGNATURE=$v refuses without a verifier" 'HOLLOWSCRIPT_REQUIRE_SIGNATURE'
+done
+run_install "$core" HOLLOWSCRIPT_REQUIRE_SIGNATURE=1 HOLLOWSCRIPT_ALLOW_UNSIGNED=1 -- --version v0.1.1
+expect_refused "REQUIRE_SIGNATURE wins over ALLOW_UNSIGNED" 'HOLLOWSCRIPT_REQUIRE_SIGNATURE'
+run_install "$core" HOLLOWSCRIPT_REQUIRE_SIGNATURE=maybe -- --version v0.1.1
+expect_refused "an unrecognised HOLLOWSCRIPT_REQUIRE_SIGNATURE is an error, not ignored" 'must be 1, true or yes'
+run_install "$core" HOLLOWSCRIPT_REQUIRE_SIGNATURE=0 HOLLOWSCRIPT_ALLOW_UNSIGNED=1 -- --version v0.1.1
+expect_installed "HOLLOWSCRIPT_REQUIRE_SIGNATURE=0 does not block the opt-out" v0.1.1
+
+# BusyBox wget cannot validate certificates: refused with no verifier even
+# when the opt-out is set; allowed (with a note) when a verifier will check.
+run_install "$tmp/bin-nocurl:$tmp/bin-busybox" HOLLOWSCRIPT_ALLOW_UNSIGNED=1 -- --version v0.1.1
+expect_refused "BusyBox wget with no verifier is refused even with ALLOW_UNSIGNED=1" 'BusyBox wget'
+run_install "$tmp/bin-nocurl:$tmp/bin-busybox:$tmp/bin-ssh" -- --version v0.1.1
+expect_installed "BusyBox wget with a verifier installs, with a note" v0.1.1 'does not validate TLS certificates'
+
+# --- ssh-keygen as the verifier ------------------------------------------------------------------
+printf '\n== ssh-keygen ==\n'
+sshp="$core:$tmp/bin-ssh"
+run_install "$sshp" -- --version v0.1.1
+expect_installed "a validly signed release installs and says it was verified" v0.1.1 'signature verified \(sshkeygen\), signed for v0.1.1'
+run_install "$sshp" --
+expect_installed "latest installs" v0.1.1
+run_install "$sshp" -- --version v0.1.2
+expect_refused "attacker release (matching sums, genuine v0.1.0 signature) is refused" 'does not verify'
+run_install "$sshp" -- --version v0.1.3
+expect_refused "attacker release with no signature file is refused" 'could not fetch .*SHA256SUMS.sshsig'
+# A release validly signed, but for another version, served under this one.
+mkdir -p "$site/v0.1.4"
+cp "$site"/v0.1.1/* "$site/v0.1.4/"
+bare=0.1.4
+rm -rf "$tmp/rename" && mkdir "$tmp/rename" && (cd "$tmp/rename" && tar -xzf "$site/v0.1.1/hollowscript-0.1.1-$target.tar.gz" && mv "hollowscript-0.1.1-$target" "hollowscript-$bare-$target" && tar -czf "$site/v0.1.4/hollowscript-$bare-$target.tar.gz" "hollowscript-$bare-$target")
+rm -f "$site/v0.1.4/hollowscript-0.1.1-$target.tar.gz"
+printf '%s  %s\n' "$(sha256_file "$site/v0.1.4/hollowscript-$bare-$target.tar.gz")" "hollowscript-$bare-$target.tar.gz" >"$site/v0.1.4/SHA256SUMS"
+cp "$site/v0.1.1/SHA256SUMS.sshsig" "$site/v0.1.4/SHA256SUMS.sshsig"
+run_install "$sshp" -- --version v0.1.4
+expect_refused "a signature made for another version is refused" 'does not verify'
+# The same key, but not the trusted one: the pinned key alone cannot verify a throwaway-signed release.
+run_install "$sshp" "HOLLOWSCRIPT_PUBLIC_KEY_FILE=$tmp/none" -- --version v0.1.1
+expect_refused "a missing HOLLOWSCRIPT_PUBLIC_KEY_FILE is an error" 'does not exist'
+EXTRA_KEY="$keys/one.pub.absent" run_install "$sshp" HOLLOWSCRIPT_PUBLIC_KEY_FILE= -- --version v0.1.1
+expect_refused "without the extra key, the pinned key refuses a throwaway-signed release" 'does not verify'
+
+# --- minisign and openssl ------------------------------------------------------------------------
+printf '\n== minisign and openssl ==\n'
+if [ "$have_minisign" = 1 ]; then
+    EXTRA_KEY="$keys/one.pub" run_install "$core:$tmp/bin-minisign" -- --version v0.1.1
+    expect_installed "minisign: a validly signed release installs" v0.1.1 'signature verified \(minisign\), signed for v0.1.1'
+    EXTRA_KEY="$keys/one.pub" run_install "$core:$tmp/bin-minisign" -- --version v0.1.2
+    expect_refused "minisign: attacker release with matching sums is refused" 'does not verify'
+    EXTRA_KEY="$keys/one.pub" run_install "$core:$tmp/bin-minisign" -- --version v0.1.3
+    expect_refused "minisign: an unsigned attacker release is refused" 'could not fetch .*minisig'
+    cp "$site/v0.1.1/SHA256SUMS.minisig" "$site/v0.1.4/SHA256SUMS.minisig"
+    EXTRA_KEY="$keys/one.pub" run_install "$core:$tmp/bin-minisign" -- --version v0.1.4
+    expect_refused "minisign: a signature made for another version is refused" 'does not verify|not signed for'
+    if [ -n "$ed_openssl" ]; then
+        EXTRA_KEY="$keys/one.pub" run_install "$core:$tmp/bin-openssl" -- --version v0.1.1
+        expect_installed "openssl: a validly signed release installs" v0.1.1 'signature verified \(openssl\), signed for v0.1.1'
+        EXTRA_KEY="$keys/one.pub" run_install "$core:$tmp/bin-openssl" -- --version v0.1.2
+        expect_refused "openssl: attacker release with matching sums is refused" 'does not verify'
+    else
+        skip "openssl scenarios: no OpenSSL that can verify Ed25519 on this machine"
+    fi
+else
+    skip "minisign and openssl scenarios: minisign is not installed (they need it to make signatures)"
+fi
+
+# --- base URL parsing ---------------------------------------------------------------------------
+printf '\n== base URL ==\n'
+for bad in "http://127.0.0.1:1@example.org" "http://localhost:1@example.org" "http://127.0.0.1.example.org" \
+    "http://localhost.example.org" "http://127.0.0.1:80abc" "http://example.org" "http://[::1]x" \
+    "https://user@example.org" "https://" "ftp://127.0.0.1" "http://127.0.0.1:1/x?y=z"; do
+    run_install "$sshp" "HOLLOWSCRIPT_BASE_URL=$bad" -- --version v0.1.1
+    expect_refused "base URL '$bad' is refused" 'HOLLOWSCRIPT_BASE_URL'
+done
+run_install "$sshp" "HOLLOWSCRIPT_BASE_URL=$base/" -- --version v0.1.1
+expect_installed "a loopback http URL with a trailing slash is accepted" v0.1.1
+
+# --- the version floor ---------------------------------------------------------------------------
+printf '\n== the latest.txt floor ==\n'
+floor_sh="$tmp/install-floor.sh"
+sed "s/printf '%s' 'v0.1.0'/printf '%s' 'v0.1.2'/" "$install_sh" >"$floor_sh"
+if grep -q "printf '%s' 'v0.1.2'" "$floor_sh"; then
+    saved="$install_sh"
+    install_sh="$floor_sh"
+    run_install "$sshp" --
+    expect_refused "latest.txt naming a release below the floor is refused" 'oldest release this installer accepts'
+    run_install "$sshp" -- --version v0.1.1
+    expect_installed "the same release asked for by name installs, with a warning" v0.1.1 'asked for by name'
+    install_sh="$saved"
+else
+    skip "the floor scenarios: this installer has no release floor"
+fi
+
+# --- never an unasked-for downgrade, and its flag ----------------------------------------------
+printf '\n== downgrade flag ==\n'
+run_install "$sshp" -- --version v0.1.1
+printf 'v0.1.0\n' >"$site/latest.txt"
+older_home="$last_home"
+# Re-run into the same home: a v0.1.1 install, then latest names v0.1.0.
+run_again() {
+    local dirs="$1"
+    shift
+    set +e
+    out="$(env -i HOME="$older_home" PATH="$dirs" TMPDIR="$tmp" HOLLOWSCRIPT_BASE_URL="$base" HOLLOWSCRIPT_TARGET="$target" \
+        HOLLOWSCRIPT_PUBLIC_KEY_FILE="$keys/one.pub" "$@" /bin/sh "$install_sh" --no-modify-path 2>&1)"
+    rc=$?
+    set -e
+}
+run_again "$sshp"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'refusing to downgrade'; then pass "latest older than the installed is refused"; else fail "downgrade guard" "$out"; fi
+run_again "$sshp" HOLLOWSCRIPT_ALLOW_DOWNGRADE=yes
+if [ "$rc" -eq 0 ] && [ "$("$older_home/.hollowscript/bin/hollowscript" --version)" = "hollowscript 0.1.0" ]; then pass "HOLLOWSCRIPT_ALLOW_DOWNGRADE=yes is honoured"; else fail "downgrade flag" "$out"; fi
+run_again "$sshp" HOLLOWSCRIPT_ALLOW_DOWNGRADE=perhaps
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q 'must be 1, true or yes'; then pass "an unrecognised HOLLOWSCRIPT_ALLOW_DOWNGRADE is an error"; else fail "downgrade flag value" "$out"; fi
+printf 'v0.1.1\n' >"$site/latest.txt"
+
+# --- PATH changes ----------------------------------------------------------------------------------
+printf '\n== PATH ==\n'
+home_n=$((home_n + 1))
+last_home="$tmp/home-$home_n"
+mkdir -p "$last_home"
+set +e
+out="$(env -i HOME="$last_home" PATH="$sshp" TMPDIR="$tmp" HOLLOWSCRIPT_BASE_URL="$base" HOLLOWSCRIPT_TARGET="$target" \
+    HOLLOWSCRIPT_PUBLIC_KEY_FILE="$keys/one.pub" HOLLOWSCRIPT_NO_MODIFY_PATH=true /bin/sh "$install_sh" --version v0.1.1 2>&1)"
+rc=$?
+set -e
+if [ "$rc" -eq 0 ] && [ ! -e "$last_home/.profile" ]; then pass "HOLLOWSCRIPT_NO_MODIFY_PATH=true is honoured"; else fail "NO_MODIFY_PATH=true" "$out"; fi
+
+# --- a failure after the swap -----------------------------------------------------------------
+printf '\n== a failed check after the swap ==\n'
+run_install "$sshp" HS_FIXTURE_FAIL_IN_PLACE=1 -- --version v0.1.1
+bin="$last_home/.hollowscript/bin"
+leftover="$(find "$bin" -mindepth 1 2>/dev/null || true)"
+if [ "$rc" -ne 0 ] && [ -z "$leftover" ] && [ ! -e "$bin/hollowscript" ]; then
+    pass "a first install whose binary fails after the swap leaves nothing behind"
+else
+    fail "a first install that fails after the swap (exit $rc), leftover: '$leftover'" "$out"
+fi
+run_install "$sshp" -- --version v0.1.0
+before="$(cat "$last_home/.hollowscript/bin/hollowscript")"
+set +e
+out="$(env -i HOME="$last_home" PATH="$sshp" TMPDIR="$tmp" HOLLOWSCRIPT_BASE_URL="$base" HOLLOWSCRIPT_TARGET="$target" \
+    HOLLOWSCRIPT_PUBLIC_KEY_FILE="$keys/one.pub" HS_FIXTURE_FAIL_IN_PLACE=1 /bin/sh "$install_sh" --no-modify-path --version v0.1.1 2>&1)"
+rc=$?
+set -e
+after="$(cat "$last_home/.hollowscript/bin/hollowscript")"
+leftover="$(find "$last_home/.hollowscript/bin" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | tr '\n' ' ')"
+if [ "$rc" -ne 0 ] && [ "$before" = "$after" ] && [ "$leftover" = "hollowscript hollowscript-lsp " ]; then
+    pass "an upgrade whose binary fails after the swap is rolled back, with no files left"
+else
+    fail "an upgrade that fails after the swap (exit $rc), leftover: '$leftover'" "$out"
+fi
+
+# --- syntax under dash --------------------------------------------------------------------------
+printf '\n== shell ==\n'
+if command -v dash >/dev/null 2>&1; then
+    if dash -n "$install_sh"; then pass "install.sh parses under dash"; else fail "dash -n"; fi
+    run_install "$core" -- --help
+    if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q '^Usage:'; then pass "--help works"; else fail "--help" "$out"; fi
+else
+    skip "dash is not installed"
+fi
+
+printf '\n%d passed, %d failed, %d skipped\n' "$passed" "$failed" "$skipped"
+[ "$failed" -eq 0 ]

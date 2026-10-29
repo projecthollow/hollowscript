@@ -1,0 +1,11 @@
+variable total = 0
+for n in range(0, 10) {
+    if n == 7 {
+        break
+    }
+    if mod(n, 2) == 0 {
+        continue
+    }
+    total = total + n
+}
+return total

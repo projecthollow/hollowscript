@@ -1,0 +1,8 @@
+uses print
+
+constant m = ["b": 2, "a": 1]
+constant merged = m.merge(["a": 10, "c": 3])
+effect print("${merged.keys().join(",")} ${merged.values().length()} ${merged.get("a") == 10} ${merged.has("z")}")
+
+constant built = mapFrom([{ key: 1, value: "one" }, { key: 1, value: "uno" }, { key: 2, value: "two" }])
+effect print("${built.length()} ${built.get(1) == "uno"}")

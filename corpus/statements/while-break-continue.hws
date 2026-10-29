@@ -1,0 +1,19 @@
+uses print
+
+variable i = 0
+
+while true {
+    i = i + 1
+    if i == 2 {
+        continue
+    }
+    if i > 4 {
+        break
+    }
+    for j in [1, 2] {
+        if j == 2 {
+            break
+        }
+        effect print("i=${i} j=${j}")
+    }
+}

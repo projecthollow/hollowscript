@@ -1,0 +1,3 @@
+constant mixed = [1, none, 2.5]
+constant first: Float? = mixed[0]
+return [mixed.length() == 3, first == 1.0]

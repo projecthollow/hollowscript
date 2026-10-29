@@ -1,0 +1,2 @@
+constant wholeDivision = 7 / 2
+return wholeDivision

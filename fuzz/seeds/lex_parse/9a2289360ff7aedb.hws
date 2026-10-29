@@ -1,0 +1,5 @@
+constant good: Result<Int, String> = success(1)
+
+constant bad: Result<Int, String> = failure("no")
+
+return [good, bad]

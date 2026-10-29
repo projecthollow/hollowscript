@@ -1,0 +1,30 @@
+{
+  "title": "A top-level variable a function assigns is shared-mutable and never narrowed, even without going through a copy",
+  "spec": "4.8",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 9,
+      "code": "HS0311",
+      "contains": "Int?"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 9,
+        "code": "HS0311",
+        "contains": "Int?"
+      }
+    ]
+  }
+}

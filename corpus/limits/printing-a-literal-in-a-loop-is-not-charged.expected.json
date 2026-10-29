@@ -1,0 +1,15 @@
+{
+  "title": "Printing a string literal in a loop charges nothing against the memory counter",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": ["spam", "spam", "spam", "spam", "spam"],
+    "result": "Int(0)"
+  }
+}

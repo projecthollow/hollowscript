@@ -1,0 +1,22 @@
+{
+  "title": "A top-level destructuring declaration against a list literal, with no call to carry a position of its own, still faults at its own line",
+  "spec": "7.8",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS1014"
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "title": "The ? operator is an error on a value that is not a Result",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2
+      }
+    ]
+  }
+}

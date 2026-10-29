@@ -1,0 +1,19 @@
+{
+  "title": "The standard capabilities have the fixed shapes",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "2026-01-01",
+      "2026-01-01T00:00:00Z",
+      "5",
+      "0.5"
+    ],
+    "result": null
+  }
+}

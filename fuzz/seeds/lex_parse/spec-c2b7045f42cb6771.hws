@@ -1,0 +1,4 @@
+// file: lib.hws
+uses print
+
+export constant p = print // HS0613

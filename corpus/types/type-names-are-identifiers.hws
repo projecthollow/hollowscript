@@ -1,0 +1,5 @@
+constant result = 1
+
+constant filter = 2
+
+return result + filter

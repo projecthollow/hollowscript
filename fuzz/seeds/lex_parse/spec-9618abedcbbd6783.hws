@@ -1,0 +1,2 @@
+constant a = "value ${1 + // HS0007
+return a

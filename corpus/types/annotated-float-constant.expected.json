@@ -1,0 +1,14 @@
+{
+  "title": "A constant annotated Float holds a Float when initialised with an Int",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Float(1.0)"
+  }
+}

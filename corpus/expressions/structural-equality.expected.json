@@ -1,0 +1,14 @@
+{
+  "title": "== on records and lists is structural",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(true), Bool(true), Bool(false)]"
+  }
+}

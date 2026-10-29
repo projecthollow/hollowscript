@@ -1,0 +1,28 @@
+{
+  "title": "A top-level return in any module but the entry module is HS0611",
+  "spec": "4.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0611"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0611"
+      }
+    ]
+  }
+}

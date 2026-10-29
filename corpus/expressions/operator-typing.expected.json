@@ -1,0 +1,16 @@
+{
+  "title": "Int, Float and mixed arithmetic; division is always Float",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "5 14 -3"
+    ],
+    "result": "[Float(7.5), Float(2.0), Float(3.5), Float(-2.5), Float(3.0)]"
+  }
+}

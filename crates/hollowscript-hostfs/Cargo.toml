@@ -1,0 +1,22 @@
+[package]
+name = "hollowscript-hostfs"
+description = "How a HollowScript host opens a file it was handed a name for: relative to a directory handle, never a symbolic link, only a regular file, only so many bytes. Shared by the command line host and the language server."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+cap-std = "4.0.3"
+
+# Only the value of `O_NONBLOCK`, so a file is opened without waiting on a
+# named pipe: no `unsafe`, and already in the build through `cap-std`.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[lints]
+workspace = true

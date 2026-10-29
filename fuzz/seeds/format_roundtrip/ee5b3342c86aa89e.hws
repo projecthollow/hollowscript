@@ -1,0 +1,5 @@
+import Point from "./m"
+
+constant p: Point = { x: 1, y: 2 }
+
+return p.y

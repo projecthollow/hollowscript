@@ -1,0 +1,17 @@
+{
+  "title": "A T? narrows to T in the true branch of != none",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "value 2",
+      "nothing"
+    ],
+    "result": null
+  }
+}

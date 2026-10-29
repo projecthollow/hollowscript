@@ -1,0 +1,33 @@
+{
+  "title": "A loop variable may not shadow a visible name",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      }
+    ]
+  }
+}

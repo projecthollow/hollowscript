@@ -1,0 +1,24 @@
+{
+  "title": "An element of the wrong type is rejected",
+  "spec": "14.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0301",
+      "line": 3
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0301",
+        "line": 3
+      }
+    ]
+  }
+}

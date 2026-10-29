@@ -1,0 +1,8 @@
+import applyTwice from "./lib"
+
+return applyTwice(
+    fn(n: Int): Int {
+        return n + 1
+    },
+    5
+)

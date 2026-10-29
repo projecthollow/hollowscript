@@ -1,0 +1,18 @@
+{
+  "title": "The worked example, with the host-specific capabilities replaced by a local list",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "notify sam: Fix build",
+      "notify unassigned: Write docs",
+      "Fix build, Write docs"
+    ],
+    "result": "Int(2)"
+  }
+}

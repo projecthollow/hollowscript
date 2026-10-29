@@ -1,0 +1,16 @@
+[package]
+name = "hollowscript-bytecode"
+description = "The HollowScript bytecode: instruction set, versioned container format and verifier. Shared by the compiler and the VM."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+hollowscript-core.workspace = true
+
+[lints]
+workspace = true

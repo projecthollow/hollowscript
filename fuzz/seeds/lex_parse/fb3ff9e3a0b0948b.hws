@@ -1,0 +1,11 @@
+fn makeCounter(): fn(): Int {
+    variable n = 0
+    return fn(): Int {
+        n = n + 1
+        return n
+    }
+}
+
+constant next = makeCounter()
+
+return [next(), next(), next()]

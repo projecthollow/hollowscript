@@ -1,0 +1,14 @@
+msrv = "1.85"
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+allow-print-in-tests = true
+# Iteration order of these types is not stable between runs. Anything whose
+# output can depend on an order must use an ordered collection instead. A use
+# that only looks values up is allowed with a reason at the use site.
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "iteration order is not deterministic; use BTreeMap, or allow with a reason when only looked up" },
+    { path = "std::collections::HashSet", reason = "iteration order is not deterministic; use BTreeSet, or allow with a reason when only looked up" },
+]
+doc-valid-idents = ["HollowScript", "WebAssembly", "JavaScript", "TypeScript", "GitHub", "SHA-256", "UTF-8", ".."]

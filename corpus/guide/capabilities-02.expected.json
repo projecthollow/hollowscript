@@ -1,0 +1,25 @@
+{
+  "title": "Guide sample 2 from the capabilities page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print, clock, random",
+      "",
+      "effect print(\"the time is ${effect clock.now()}\")",
+      "",
+      "constant roll = effect random.int(1, 7)",
+      "",
+      "return roll",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "the time is 2026-01-01T00:00:00Z"
+    ],
+    "result": "Int(4)"
+  }
+}

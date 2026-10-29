@@ -1,0 +1,4 @@
+enum Tree { Leaf, Node(Tree, Tree) }
+variable t = Tree.Leaf
+for i in range(0, 50) { t = Tree.Node(t, t) }
+return { t: t }

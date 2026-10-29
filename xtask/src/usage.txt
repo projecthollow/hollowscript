@@ -1,0 +1,28 @@
+Usage: cargo xtask <command>
+
+Commands:
+  hygiene [--root DIR]   Scan the mirrored tree (everything outside the top-level
+                         internal directory) for content that must not be
+                         published: dashes, internal names, secrets, absolute
+                         local paths and similar. Exits with 1 on any finding.
+  rules                  List the rules of the hygiene scan.
+  graph                  Check the crate graph against docs/design/architecture.md.
+  third-party-licenses --out FILE [--target T] [--package P]... [--artifact NAME]
+                         [--notice TITLE=PATH]...
+                         Write the third-party notices for one release
+                         artefact: the licence and copyright files of every
+                         crate linked into the packages (default: the CLI and
+                         the language server) for the target (default: the
+                         host), plus the Rust standard library's notices.
+  sbom --version vX.Y.Z --out FILE --artifact NAME=TARGET:PKG[,PKG]...
+                         Write a release's CycloneDX SBOM: every crate linked
+                         into each named artefact.
+  sign ARGS              Sign a release's SHA256SUMS (see 'cargo xtask sign --help').
+  bench [--no-wasm]      Run the benchmark harness of docs/design/performance.md:
+                         throughput, load time, binary size and cold start.
+  mem [--shape NAME]     Real peak memory against section 11.4's own charge,
+                         for the shapes docs/design/security.md and
+                         docs/design/performance.md record. Reads
+                         `/usr/bin/time -l` (macOS); on another platform it
+                         reports the charged figures alone.
+  help                   Show this text.

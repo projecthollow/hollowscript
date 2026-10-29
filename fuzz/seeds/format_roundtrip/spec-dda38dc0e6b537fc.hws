@@ -1,0 +1,3 @@
+// file: main.hws
+import p from "./lib"
+effect p("hello")

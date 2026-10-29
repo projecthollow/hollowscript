@@ -1,0 +1,17 @@
+# Allow-list: ship only what the extension needs at run time and the
+# documents a user or the Marketplace reads. Everything else, including
+# src/, node_modules/ (bundled into dist/ by esbuild), tests, scripts and
+# any source map, stays out.
+**
+!package.json
+!README.md
+!CHANGELOG.md
+!LICENSE.md
+!LICENSE-APACHE
+!LICENSE-MIT
+!THIRD-PARTY-NOTICES.md
+!dist/extension.js
+!images/icon.png
+!language-configuration.json
+!syntaxes/hollowscript.tmLanguage.json
+!snippets/hollowscript.json

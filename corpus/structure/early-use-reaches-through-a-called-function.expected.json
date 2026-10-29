@@ -1,0 +1,30 @@
+{
+  "title": "Section 4.10's early-use rule reaches through a function outer calls, to the binding inner reads directly",
+  "spec": "4.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 6,
+      "code": "HS0210",
+      "contains": "base"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 6,
+        "code": "HS0210",
+        "contains": "base"
+      }
+    ]
+  }
+}

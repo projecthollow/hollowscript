@@ -1,0 +1,5 @@
+// file: main.hws
+import Point, origin from "./shapes"
+
+constant p: Point = origin()
+return p.x

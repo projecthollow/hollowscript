@@ -1,0 +1,11 @@
+{
+  "title": "A map literal of 200 pairs is charged no steps and 32 + 24 * 200 bytes, as one literal",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(200)"
+  }
+}

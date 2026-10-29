@@ -1,0 +1,28 @@
+{
+  "title": "Guide sample 7 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "record Task = { title: String, owner: String? }",
+      "",
+      "fn describe(task: Task): String {",
+      "    if task.owner != none {",
+      "        return \"${task.title}, owned by ${task.owner}\"",
+      "    }",
+      "    return \"${task.title}, unowned\"",
+      "}",
+      "",
+      "constant assigned: Task = { title: \"Ship it\", owner: \"Ada\" }",
+      "",
+      "return describe(assigned)",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"Ship it, owned by Ada\")"
+  }
+}

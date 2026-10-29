@@ -1,0 +1,21 @@
+{
+  "title": "A runtime error inside a closure is reported as itself",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "contains": "ivision by zero"
+      }
+    ]
+  }
+}

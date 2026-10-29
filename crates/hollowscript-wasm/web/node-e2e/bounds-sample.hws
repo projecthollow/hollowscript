@@ -1,0 +1,17 @@
+enum Tree { Leaf, Node(Tree, Tree) }
+
+fn build(): Tree {
+    variable t = Tree.Leaf
+    for i in range(0, 50) { t = Tree.Node(t, t) }
+    return t
+}
+
+export fn tree(): Tree {
+    return build()
+}
+
+export fn small(): Int {
+    return 7
+}
+
+export constant held: Tree = build()

@@ -1,0 +1,14 @@
+uses fs, print
+
+constant written = effect fs.write("notes/list.txt", "buy milk\n")
+match written {
+    Ok(bytes) {
+        effect print("wrote ${bytes} bytes")
+    }
+    Err(Denied(_)) {
+        effect print("not allowed")
+    }
+    Err(_) {
+        effect print("failed")
+    }
+}

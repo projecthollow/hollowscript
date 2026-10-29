@@ -1,0 +1,16 @@
+{
+  "title": "Guide sample 13 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "done"
+    ],
+    "result": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "title": "abs, min and max return Float when any argument is Float",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Float(2.5), Float(1.0), Float(2.0), Float(3.0), Float(8.0)]"
+  }
+}

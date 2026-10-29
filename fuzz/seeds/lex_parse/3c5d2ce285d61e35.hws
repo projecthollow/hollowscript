@@ -1,0 +1,10 @@
+record Task = { title: String, owner: String? }
+
+fn who(t: Task): String {
+    if t.owner != none {
+        return t.owner
+    }
+    return "unassigned"
+}
+
+return [who({ title: "a", owner: "sam" }), who({ title: "b", owner: none })]

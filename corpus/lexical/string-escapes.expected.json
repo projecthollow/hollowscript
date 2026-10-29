@@ -1,0 +1,16 @@
+{
+  "title": "The six string escapes",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "quote \" backslash \\ dollar ${1} tab[\t] cr[\r]"
+    ],
+    "result": "String(\"line1\\nline2\")"
+  }
+}

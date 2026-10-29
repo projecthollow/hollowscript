@@ -1,0 +1,14 @@
+{
+  "title": "A path checked by an earlier conjunct is narrowed in later ones and the branch",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

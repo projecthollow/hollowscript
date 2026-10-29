@@ -1,0 +1,14 @@
+variable x: Int? = 5
+
+constant reset = fn() {
+    x = none
+}
+
+constant copy = x
+
+if copy != none {
+    reset()
+    return copy + 1
+}
+
+return 0

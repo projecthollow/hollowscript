@@ -1,0 +1,14 @@
+{
+  "title": "success and failure build a Result",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Result.Ok(Int(1)), Result.Err(String(\"no\"))]"
+  }
+}

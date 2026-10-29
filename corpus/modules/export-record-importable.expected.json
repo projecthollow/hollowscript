@@ -1,0 +1,14 @@
+{
+  "title": "An exported record can be imported and used as a type",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(2)"
+  }
+}

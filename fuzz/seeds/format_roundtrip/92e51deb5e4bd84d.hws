@@ -1,0 +1,34 @@
+uses print
+
+record Task = { id: String, title: String, priority: String, owner: String? }
+
+fn titlesOf(items: [Task]): [String] {
+    return items.map(fn(t: Task): String {
+        return t.title
+    })
+}
+
+fn ownerOf(task: Task): String {
+    match task.owner {
+        none { return "unassigned" }
+        else { return task.owner }
+    }
+}
+
+constant urgent: [Task] = [
+    { id: "1", title: "Fix build", priority: "high", owner: "sam" },
+    { id: "2", title: "Write docs", priority: "high", owner: none }
+]
+
+if urgent.isEmpty() {
+    effect print("nothing urgent")
+    return 0
+}
+
+for task in urgent {
+    effect print("notify ${ownerOf(task)}: ${task.title}")
+}
+
+effect print(titlesOf(urgent).join(", "))
+
+return urgent.length()

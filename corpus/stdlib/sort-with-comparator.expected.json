@@ -1,0 +1,14 @@
+{
+  "title": "sort(compare) takes any element type",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"a\"), String(\"c\"), String(\"b\")]"
+  }
+}

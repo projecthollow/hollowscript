@@ -1,0 +1,8 @@
+fn f(): Int {
+    return 1
+}
+
+match f {
+    none { return 1 }
+    else { return 0 }
+}

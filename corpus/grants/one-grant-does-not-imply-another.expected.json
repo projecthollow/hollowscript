@@ -1,0 +1,24 @@
+{
+  "title": "Granting one capability does not grant another",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "grants": [
+    "fs:read=./data"
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

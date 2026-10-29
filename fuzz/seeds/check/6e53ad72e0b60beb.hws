@@ -1,0 +1,5 @@
+uses print
+
+effect print("${1 + 2 * 3} ${10 - 4 - 3} ${(1 + 2) * 3} ${2 * 3 + 4 * 5}")
+
+effect print("${not true or true} ${true or false and false} ${1 < 2 == true}")

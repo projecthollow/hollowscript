@@ -1,0 +1,11 @@
+record Task = { title: String, owner: String? }
+
+fn ownerName(task: Task): String {
+    constant { owner } = task
+    if owner == none {
+        return "nobody"
+    }
+    return owner
+}
+
+return [ownerName({ title: "a", owner: none }), ownerName({ title: "b", owner: "Sam" })]

@@ -1,0 +1,40 @@
+{
+  "title": "export constant may not destructure: it must name a single identifier",
+  "spec": "10.4",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0108"
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0108"
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0108"
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0108"
+      }
+    ]
+  }
+}

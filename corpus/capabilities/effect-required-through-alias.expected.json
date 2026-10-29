@@ -1,0 +1,27 @@
+{
+  "title": "Aliasing a capability does not remove the effect requirement",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "contains": "effect"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "contains": "effect"
+      }
+    ]
+  }
+}

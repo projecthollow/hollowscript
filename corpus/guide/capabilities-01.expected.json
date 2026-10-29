@@ -1,0 +1,16 @@
+{
+  "title": "Guide sample 1 from the capabilities page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "hello"
+    ],
+    "result": null
+  }
+}

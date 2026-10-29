@@ -1,0 +1,14 @@
+uses print
+
+constant xs = [3, 1, 2]
+effect print("${xs.length()} ${xs.isEmpty()} ${xs.contains(2)} ${xs.contains(7)}")
+
+constant empty: [Int] = []
+effect print("${xs.first() == 3} ${xs.last() == 2} ${empty.first() == none} ${empty.isEmpty()}")
+
+effect print(xs.append(4).concat([9, 8]).reverse().map(fn(n) { return "${n}" }).join(" "))
+effect print(xs.sort().map(fn(n) { return "${n}" }).join(" "))
+
+constant items = ["bb", "a", "cc", "d"]
+constant byLength = items.sort(fn(a, b) { return a.length() - b.length() })
+effect print(byLength.join(","))

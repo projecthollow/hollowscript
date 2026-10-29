@@ -1,0 +1,14 @@
+{
+  "title": "Narrowing lasts after an if == none whose block always exits",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(8)"
+  }
+}

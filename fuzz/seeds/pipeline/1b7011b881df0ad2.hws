@@ -1,0 +1,3 @@
+import Shape, area from "./shapes"
+
+return [area(Shape.Square(3)), area(Shape.Point)]

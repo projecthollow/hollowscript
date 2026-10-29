@@ -1,0 +1,8 @@
+constant total = 1 +
+    2 +
+    3
+constant shape = {
+    width: total,
+    height: 2,
+}
+return shape.width * shape.height

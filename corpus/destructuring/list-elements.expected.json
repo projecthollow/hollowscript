@@ -1,0 +1,10 @@
+{
+  "title": "A list pattern binds elements by position",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(-10)"
+  }
+}

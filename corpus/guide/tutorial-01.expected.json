@@ -1,0 +1,25 @@
+{
+  "title": "Guide sample 1 from the tutorial page",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "constant count = 3",
+      "",
+      "constant price = 2.5",
+      "",
+      "constant available = true",
+      "",
+      "constant label = \"widgets\"",
+      "",
+      "return \"${count} ${label} at ${price} each: ${available}\"",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"3 widgets at 2.5 each: true\")"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "title": "A map returns the value stored under a key, or none when the key is absent",
+  "spec": "14.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(3), Int(5), Int(-1)]"
+  }
+}

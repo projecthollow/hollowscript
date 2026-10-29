@@ -1,0 +1,75 @@
+{
+  "title": "Lexical, type and scope errors are reported together",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 3
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    },
+    {
+      "severity": "warning",
+      "line": 2
+    },
+    {
+      "severity": "warning",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "line": 1
+    },
+    {
+      "severity": "error",
+      "line": 2
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      },
+      {
+        "severity": "warning",
+        "line": 2
+      },
+      {
+        "severity": "warning",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "line": 1
+      },
+      {
+        "severity": "error",
+        "line": 2
+      }
+    ]
+  }
+}

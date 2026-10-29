@@ -1,0 +1,17 @@
+{
+  "title": "Sibling blocks may declare the same name",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "1",
+      "2"
+    ],
+    "result": null
+  }
+}

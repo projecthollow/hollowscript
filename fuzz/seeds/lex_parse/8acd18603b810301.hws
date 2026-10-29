@@ -1,0 +1,12 @@
+uses print
+
+match "b" {
+    "a" { effect print("first") }
+    "b" { effect print("second") }
+    else { effect print("other") }
+}
+
+match true {
+    false { effect print("no") }
+    else { effect print("yes") }
+}

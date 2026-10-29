@@ -1,0 +1,33 @@
+{
+  "title": "effect on a call that reaches no capability is an error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 5
+    },
+    {
+      "severity": "error",
+      "line": 5
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 5
+      },
+      {
+        "severity": "error",
+        "line": 5
+      }
+    ]
+  }
+}

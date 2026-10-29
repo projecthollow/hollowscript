@@ -1,0 +1,10 @@
+record Task = { title: String, owner: String? }
+
+fn ownerName(task: Task): String {
+    if task.owner == none {
+        return "unassigned"
+    }
+    return task.owner
+}
+
+return ownerName({ title: "Ship", owner: "Ada" })

@@ -1,0 +1,16 @@
+{
+  "title": "list[i] has type T? and out of range yields none",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "false true true"
+    ],
+    "result": "Int(20)"
+  }
+}

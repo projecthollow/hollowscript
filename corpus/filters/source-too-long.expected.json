@@ -1,0 +1,28 @@
+{
+  "title": "Filter source over 4,096 bytes is HS0704 (section A.2)",
+  "spec": "A.2",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0704"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0704"
+      }
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "title": "keys and has are free functions",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "true false"
+    ],
+    "result": "[String(\"name\"), String(\"size\")]"
+  }
+}

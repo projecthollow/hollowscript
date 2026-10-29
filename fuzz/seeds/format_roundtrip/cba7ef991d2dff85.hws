@@ -1,0 +1,13 @@
+variable x: Int? = 1
+
+variable total = 0
+
+if x != none {
+    for i in range(0, 2) {
+        constant y: Int = x
+        total = total + i + y
+        x = none
+    }
+}
+
+return total

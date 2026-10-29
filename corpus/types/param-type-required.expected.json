@@ -1,0 +1,25 @@
+{
+  "title": "A function return type is required when it returns a value",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2
+      }
+    ]
+  }
+}

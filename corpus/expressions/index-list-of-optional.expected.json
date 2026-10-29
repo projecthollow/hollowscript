@@ -1,0 +1,16 @@
+{
+  "title": "Indexing a list of optional Int gives an optional Int",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "false true true"
+    ],
+    "result": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "title": "else if chains",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"neg\"), String(\"zero\"), String(\"pos\")]"
+  }
+}

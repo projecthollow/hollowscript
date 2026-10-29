@@ -1,0 +1,7 @@
+uses print
+
+effect print("${double(4)}")
+
+fn double(n: Int): Int {
+    return n * 2
+}

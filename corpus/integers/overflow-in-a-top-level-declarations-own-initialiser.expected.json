@@ -1,0 +1,22 @@
+{
+  "title": "A fault raised by a top-level declaration's own initialiser is still located at its line, not left without one",
+  "spec": "1.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS1007"
+      }
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+// file: main.hws
+import a from "./main" // HS0603
+return a

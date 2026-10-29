@@ -1,0 +1,5 @@
+fn double(x: Int): Int {
+    return x * 2
+}
+
+return effect double(21) // HS0402

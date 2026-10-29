@@ -1,0 +1,3 @@
+import a from "./main"
+
+return a

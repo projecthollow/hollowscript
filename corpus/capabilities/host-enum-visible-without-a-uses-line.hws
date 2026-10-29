@@ -1,0 +1,11 @@
+uses print
+
+fn label(r: Result<Int, IoError>): String {
+    match r {
+        Ok(_) { return "ok" }
+        Err(NotFound(_)) { return "missing" }
+        Err(_) { return "other" }
+    }
+}
+
+effect print(label(success(1)))

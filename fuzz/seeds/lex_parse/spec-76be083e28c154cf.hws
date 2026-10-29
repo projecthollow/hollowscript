@@ -1,0 +1,5 @@
+fn forever(n: Int): Int {
+    return forever(n + 1) // HS1005
+}
+
+return forever(0)

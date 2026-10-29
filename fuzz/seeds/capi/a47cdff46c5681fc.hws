@@ -1,0 +1,9 @@
+fn show(n: Int?): Int {
+    if n == none {
+        return 0
+    } else {
+        return n + 1
+    }
+}
+
+return show(4)

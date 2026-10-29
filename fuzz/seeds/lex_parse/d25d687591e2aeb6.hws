@@ -1,0 +1,5 @@
+constant a = `x:1`
+
+constant b = `x:1`
+
+constant same = a == b

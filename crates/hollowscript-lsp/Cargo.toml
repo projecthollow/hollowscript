@@ -1,0 +1,24 @@
+[package]
+name = "hollowscript-lsp"
+description = "A language server for HollowScript over the syntax and check crates."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "hollowscript-lsp"
+path = "src/main.rs"
+
+[dependencies]
+hollowscript-check.workspace = true
+hollowscript-core.workspace = true
+hollowscript-hostfs.workspace = true
+hollowscript-ide.workspace = true
+hollowscript-syntax.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,14 @@
+enum Box<T> { Empty, Full(T) }
+
+fn unwrap(b: Box<Int>, fallback: Int): Int {
+    match b {
+        Full(v) { return v }
+        Empty { return fallback }
+    }
+}
+
+constant full: Box<Int> = Box.Full(7)
+
+constant empty: Box<Int> = Box.Empty
+
+return unwrap(full, 0) + unwrap(empty, 3)

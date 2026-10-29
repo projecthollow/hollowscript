@@ -1,0 +1,14 @@
+{
+  "title": "match tests branches in order with multi-value heads",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"small\"), String(\"small\"), String(\"minus\"), String(\"other\")]"
+  }
+}

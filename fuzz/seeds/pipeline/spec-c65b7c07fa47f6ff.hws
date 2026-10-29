@@ -1,0 +1,4 @@
+uses print
+
+constant doc = Json.Array([Json.Int(1), Json.Object(["a": Json.Null])])
+effect print(json.pretty(doc, 2))

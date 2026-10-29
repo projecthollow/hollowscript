@@ -1,0 +1,17 @@
+{
+  "title": "match on strings and Bools",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "second",
+      "yes"
+    ],
+    "result": null
+  }
+}

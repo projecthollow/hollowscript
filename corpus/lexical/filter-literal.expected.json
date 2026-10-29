@@ -1,0 +1,14 @@
+{
+  "title": "A filter literal is a Filter value",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Filter(\"status:open\")"
+  }
+}

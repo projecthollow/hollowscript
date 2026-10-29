@@ -1,0 +1,7 @@
+# The corpus libFuzzer grows in place while running, and any crashing input
+# it saves: both are local run state, not source. `seeds/` (committed) is
+# what a fresh run starts from; see docs/design/fuzzing.md.
+/corpus/
+/artifacts/
+/logs/
+/target/

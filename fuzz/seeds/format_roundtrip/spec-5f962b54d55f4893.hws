@@ -1,0 +1,5 @@
+uses print
+
+constant a = set([1, 2, 3])
+constant b = set([3, 4])
+effect print("${a.union(b).length()} ${a.intersect(b).toList().first() == 3} ${a.difference(b).length()} ${a.has(2)}")

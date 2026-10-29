@@ -1,0 +1,25 @@
+{
+  "title": "Passing a capability to a fn that calls it does not remove the effect requirement",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 7
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 7
+      }
+    ]
+  }
+}

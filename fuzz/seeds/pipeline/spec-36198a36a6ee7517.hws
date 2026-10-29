@@ -1,0 +1,31 @@
+uses print
+
+constant p = time.parts(-1)
+effect print("${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}.${p.millisecond}")
+
+match time.parse("0000-01-01T00:00:00Z") {
+    Ok(_) {
+        effect print("valid")
+    }
+    Err(message) {
+        effect print(message)
+    }
+}
+
+match time.parse("2026-07-26T09:15:00-00:00") {
+    Ok(instant) {
+        effect print(time.format(instant))
+    }
+    Err(message) {
+        effect print(message)
+    }
+}
+
+match time.parseDate("0000-01-01") {
+    Ok(_) {
+        effect print("valid")
+    }
+    Err(message) {
+        effect print(message)
+    }
+}

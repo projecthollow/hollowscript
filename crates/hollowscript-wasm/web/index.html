@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HollowScript in the browser</title>
+    <style>
+      body {
+        font: 16px/1.5 system-ui, sans-serif;
+        margin: 2rem auto;
+        max-width: 48rem;
+        padding: 0 1rem;
+      }
+      output {
+        display: block;
+        white-space: pre-wrap;
+        font-family: ui-monospace, monospace;
+        background: #f4f4f5;
+        padding: 1rem;
+        border-radius: 0.5rem;
+      }
+      input[type="file"] {
+        margin: 1rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>HollowScript in the browser</h1>
+    <p>
+      This page loads the WebAssembly build of the virtual machine and runs
+      compiled bytecode through it. The browser never sees source: there is no
+      parser and no checker in this build, and the verifier refuses bytecode
+      that does not hold to the rules before a single instruction of it runs.
+    </p>
+    <p>
+      Build the module first, from the repository root:
+      <code>cargo build -p hollowscript-wasm --release --target
+      wasm32-unknown-unknown</code>, then serve this directory alongside
+      <code>target/wasm32-unknown-unknown/release/hollowscript_wasm.wasm</code>.
+    </p>
+    <p>
+      Compile a program to bytecode with
+      <code>hollowscript build program.hws -o program.hsb</code> and choose it
+      here.
+    </p>
+    <input type="file" id="program" accept=".hsb" />
+    <output id="log">Waiting for the module.</output>
+
+    <script type="module">
+      import { HollowScript } from "./hollowscript.js";
+
+      const log = document.querySelector("#log");
+      const say = (line) => {
+        log.textContent += `\n${line}`;
+      };
+
+      let vm;
+      try {
+        vm = await HollowScript.load("./hollowscript_wasm.wasm");
+        log.textContent = `Virtual machine ${vm.version()} is ready.`;
+        vm.setLimits({ steps: 10_000_000, memory: 16_777_216 });
+      } catch (error) {
+        log.textContent = `The module could not be loaded: ${error.message}`;
+      }
+
+      document.querySelector("#program").addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file || !vm) {
+          return;
+        }
+        log.textContent = `Loading ${file.name}.`;
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let instance;
+        try {
+          instance = vm.loadProgram(bytes);
+        } catch (error) {
+          say(`Refused: ${error.message}`);
+          return;
+        }
+        say("Loaded and initialised.");
+        // `main` is the lifecycle convention of section 12.7; a program that
+        // exports something else is called by name instead.
+        try {
+          const result = instance.call("main", []);
+          say(result === null ? "main returned nothing." : `main returned ${result}.`);
+        } catch (error) {
+          say(`main: ${error.message}`);
+        }
+        instance.dispose();
+      });
+    </script>
+  </body>
+</html>

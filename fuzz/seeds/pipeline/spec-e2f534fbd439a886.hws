@@ -1,0 +1,2 @@
+constant s: Set<Int>= set([1]) // HS0101
+return 1

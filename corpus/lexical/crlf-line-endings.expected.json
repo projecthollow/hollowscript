@@ -1,0 +1,16 @@
+{
+  "title": "CRLF and LF are both one line terminator",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "3"
+    ],
+    "result": null
+  }
+}

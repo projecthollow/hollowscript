@@ -1,0 +1,17 @@
+{
+  "title": "A read grant does not allow a write",
+  "parse": [],
+  "check": [],
+  "grants": [
+    "fs:read=./data"
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": ["denied"],
+    "result": "Int(0)"
+  }
+}

@@ -1,0 +1,13 @@
+uses print
+
+constant xs = [3, 1, 2]
+
+effect print("${xs.length()} ${xs.isEmpty()} ${xs.contains(2)} ${xs.contains(7)}")
+
+constant empty: [Int] = []
+
+effect print(
+    "${xs.first() == none} ${xs.last() == none} ${empty.first() == none} ${empty.isEmpty()}"
+)
+
+return [xs.append(4), xs.concat([9, 8]), xs.reverse(), xs.sort()]

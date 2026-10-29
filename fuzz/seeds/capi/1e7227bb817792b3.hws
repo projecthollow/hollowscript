@@ -1,0 +1,3 @@
+export fn applyTwice(f: fn(Int): Int, x: Int): Int {
+    return f(f(x))
+}

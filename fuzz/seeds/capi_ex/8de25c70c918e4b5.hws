@@ -1,0 +1,12 @@
+uses print
+
+fn loud(): Bool {
+    effect print("evaluated")
+    return true
+}
+
+constant a = false and loud()
+
+constant b = true or loud()
+
+effect print("done ${a} ${b}")

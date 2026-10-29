@@ -1,0 +1,7 @@
+uses print, http
+
+fn status(r: HttpResponse): Int {
+    return r.status
+}
+
+effect print("hi")

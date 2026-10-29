@@ -1,0 +1,33 @@
+{
+  "title": "A Filter literal with a HEL error is reported as an ordinary diagnostic",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      }
+    ]
+  }
+}

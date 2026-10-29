@@ -1,0 +1,3 @@
+uses fs
+
+effect fs.readText("./data/../secret.txt")

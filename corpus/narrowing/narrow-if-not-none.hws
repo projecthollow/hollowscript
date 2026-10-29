@@ -1,0 +1,12 @@
+uses print
+
+fn show(n: Int?): String {
+    if n != none {
+        return "value ${n + 1}"
+    }
+    return "nothing"
+}
+
+effect print(show(1))
+
+effect print(show(none))

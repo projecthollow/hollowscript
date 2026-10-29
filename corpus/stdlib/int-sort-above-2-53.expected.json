@@ -1,0 +1,17 @@
+{
+  "title": "sort and contains are exact above 2^53",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "9007199254740992 9007199254740993 9007199254740994",
+      "false false"
+    ],
+    "result": null
+  }
+}

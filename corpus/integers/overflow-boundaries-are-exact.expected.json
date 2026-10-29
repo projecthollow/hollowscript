@@ -1,0 +1,14 @@
+{
+  "title": "Results exactly on the 64-bit boundaries are representable",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(9223372036854775806), Int(-9223372036854775807), Int(-1), Int(9223372036854775807)]"
+  }
+}

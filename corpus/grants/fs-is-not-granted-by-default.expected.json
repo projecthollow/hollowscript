@@ -1,0 +1,21 @@
+{
+  "title": "The fs capability is unavailable unless granted",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1
+      }
+    ]
+  }
+}

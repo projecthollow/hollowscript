@@ -1,0 +1,39 @@
+{
+  "title": "A bare expression statement is an error",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0109"
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0109"
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0109"
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0109"
+      }
+    ]
+  }
+}

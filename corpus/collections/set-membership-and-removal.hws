@@ -1,0 +1,5 @@
+constant empty: Set<String> = set([])
+constant names = empty.with("ada").with("grace")
+constant fewer = names.without("ada")
+
+return "${names.has("ada")} ${fewer.has("ada")} ${fewer.has("grace")} ${names.length()} ${fewer.length()}"

@@ -1,0 +1,18 @@
+{
+  "title": "for binds each element in order",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "3",
+      "1",
+      "2"
+    ],
+    "result": null
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "title": "A quoted term with no closing quote is HS0702 (section A.2)",
+  "spec": "A.2",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0702"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0702"
+      }
+    ]
+  }
+}

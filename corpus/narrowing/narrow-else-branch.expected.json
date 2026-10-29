@@ -1,0 +1,14 @@
+{
+  "title": "A T? narrows to T in the else branch of == none",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(5)"
+  }
+}

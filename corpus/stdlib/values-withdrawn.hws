@@ -1,0 +1,3 @@
+constant r = { a: 1 }
+
+constant v = values(r)

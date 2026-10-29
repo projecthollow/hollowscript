@@ -1,0 +1,6 @@
+constant emptyNumbers: Map<Int, String> = [:]
+constant byNumber = emptyNumbers.with(1, "one").with(2, "two")
+constant emptyFlags: Map<Bool, Int> = [:]
+constant byFlag = emptyFlags.with(true, 1).with(false, 0)
+
+return "${byNumber.has(2)} ${byNumber.has(3)} ${byFlag.has(true)} ${byFlag.has(false)}"

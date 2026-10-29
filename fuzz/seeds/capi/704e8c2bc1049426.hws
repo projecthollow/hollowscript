@@ -1,0 +1,5 @@
+uses print
+
+constant name = "world"
+
+effect print("hello ${"dear ${name}"}, ${1 + 2}")

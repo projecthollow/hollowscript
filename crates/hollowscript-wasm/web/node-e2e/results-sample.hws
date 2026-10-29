@@ -1,0 +1,80 @@
+record Point = { x: Int, y: Int }
+record Tricky = { bigint: String }
+enum Shape { Dot, Circle(Int) }
+enum Tree { Leaf, Node(Tree) }
+
+export constant answer: Int = 9007199254740993
+
+export fn nothing() {
+}
+
+export fn small(): Int {
+    return 9007199254740991
+}
+
+export fn big(): Int {
+    return 9007199254740993
+}
+
+export fn negative(): Int {
+    return -9007199254740993
+}
+
+export fn floating(): Float {
+    return 3.0
+}
+
+export fn word(): String {
+    return "a\"b"
+}
+
+export fn absent(): Int? {
+    return none
+}
+
+export fn numbers(): [Int] {
+    return [1, 9007199254740993]
+}
+
+export fn point(): Point {
+    return { x: 1, y: 9007199254740993 }
+}
+
+export fn tricky(): Tricky {
+    return { bigint: "123" }
+}
+
+export fn names(): Map<Int, String> {
+    return [9007199254740993: "big", 2: "two"]
+}
+
+export fn tags(): Set<Int> {
+    return set([9007199254740993, 2])
+}
+
+export fn circle(): Shape {
+    return Shape.Circle(9007199254740993)
+}
+
+export fn dot(): Shape {
+    return Shape.Dot
+}
+
+export fn deep(n: Int): Tree {
+    variable tree = Tree.Leaf
+    for i in range(0, n) {
+        tree = Tree.Node(tree)
+    }
+    return tree
+}
+
+export fn boom(n: Int): Int {
+    return div(10, n)
+}
+
+export fn spin() {
+    while true {
+    }
+}
+
+return [1, 9007199254740993]

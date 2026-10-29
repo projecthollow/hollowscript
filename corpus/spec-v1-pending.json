@@ -1,0 +1,520 @@
+{
+  "description": "Cases for behaviour that version 1 of the language defines, which a conforming implementation must pass. Expected results were derived from the decisions of the specification. A case with dependsOnChoice true rests on a detail listed in choices; reconcile it when the specification settles that detail. Unless a choice says otherwise, a case that expects an error also assumes no follow-on diagnostic is reported for a name whose own declaration failed.",
+  "cases": [
+    {
+      "id": "integers/div-floors",
+      "feature": "div",
+      "decision": "Integer division is provided as a function on Int",
+      "dependsOnChoice": true,
+      "choices": [
+        "div rounds towards negative infinity rather than towards zero (the decision fixes a floor-based mod and asks the spec to settle division of negatives)"
+      ]
+    },
+    {
+      "id": "integers/mod-follows-the-divisor",
+      "feature": "mod",
+      "decision": "A floor-based modulo function is provided on Int",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "integers/div-and-mod-agree",
+      "feature": "div and mod",
+      "decision": "Integer division and a floor-based modulo function are provided on Int",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "integers/div-by-zero",
+      "feature": "div",
+      "decision": "Integer division is provided as a function on Int",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "integers/mod-by-zero",
+      "feature": "mod",
+      "decision": "A floor-based modulo function is provided on Int",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "integers/div-overflow",
+      "feature": "div",
+      "decision": "Int is 64-bit signed and overflow is a runtime fault",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "integers/mod-of-the-minimum-by-minus-one",
+      "feature": "mod",
+      "decision": "A floor-based modulo function is provided on Int",
+      "dependsOnChoice": true,
+      "choices": [
+        "the result is the mathematical value 0 rather than an overflow fault, as the quotient is never formed"
+      ]
+    },
+    {
+      "id": "collections/map-set-and-get",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-is-immutable",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-remove",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-keys-are-ascending",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection ordered by key",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-iteration",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-int-and-bool-keys",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-float-key-rejected",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-key-type-is-checked",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/map-value-type-is-checked",
+      "feature": "Map",
+      "decision": "Map<K, V> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/set-holds-each-element-once",
+      "feature": "Set",
+      "decision": "Set<T> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/set-membership-and-removal",
+      "feature": "Set",
+      "decision": "Set<T> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/set-to-list-is-ascending",
+      "feature": "Set",
+      "decision": "Set<T> is a built-in immutable collection ordered by element",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/set-built-by-reduce",
+      "feature": "Set",
+      "decision": "Set<T> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/set-float-element-rejected",
+      "feature": "Set",
+      "decision": "Set<T> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "collections/set-element-type-is-checked",
+      "feature": "Set",
+      "decision": "Set<T> is a built-in immutable collection",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "enums/match-covers-every-variant",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way"
+      ]
+    },
+    {
+      "id": "enums/match-missing-variant",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way",
+        "the diagnostic is reported on the line of the match keyword"
+      ]
+    },
+    {
+      "id": "enums/match-else-covers-the-rest",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way",
+        "an else branch is still permitted on a match over an enum"
+      ]
+    },
+    {
+      "id": "enums/match-repeated-variant",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way"
+      ]
+    },
+    {
+      "id": "enums/pattern-binds-every-payload-value",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way"
+      ]
+    },
+    {
+      "id": "enums/payload-type-is-checked",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way"
+      ]
+    },
+    {
+      "id": "enums/variants-belong-to-their-enum",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way",
+        "variants are always written qualified by their enum name"
+      ]
+    },
+    {
+      "id": "enums/values-in-collections",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way"
+      ]
+    },
+    {
+      "id": "enums/exported-enum-can-be-imported",
+      "feature": "enums",
+      "decision": "Enums carry optional payloads and are matched exhaustively",
+      "dependsOnChoice": true,
+      "choices": [
+        "enum declaration syntax with positional payloads, variants written as Shape.Square(3) and Shape.Point, and patterns written the same way"
+      ]
+    },
+    {
+      "id": "destructuring/record-fields",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "the pattern is written { x, y }"
+      ]
+    },
+    {
+      "id": "destructuring/record-subset",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "a pattern need not name every field"
+      ]
+    },
+    {
+      "id": "destructuring/record-rename",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "renaming is written field: name"
+      ]
+    },
+    {
+      "id": "destructuring/record-unknown-field",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "no follow-on warning is reported for a name whose binding failed"
+      ]
+    },
+    {
+      "id": "destructuring/record-optional-field",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "destructuring/variable-pattern",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "destructuring/names-may-not-shadow",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "destructuring/record-pattern-needs-a-record",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "no follow-on diagnostic for a name whose binding failed"
+      ]
+    },
+    {
+      "id": "destructuring/unused-name-warns",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": false,
+      "choices": []
+    },
+    {
+      "id": "destructuring/list-elements",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "the pattern is written [a, b]"
+      ]
+    },
+    {
+      "id": "destructuring/list-too-short",
+      "feature": "destructuring",
+      "decision": "Records and lists can be destructured in a declaration",
+      "dependsOnChoice": true,
+      "choices": [
+        "a shortfall is a runtime fault rather than binding none"
+      ]
+    },
+    {
+      "id": "results/match-splits-success-and-failure",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)"
+      ]
+    },
+    {
+      "id": "results/question-mark-propagates-failure",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)"
+      ]
+    },
+    {
+      "id": "results/question-mark-stops-at-the-first-failure",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)"
+      ]
+    },
+    {
+      "id": "results/question-mark-in-a-closure",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)"
+      ]
+    },
+    {
+      "id": "results/question-mark-needs-a-result-function",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)"
+      ]
+    },
+    {
+      "id": "results/question-mark-needs-a-result-operand",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)"
+      ]
+    },
+    {
+      "id": "results/question-mark-error-types-must-match",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)",
+        "there is no implicit conversion of error types"
+      ]
+    },
+    {
+      "id": "results/question-mark-at-the-top-level",
+      "feature": "Result and ?",
+      "decision": "Result<T, E> is a sum type and ? propagates a failure",
+      "dependsOnChoice": true,
+      "choices": [
+        "Result<T, E> written with two type arguments, values built by success(v) and failure(e) with the type arguments taken from the surrounding annotation, and matched with the patterns success(v) and failure(e)",
+        "the top level of a file counts as having no enclosing Result"
+      ]
+    },
+    {
+      "id": "grants/read-outside-the-granted-path",
+      "feature": "scoped grants",
+      "decision": "Capabilities are granted with a scope and nothing is granted by default beyond print, clock and random",
+      "dependsOnChoice": true,
+      "choices": [
+        "the capability names fs and http and the member names readText, writeText and get",
+        "the denial is a runtime fault that aborts the run rather than a failure value",
+        "a grant is written as capability:access=scope on the command line"
+      ]
+    },
+    {
+      "id": "grants/write-needs-a-write-grant",
+      "feature": "scoped grants",
+      "decision": "Capabilities are granted with a scope and nothing is granted by default beyond print, clock and random",
+      "dependsOnChoice": true,
+      "choices": [
+        "the capability names fs and http and the member names readText, writeText and get",
+        "the denial is a runtime fault that aborts the run rather than a failure value"
+      ]
+    },
+    {
+      "id": "grants/parent-segments-cannot-escape",
+      "feature": "scoped grants",
+      "decision": "Capabilities are granted with a scope and nothing is granted by default beyond print, clock and random",
+      "dependsOnChoice": true,
+      "choices": [
+        "the capability names fs and http and the member names readText, writeText and get",
+        "the denial is a runtime fault that aborts the run rather than a failure value"
+      ]
+    },
+    {
+      "id": "grants/host-outside-the-grant",
+      "feature": "scoped grants",
+      "decision": "Capabilities are granted with a scope and nothing is granted by default beyond print, clock and random",
+      "dependsOnChoice": true,
+      "choices": [
+        "the capability names fs and http and the member names readText, writeText and get",
+        "the denial is a runtime fault that aborts the run rather than a failure value"
+      ]
+    },
+    {
+      "id": "grants/host-must-match-exactly",
+      "feature": "scoped grants",
+      "decision": "Capabilities are granted with a scope and nothing is granted by default beyond print, clock and random",
+      "dependsOnChoice": true,
+      "choices": [
+        "the capability names fs and http and the member names readText, writeText and get",
+        "the denial is a runtime fault that aborts the run rather than a failure value"
+      ]
+    },
+    {
+      "id": "lexical/trailing-commas",
+      "feature": "trailing commas",
+      "decision": "Trailing commas are allowed wherever a list appears",
+      "dependsOnChoice": true,
+      "choices": [
+        "the formatter is not pinned because whether it keeps or removes a trailing comma is unsettled"
+      ]
+    },
+    {
+      "id": "lexical/test-is-reserved",
+      "feature": "reserved words",
+      "decision": "test and assert are reserved now so they can be added later without a breaking change",
+      "dependsOnChoice": true,
+      "choices": [
+        "exactly one diagnostic is reported for the misplaced word and none follow from it"
+      ]
+    },
+    {
+      "id": "lexical/assert-is-reserved",
+      "feature": "reserved words",
+      "decision": "test and assert are reserved now so they can be added later without a breaking change",
+      "dependsOnChoice": true,
+      "choices": [
+        "exactly one diagnostic is reported for the misplaced word and none follow from it"
+      ]
+    },
+    {
+      "id": "lexical/identifiers-are-ascii",
+      "feature": "ASCII identifiers",
+      "decision": "Identifiers are ASCII in version 1",
+      "dependsOnChoice": true,
+      "choices": [
+        "exactly one diagnostic is reported for the offending character and none follow from it"
+      ]
+    },
+    {
+      "id": "narrowing/while-condition-narrows-the-body",
+      "feature": "narrowing",
+      "decision": "while x != none narrows inside the body when x is not reassigned there",
+      "dependsOnChoice": false,
+      "choices": []
+    }
+  ],
+  "mayChange": [
+    {
+      "id": "types/result-type",
+      "reason": "Version 1 gives Result two type arguments (value and error type)."
+    },
+    {
+      "id": "stdlib/result-values",
+      "reason": "Version 1 makes Result a sum type, which changes both the type and its rendering."
+    },
+    {
+      "id": "lexical/reserved-word-identifier",
+      "reason": "Version 1 reserves further words (enum, test and assert), and the number of diagnostics for a misplaced reserved word is not settled."
+    }
+  ]
+}

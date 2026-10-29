@@ -1,0 +1,20 @@
+fn checked(n: Int): Result<Int, String> {
+    if n < 0 {
+        return failure("negative")
+    }
+    return success(n)
+}
+
+fn show(result: Result<Int, String>): String {
+    match result {
+        Ok(value) { return "ok ${value}" }
+        Err(message) { return "error ${message}" }
+    }
+}
+
+constant doubled = [1, -2, 3].map(fn(n: Int): Result<Int, String> {
+    constant value = checked(n)?
+    return success(value * 2)
+})
+
+return doubled.map(fn(result: Result<Int, String>): String { return show(result) })

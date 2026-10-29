@@ -1,0 +1,4 @@
+constant empty: Map<String, Int> = [:]
+constant m = empty.with("b", 1).with("a", 2).with("c", 3).with("b", 4)
+
+return m.keys()

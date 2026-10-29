@@ -1,0 +1,11 @@
+variable i = 0
+
+variable total = 0
+
+while i < 1000 {
+    constant s = "a string literal with no interpolation"
+    total = total + s.length()
+    i = i + 1
+}
+
+return total

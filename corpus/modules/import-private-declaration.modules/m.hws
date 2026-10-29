@@ -1,0 +1,2 @@
+constant secret = 1
+export constant shown = 2

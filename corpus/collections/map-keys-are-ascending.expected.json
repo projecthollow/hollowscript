@@ -1,0 +1,11 @@
+{
+  "title": "keys lists keys in ascending order, whatever order they were added in",
+  "spec": "6.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"a\"), String(\"b\"), String(\"c\")]"
+  }
+}

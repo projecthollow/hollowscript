@@ -1,0 +1,15 @@
+{
+  "title": "An assignment two closures deep reaches the variable of the function that declares it",
+  "spec": "5.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(12)"
+  }
+}

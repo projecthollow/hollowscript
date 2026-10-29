@@ -1,0 +1,10 @@
+{
+  "title": "The ? operator yields the value of a success and returns a failure to the caller",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"ok 3\"), String(\"error negative\"), String(\"error negative\")]"
+  }
+}

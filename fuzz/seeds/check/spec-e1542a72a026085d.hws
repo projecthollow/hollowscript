@@ -1,0 +1,4 @@
+variable n = 0
+while true { // HS1001
+    n = n + 1
+}

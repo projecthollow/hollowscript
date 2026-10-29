@@ -1,0 +1,16 @@
+{
+  "title": "A top-level fn is visible throughout its file, so it can be called before its declaration",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "8"
+    ],
+    "result": null
+  }
+}

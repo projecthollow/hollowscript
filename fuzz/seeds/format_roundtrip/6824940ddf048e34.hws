@@ -1,0 +1,16 @@
+enum Shape {
+    Square(Int),
+    Rectangle(Int, Int),
+    Point,
+}
+
+fn describe(shape: Shape): String {
+    variable text = "none"
+    match shape {
+        Square(side) { text = "square ${side}" }
+        Rectangle(width, height) { text = "rectangle ${width} by ${height}" }
+    }
+    return text
+}
+
+return describe(Shape.Point)

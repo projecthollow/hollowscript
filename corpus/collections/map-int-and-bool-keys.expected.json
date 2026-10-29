@@ -1,0 +1,11 @@
+{
+  "title": "Int, String and Bool are valid key types",
+  "spec": "6.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"true false true true\")"
+  }
+}

@@ -1,0 +1,17 @@
+[package]
+name = "hollowscript-syntax"
+description = "The HollowScript front end: tokens, lexer, syntax tree, parser with error recovery and the canonical formatter."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude = ["tests/spec_keywords.rs"]
+
+[dependencies]
+hollowscript-core.workspace = true
+
+[lints]
+workspace = true

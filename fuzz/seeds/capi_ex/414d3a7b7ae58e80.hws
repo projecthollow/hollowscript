@@ -1,0 +1,14 @@
+enum Signal {
+    Stop,
+    Go,
+}
+
+fn name(signal: Signal): String {
+    match signal {
+        Stop { return "stop" }
+        Go { return "go" }
+        Stop { return "again" }
+    }
+}
+
+return name(Signal.Go)

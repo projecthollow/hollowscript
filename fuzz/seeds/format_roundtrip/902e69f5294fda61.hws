@@ -1,0 +1,2 @@
+export constant shown = 1
+export constant other = 2

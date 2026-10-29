@@ -1,0 +1,14 @@
+{
+  "title": "Int equality is exact above 2^53",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(false), Bool(true)]"
+  }
+}

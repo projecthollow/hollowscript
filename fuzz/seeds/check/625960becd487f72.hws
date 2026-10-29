@@ -1,0 +1,5 @@
+import a from "./m"
+
+constant a = 2
+
+return a

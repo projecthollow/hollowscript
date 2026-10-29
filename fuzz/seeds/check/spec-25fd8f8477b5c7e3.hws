@@ -1,0 +1,9 @@
+constant n = 5
+match n {
+    "five" { // HS0504
+        return 1
+    }
+    else {
+        return 0
+    }
+}

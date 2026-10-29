@@ -1,0 +1,15 @@
+{
+  "title": "A string literal with no interpolation is not charged however many times a loop evaluates it",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(38000)"
+  }
+}

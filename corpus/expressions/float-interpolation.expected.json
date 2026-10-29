@@ -1,0 +1,16 @@
+{
+  "title": "A whole Float interpolates with its decimal point",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "1.0 100.0 1.5"
+    ],
+    "result": null
+  }
+}

@@ -1,0 +1,9 @@
+export enum Shape { Square(Int), Rectangle(Int, Int), Point }
+
+export fn area(shape: Shape): Int {
+    match shape {
+        Square(side) { return side * side }
+        Rectangle(width, height) { return width * height }
+        Point { return 0 }
+    }
+}

@@ -1,0 +1,7 @@
+uses print
+
+for n in range(0, 5) {
+    effect print("spam")
+}
+
+return 0

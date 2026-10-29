@@ -1,0 +1,19 @@
+Usage: hollowscript build [--json] [--allow GRANT]... FILE [-o OUT]
+
+Checks and compiles the program whose entry module is FILE to a verified
+bytecode container, without running it. 'hollowscript run OUT' and the
+WebAssembly VM load the container. The grants given are the capability
+interface the program is compiled against, so a program that uses fs
+must be built, and later run, with --allow fs. A container is tied to
+the release that built it: this one writes and reads bytecode format
+0.2 only, so rebuild containers after upgrading.
+
+Options:
+  -o OUT         Where to write. The default is FILE with .hsb in place
+                 of its extension.
+  --json         Print one document, {"bytes": N, "output": "OUT"}, or
+                 {"diagnostics": [...]} when the program has an error.
+  --allow GRANT  Grant a capability; see 'hollowscript help'.
+
+Exit status: 0 when the container was written, 1 when the program has
+an error, 2 when FILE cannot be read or OUT cannot be written.

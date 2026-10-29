@@ -1,0 +1,9 @@
+fn read(): Int {
+    return base // HS0210
+}
+
+constant early = read()
+
+constant base = 5
+
+return early + base

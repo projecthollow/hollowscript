@@ -1,0 +1,6 @@
+# Cases of the shared conformance corpus that this implementation does not
+# pass yet, one id per line. The corpus is a specification artefact, so a
+# case in this list is a statement about this implementation and nothing
+# else. `cargo run -p hollowscript-conformance` fails when a case outside
+# this list fails and also when a case inside it passes, so the list can only
+# shrink. `scripts/check` runs it.

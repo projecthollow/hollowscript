@@ -1,0 +1,11 @@
+{
+  "title": "A string with 10,000 interpolations is within every implementation limit",
+  "spec": "1.10",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(10000)"
+  }
+}

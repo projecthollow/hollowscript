@@ -1,0 +1,6 @@
+record Task = { title: String, priority: Int, owner: String? }
+
+constant task: Task = { title: "Ship", priority: 2, owner: none }
+constant reassigned: Task = { title: task.title, priority: task.priority, owner: "Ada" }
+
+return reassigned.owner == "Ada" and task.owner == none

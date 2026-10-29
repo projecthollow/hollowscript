@@ -1,0 +1,20 @@
+fn checked(n: Int): Result<Int, String> {
+    if n < 0 {
+        return failure("negative")
+    }
+    return success(n)
+}
+
+fn show(result: Result<Int, String>): String {
+    match result {
+        Ok(value) { return "ok ${value}" }
+        Err(message) { return "error ${message}" }
+    }
+}
+
+fn plain(n: Int): Int {
+    constant value = checked(n)?
+    return value
+}
+
+return plain(1)

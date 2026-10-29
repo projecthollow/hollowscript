@@ -1,0 +1,39 @@
+Usage: hollowscript <command> [options] [file] [arguments]
+
+Commands:
+  check FILE     Check a program and report its diagnostics.
+  format FILE    Print a program in its canonical form.
+  run FILE       Load and run a program, or a container 'build' made.
+                 Words after FILE are the program's own arguments,
+                 read with args().
+  build FILE     Compile a program to a bytecode container, without
+                 running it, for a virtual machine to load later.
+  lsp            Start the language server (hollowscript-lsp) on
+                 standard input and output, for an editor to talk to.
+  version        Print the version.
+  help [COMMAND] Show this text, or one command's own. 'COMMAND --help'
+                 and 'COMMAND -h' do the same.
+
+Options:
+  --json         Machine-readable output, one JSON document. A problem
+                 with the command itself is {"error": "..."}.
+  --allow GRANT  Grant a capability. May be given more than once.
+  -o FILE        Where 'build' writes. The default is the source file
+                 with .hsb in place of its extension.
+
+Capabilities:
+  print, clock and random are granted to every run.
+  env            Read environment variables: --allow env, or
+                 --allow env=HOME,PATH for a named few.
+  args           Read the program's own arguments: --allow args.
+  fs             Read and write files, each granted separately and
+                 scoped to directories that must already exist:
+                 --allow fs:read=./data --allow fs:write=./out
+  stdin          Read standard input: --allow stdin.
+  http           Make http and https requests to granted hosts:
+                 --allow http=api.example.com,*.cdn.example.com
+
+Exit status: 0 on success, 1 when the program has an error or its run
+faults, 2 when the command itself could not be carried out (a bad
+option, a file that cannot be read). With no arguments at all, this
+text is printed to standard error and the exit status is 2.

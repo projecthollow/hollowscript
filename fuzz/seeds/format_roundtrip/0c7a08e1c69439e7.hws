@@ -1,0 +1,3 @@
+uses fs
+
+effect fs.writeText("./data/out.txt", "x")

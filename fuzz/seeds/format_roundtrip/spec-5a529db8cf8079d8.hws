@@ -1,0 +1,2 @@
+constant m = ["a": 1, "\u{61}": 2] // HS0203
+return m

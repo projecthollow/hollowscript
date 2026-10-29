@@ -1,0 +1,2 @@
+export constant a = 10
+return 0

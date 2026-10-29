@@ -1,0 +1,11 @@
+{
+  "title": "toList lists elements in ascending order, whatever order they were added in",
+  "spec": "6.2",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(1), Int(2), Int(3)]"
+  }
+}

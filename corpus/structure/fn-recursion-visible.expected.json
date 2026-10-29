@@ -1,0 +1,14 @@
+{
+  "title": "A fn is visible within its own body",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(120)"
+  }
+}

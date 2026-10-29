@@ -1,0 +1,14 @@
+uses http, print
+
+constant response = effect http.get("https://api.example.com/status")
+match response {
+    Ok(r) {
+        effect print("status ${r.status}")
+    }
+    Err(Denied(_)) {
+        effect print("host not allowed")
+    }
+    Err(_) {
+        effect print("request failed")
+    }
+}

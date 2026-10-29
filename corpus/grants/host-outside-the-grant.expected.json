@@ -1,0 +1,17 @@
+{
+  "title": "A request to a host that was not granted is a runtime error",
+  "parse": [],
+  "check": [],
+  "grants": [
+    "http=api.example.com"
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": ["denied"],
+    "result": "Int(0)"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "title": "The parser discards terminators inside brackets and argument lists",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(2), Int(4), Int(6)]"
+  }
+}

@@ -1,0 +1,5 @@
+constant a = )
+constant b = 2
+constant c = ]
+constant d = 4
+return b + d

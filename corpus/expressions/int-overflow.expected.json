@@ -1,0 +1,20 @@
+{
+  "title": "An Int result outside the 64-bit range is a runtime error",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3
+      }
+    ]
+  }
+}

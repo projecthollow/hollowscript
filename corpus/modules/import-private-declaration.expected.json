@@ -1,0 +1,35 @@
+{
+  "title": "A declaration that is not exported cannot be imported",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "contains": "'secret'"
+    },
+    {
+      "severity": "warning",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "contains": "'secret'"
+      },
+      {
+        "severity": "warning",
+        "line": 1
+      }
+    ]
+  }
+}

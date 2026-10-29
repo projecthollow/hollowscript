@@ -1,0 +1,3 @@
+constant wide = "x".padStart(9223372036854775807, "y")
+
+return wide.length()

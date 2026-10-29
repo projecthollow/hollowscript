@@ -1,0 +1,15 @@
+{
+  "title": "Section 11.3's worked example completes when maxSteps is 10, its own exact total",
+  "spec": "11.3",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

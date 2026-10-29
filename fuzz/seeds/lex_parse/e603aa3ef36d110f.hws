@@ -1,0 +1,11 @@
+uses print
+
+constant xs: [Int?] = [1, none]
+
+constant a = xs[0]
+
+constant b = xs[1]
+
+constant c = xs[5]
+
+effect print("${a == none} ${b == none} ${c == none}")

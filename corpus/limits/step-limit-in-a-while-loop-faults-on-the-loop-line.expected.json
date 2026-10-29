@@ -1,0 +1,22 @@
+{
+  "title": "A step-limit fault whose next charge is a while loop's own iteration charge is reported on the loop's line, not the body's",
+  "spec": "11.3",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS1001"
+      }
+    ]
+  }
+}

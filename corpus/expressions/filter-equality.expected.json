@@ -1,0 +1,33 @@
+{
+  "title": "Filter values support no operators, including ==",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 5
+    },
+    {
+      "severity": "error",
+      "line": 5
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 5
+      },
+      {
+        "severity": "error",
+        "line": 5
+      }
+    ]
+  }
+}

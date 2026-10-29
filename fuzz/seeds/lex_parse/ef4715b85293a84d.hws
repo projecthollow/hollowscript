@@ -1,0 +1,7 @@
+constant n = 5
+
+match n {
+    "five" { return 1 }
+    true { return 2 }
+    else { return 0 }
+}

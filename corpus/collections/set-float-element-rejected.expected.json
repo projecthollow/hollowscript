@@ -1,0 +1,24 @@
+{
+  "title": "A Float is not a valid set element type",
+  "spec": "2.8",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0307",
+      "line": 1
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0307",
+        "line": 1
+      }
+    ]
+  }
+}

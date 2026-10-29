@@ -1,0 +1,15 @@
+{
+  "title": "OR is the loosest operator and AND may be left implicit (section A.3)",
+  "spec": "A.3",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Filter(\"a OR b c\")"
+  }
+}

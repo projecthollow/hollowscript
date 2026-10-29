@@ -1,0 +1,16 @@
+{
+  "title": "A top-level return ends the script and yields its value",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "before"
+    ],
+    "result": "Int(42)"
+  }
+}

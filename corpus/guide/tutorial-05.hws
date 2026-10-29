@@ -1,0 +1,8 @@
+constant makeAdder = fn(n: Int): fn(Int): Int {
+    return fn(x: Int): Int {
+        return x + n
+    }
+}
+
+constant addFive = makeAdder(5)
+return addFive(10)

@@ -1,0 +1,2 @@
+constant [a, b] = [1, 2, 3] // HS1014
+return a + b

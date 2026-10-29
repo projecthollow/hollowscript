@@ -1,0 +1,28 @@
+{
+  "title": "A relative date offset over 5,000 days is HS0706 (section A.4)",
+  "spec": "A.4",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0706"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0706"
+      }
+    ]
+  }
+}

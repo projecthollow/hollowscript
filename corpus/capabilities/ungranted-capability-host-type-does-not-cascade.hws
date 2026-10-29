@@ -1,0 +1,18 @@
+uses fs, print
+
+fn show(label: String, r: Result<Int, IoError>) {
+    match r {
+        Ok(bytes) { effect print("${label}: wrote ${bytes} bytes") }
+        Err(Denied(_)) { effect print("${label}: denied") }
+        Err(_) { effect print("${label}: failed") }
+    }
+}
+
+show("inside the grant", effect fs.write("notes/list.txt", "buy milk\n"))
+
+show("outside the grant", effect fs.write("elsewhere.txt", "x\n"))
+
+match effect fs.read("notes/list.txt") {
+    Ok(text) { effect print("read back: ${text.trim()}") }
+    Err(_) { effect print("read back failed") }
+}

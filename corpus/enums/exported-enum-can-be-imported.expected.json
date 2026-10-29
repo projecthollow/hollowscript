@@ -1,0 +1,14 @@
+{
+  "title": "An exported enum and a function over it import together",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(9), Int(0)]"
+  }
+}

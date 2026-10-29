@@ -1,0 +1,13 @@
+fn lookup(scores: Map<String, Int>, name: String): Int {
+    constant found = scores.get(name)
+    if found == none {
+        return -1
+    }
+    return found
+}
+
+constant empty: Map<String, Int> = [:]
+constant before = empty.with("x", 1)
+constant after = before.with("x", 2).with("y", 3)
+
+return [empty.length(), before.length(), after.length(), lookup(before, "x"), lookup(after, "x")]

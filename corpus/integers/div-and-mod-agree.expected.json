@@ -1,0 +1,14 @@
+{
+  "title": "div and mod satisfy a = div(a, b) * b + mod(a, b) for every sign combination",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(true), Bool(true), Bool(true), Bool(true)]"
+  }
+}

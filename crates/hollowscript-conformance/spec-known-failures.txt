@@ -1,0 +1,5 @@
+# Examples of the specification (section 19.6) that this implementation
+# does not pass yet, by section and position (`4.8/2` is the second example
+# of section 4.8). `cargo run -p hollowscript-conformance -- --spec` fails
+# when an example outside this list fails and also when one inside it
+# passes, so the list can only shrink. `scripts/check` runs it.

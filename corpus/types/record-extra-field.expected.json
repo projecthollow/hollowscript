@@ -1,0 +1,25 @@
+{
+  "title": "Extra fields are not permitted: the field set must match exactly",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 7
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 7
+      }
+    ]
+  }
+}

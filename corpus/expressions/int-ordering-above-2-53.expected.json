@@ -1,0 +1,17 @@
+{
+  "title": "Int ordering, min and max are exact above 2^53",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "true true",
+      "9007199254740993 9007199254740993"
+    ],
+    "result": null
+  }
+}

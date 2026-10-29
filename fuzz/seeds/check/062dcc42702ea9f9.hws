@@ -1,0 +1,4 @@
+constant empty: Set<Int> = set([])
+constant seen = empty.with(3).with(1).with(3).with(2).with(1)
+
+return seen.length()

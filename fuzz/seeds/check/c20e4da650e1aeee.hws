@@ -1,0 +1,15 @@
+uses print
+
+constant a = 1000
+
+constant b = 2.5
+
+constant c = 1000.0
+
+constant d = 0.015
+
+constant e = 10.25
+
+effect print("${a}")
+
+return [b, c, d, e]

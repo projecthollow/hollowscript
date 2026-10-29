@@ -1,0 +1,37 @@
+{
+  "title": "An out-of-range Int literal is a compile error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 1,
+      "code": "HS0801"
+    },
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0014"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "line": 1,
+        "code": "HS0801"
+      },
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0014"
+      }
+    ]
+  }
+}

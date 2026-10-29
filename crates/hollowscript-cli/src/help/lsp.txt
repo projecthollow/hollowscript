@@ -1,0 +1,7 @@
+Usage: hollowscript lsp
+
+Starts the language server, hollowscript-lsp, speaking the Language
+Server Protocol on standard input and output, for an editor to talk to.
+It is a separate executable: HOLLOWSCRIPT_LSP_PATH names it if set;
+otherwise the one next to this hollowscript executable is used, and
+failing that, the first on PATH.

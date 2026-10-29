@@ -1,0 +1,11 @@
+uses print
+
+if true {
+    constant a = 1
+    effect print("${a}")
+}
+
+if true {
+    constant a = 2
+    effect print("${a}")
+}

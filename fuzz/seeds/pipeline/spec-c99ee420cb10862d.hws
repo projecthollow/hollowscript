@@ -1,0 +1,21 @@
+uses print
+
+match time.parse("2026-07-26T09:15:00+01:00") {
+    Ok(instant) {
+        effect print(time.format(instant))
+        constant p = time.parts(instant)
+        effect print("${p.year} ${p.month} ${p.weekday}")
+    }
+    Err(message) {
+        effect print(message)
+    }
+}
+
+match time.parseDate("2026-13-45") {
+    Ok(_) {
+        effect print("valid")
+    }
+    Err(message) {
+        effect print(message)
+    }
+}

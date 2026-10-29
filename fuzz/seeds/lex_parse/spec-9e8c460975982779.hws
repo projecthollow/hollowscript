@@ -1,0 +1,3 @@
+constant name = "world"
+constant n = 3
+return "hello ${name}, ${"nested ${n + 1}"} \u{1F600} \${literal}"

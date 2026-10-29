@@ -1,0 +1,6 @@
+constant count = 3
+constant price = 2.5
+constant available = true
+constant label = "widgets"
+
+return "${count} ${label} at ${price} each: ${available}"

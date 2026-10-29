@@ -1,0 +1,4 @@
+variable total = 0
+total = total + 1
+total = total + 1
+return total

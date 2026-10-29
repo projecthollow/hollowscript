@@ -1,0 +1,24 @@
+record Person = { name: String, age: Int }
+
+constant people: [Person] = [
+    { name: "Priya", age: 34 },
+    { name: "Alex", age: 29 },
+]
+
+constant doubled = [1, 2, 3].map(fn(n) {
+    return n * 2
+})
+
+constant widened = [1, 2].map(fn(n): Float {
+    return n
+})
+
+constant byAge = people.sort(fn(a, b) {
+    return a.age - b.age
+})
+
+constant names = byAge.map(fn(p) {
+    return p.name
+})
+
+return [doubled[2] == 6, widened[0] == 1.0, names.first() == "Alex"]

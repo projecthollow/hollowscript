@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Runs every check that CI would run. Hosted CI is not available yet, so this
+# script is the gate: run it before every push.
+#
+#   scripts/check           everything
+#   scripts/check quick     formatting, lints and the hygiene scan, no tests
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+step() {
+    printf '\n==> %s\n' "$*"
+}
+
+mode="${1:-full}"
+
+step "cargo fmt --check"
+cargo fmt --all --check
+
+step "cargo build --workspace --all-targets"
+cargo build --workspace --all-targets
+
+step "hollowscript-wasm, tooling feature (not part of the default workspace build)"
+cargo build -p hollowscript-wasm --features tooling
+if rustup target list --installed 2>/dev/null | grep -qx wasm32-unknown-unknown; then
+    cargo build -p hollowscript-wasm --release --target wasm32-unknown-unknown --features tooling
+else
+    printf 'wasm32-unknown-unknown is not installed; skipping the wasm32 tooling build. Install it with: rustup target add wasm32-unknown-unknown\n'
+fi
+
+step "fuzz crate builds (not run here: it needs nightly and cargo-fuzz, see docs/design/fuzzing.md; this only catches the crate falling out of sync with the workspace it fuzzes)"
+cargo build --manifest-path fuzz/Cargo.toml --bins
+
+step "cargo clippy (warnings are errors)"
+cargo clippy --workspace --all-targets -- -D warnings
+
+step "hollowscript-wasm, tooling feature: clippy (warnings are errors)"
+# The default workspace build leaves the feature off, so the editor services
+# and the rest of the tooling build are linted here, not by the step above.
+cargo clippy -p hollowscript-wasm --features tooling --all-targets -- -D warnings
+
+step "cargo doc (warnings are errors)"
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --quiet
+RUSTDOCFLAGS="-D warnings" cargo doc -p hollowscript-wasm --features tooling --no-deps --quiet
+
+if [ "$mode" != "quick" ]; then
+    step "cargo test --workspace"
+    HOLLOWSCRIPT_REQUIRE_SPEC=1 cargo test --workspace
+
+    step "cargo test, hollowscript-wasm tooling feature"
+    cargo test -p hollowscript-wasm --features tooling
+
+    # The Node end-to-end checks of the JavaScript boundary (web/hollowscript.js
+    # against the real .wasm builds). They are not cargo tests, and a change
+    # that broke the wrapper once reached main because nothing here ran them.
+    # run-all.sh builds what they need with a Cargo target directory of its own
+    # and runs every one of them; about 90 seconds cold, a little over a minute when repeated.
+    step "node end-to-end checks of the WebAssembly boundary"
+    if command -v node >/dev/null 2>&1 \
+        && rustup target list --installed 2>/dev/null | grep -qx wasm32-unknown-unknown; then
+        crates/hollowscript-wasm/web/node-e2e/run-all.sh
+    else
+        printf 'node and the wasm32-unknown-unknown target are both needed for the node end-to-end checks; skipping them. Install the target with: rustup target add wasm32-unknown-unknown\n'
+    fi
+fi
+
+step "conformance corpus"
+cargo run --quiet -p hollowscript-conformance -- corpus
+
+step "examples of the specification (section 19.6)"
+cargo run --quiet -p hollowscript-conformance -- --spec docs/spec
+
+step "crate graph"
+cargo xtask graph
+
+step "third-party licences and advisories (cargo-deny)"
+if command -v cargo-deny >/dev/null 2>&1; then
+    cargo deny check
+else
+    printf 'cargo-deny is not installed; skipping. Install it with: cargo install cargo-deny\n'
+fi
+
+step "shell scripts: shellcheck, and the installer under dash"
+# Every shell script in the tree, found by its first line rather than by a
+# list that could fall behind. install.sh is checked as POSIX sh (its
+# shebang), everything else as bash.
+command -v shellcheck >/dev/null 2>&1 \
+    || { printf 'shellcheck is required (brew install shellcheck, or apt install shellcheck)\n' >&2; exit 1; }
+shell_scripts=()
+while IFS= read -r -d '' f; do
+    if head -n 1 "$f" | grep -qE '^#!.*(ba)?sh'; then
+        shell_scripts+=("$f")
+    fi
+done < <(git ls-files -z -co --exclude-standard | grep -z -v -E '^(target|fuzz/target)/' || true)
+[ "${#shell_scripts[@]}" -gt 0 ] || { printf 'found no shell scripts to check\n' >&2; exit 1; }
+shellcheck -x "${shell_scripts[@]}"
+printf 'shellcheck: %d scripts clean\n' "${#shell_scripts[@]}"
+if command -v dash >/dev/null 2>&1; then
+    dash -n scripts/install.sh
+    # --help must work from a pipe, the way `curl ... | sh -s -- --help` runs it.
+    dash -s -- --help <scripts/install.sh | grep -q '^Usage:' \
+        || { printf 'install.sh --help did not print its usage under dash\n' >&2; exit 1; }
+    printf 'install.sh: parses and prints --help under dash\n'
+else
+    printf 'dash is not installed; install.sh was checked by shellcheck only\n'
+fi
+
+step "installer and release scripts: behaviour against offline fixture releases"
+# Needs python3, minisign and ssh-keygen; no network, no real key.
+scripts/test-install
+scripts/test-release
+
+step "hygiene scan of the mirrored tree"
+cargo xtask hygiene
+
+printf '\nAll checks passed.\n'

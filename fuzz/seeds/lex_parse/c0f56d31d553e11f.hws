@@ -1,0 +1,6 @@
+fn twice(n: Int): Result<Int, String> {
+    constant value = n?
+    return success(value * 2)
+}
+
+return 0

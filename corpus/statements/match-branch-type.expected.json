@@ -1,0 +1,25 @@
+{
+  "title": "A match branch value must have the scrutinee type",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 4
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 4
+      }
+    ]
+  }
+}

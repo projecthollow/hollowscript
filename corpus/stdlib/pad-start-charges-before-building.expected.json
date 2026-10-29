@@ -1,0 +1,22 @@
+{
+  "title": "padStart charges for its result before building it, so a huge width ends the run at a limit instead of exhausting the host",
+  "spec": "11.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "contains": "limit"
+      }
+    ]
+  }
+}

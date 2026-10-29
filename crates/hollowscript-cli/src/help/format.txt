@@ -1,0 +1,12 @@
+Usage: hollowscript format [--json] FILE
+
+Prints FILE in its canonical form to standard output. The file itself
+is not changed. A file with a syntax error is not formatted; its
+diagnostics are printed instead.
+
+Options:
+  --json         Print one document, {"output": [lines] | null,
+                 "diagnostics": [...]}.
+
+Exit status: 0 when the file was formatted, 1 when it could not be, 2
+when FILE cannot be read.

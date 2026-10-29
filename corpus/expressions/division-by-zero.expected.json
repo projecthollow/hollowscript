@@ -1,0 +1,27 @@
+{
+  "title": "Division by zero is a runtime error",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 5
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [
+      "before"
+    ],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "title": "Section 11.3's worked example faults with HS1001 when maxSteps is 9, its own total minus one",
+  "spec": "11.3",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 7,
+        "code": "HS1001"
+      }
+    ]
+  }
+}

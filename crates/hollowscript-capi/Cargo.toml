@@ -1,0 +1,21 @@
+[package]
+name = "hollowscript-capi"
+description = "A small, stable C ABI over opaque handles, for embedding HollowScript from a host that is not Rust."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+crate-type = ["staticlib", "cdylib", "lib"]
+
+[dependencies]
+hollowscript.workspace = true
+hollowscript-bytecode.workspace = true
+hollowscript-core.workspace = true
+
+[lints]
+workspace = true

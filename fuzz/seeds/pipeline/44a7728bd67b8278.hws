@@ -1,0 +1,6 @@
+constant n = 1
+
+match n {
+    "one" { return 1 }
+    else { return 0 }
+}

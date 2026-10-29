@@ -1,0 +1,14 @@
+{
+  "title": "A type parameter can annotate a local in the fn body",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(1), Int(2)]"
+  }
+}

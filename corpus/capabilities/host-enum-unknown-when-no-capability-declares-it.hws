@@ -1,0 +1,7 @@
+uses print
+
+fn label(e: IoError): String {
+    return "x"
+}
+
+effect print("hi")

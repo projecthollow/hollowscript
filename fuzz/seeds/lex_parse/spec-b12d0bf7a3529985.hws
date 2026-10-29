@@ -1,0 +1,9 @@
+variable x: Int? = 5
+if x != none {
+    constant read = fn(): Int {
+        return x // HS0301
+    }
+    x = none
+    return read()
+}
+return 0

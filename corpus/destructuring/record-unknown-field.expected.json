@@ -1,0 +1,21 @@
+{
+  "title": "A record pattern cannot name a field the record lacks",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 4
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 4
+      }
+    ]
+  }
+}

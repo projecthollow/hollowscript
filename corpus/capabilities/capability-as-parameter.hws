@@ -1,0 +1,7 @@
+uses print
+
+fn f(print: Int): Int {
+    return print
+}
+
+return f(1)

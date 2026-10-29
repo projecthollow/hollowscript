@@ -1,0 +1,6 @@
+constant empty: Map<String, Int> = [:]
+constant full = empty.with("a", 1).with("b", 2)
+constant fewer = full.without("a")
+constant same = fewer.without("missing")
+
+return "${full.length()} ${fewer.length()} ${same.length()} ${fewer.has("a")} ${fewer.has("b")}"

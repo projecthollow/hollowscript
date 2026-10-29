@@ -1,0 +1,5 @@
+fn holds(a: Int, b: Int): Bool {
+    return div(a, b) * b + mod(a, b) == a
+}
+
+return [holds(7, 3), holds(-7, 3), holds(7, -3), holds(-7, -3)]

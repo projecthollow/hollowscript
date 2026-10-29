@@ -1,0 +1,9 @@
+fn name(n: Int): String {
+    match n {
+        1, 2 { return "small" }
+        -1 { return "minus" }
+        else { return "other" }
+    }
+}
+
+return [name(1), name(2), name(-1), name(9)]

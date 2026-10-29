@@ -1,0 +1,21 @@
+{
+  "title": "The error type of a ? operand must equal the error type of the enclosing function",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 16
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 16
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+// file: main.hws
+uses print
+import a from "./a"
+import b from "./b"
+
+effect print("main ${a + b}")

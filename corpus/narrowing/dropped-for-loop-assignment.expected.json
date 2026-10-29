@@ -1,0 +1,27 @@
+{
+  "title": "Narrowing is dropped for a variable assigned in a loop body",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 7,
+      "contains": "Int"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 7,
+        "contains": "Int"
+      }
+    ]
+  }
+}

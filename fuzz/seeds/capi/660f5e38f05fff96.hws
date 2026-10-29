@@ -1,0 +1,9 @@
+fn describe(n: Int): String {
+    match n {
+        0 { return "zero" }
+        1, -1 { return "one, either sign" }
+        else { return "something else" }
+    }
+}
+
+return describe(1)

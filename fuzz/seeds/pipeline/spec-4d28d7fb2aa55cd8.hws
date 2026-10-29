@@ -1,0 +1,9 @@
+record Point = { x: Int, y: Int }
+record Vector = { x: Int, y: Int }
+
+fn length2(p: Point): Int {
+    return p.x * p.x + p.y * p.y
+}
+
+constant v: Vector = { x: 3, y: 4 }
+return length2(v)

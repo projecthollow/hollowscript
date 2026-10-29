@@ -1,0 +1,5 @@
+constant out = [1, 0].map(fn(n: Int): Float {
+    return 1 / n
+})
+
+return out

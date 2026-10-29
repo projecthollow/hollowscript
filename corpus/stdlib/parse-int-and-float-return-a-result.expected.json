@@ -1,0 +1,19 @@
+{
+  "title": "parseInt and parseFloat return a Result, with the error text section 13.4 fixes",
+  "spec": "13.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "Ok(42) Err(invalid integer) Err(integer out of range) Ok(0)",
+      "Ok(250.0) Err(invalid number) Err(number out of range) Ok(0.0)",
+      "42 true 250.0 3.14"
+    ],
+    "result": null
+  }
+}

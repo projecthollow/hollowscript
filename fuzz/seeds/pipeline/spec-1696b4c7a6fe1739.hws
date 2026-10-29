@@ -1,0 +1,10 @@
+uses print
+
+fn apply(f: effect fn(String), s: String) {
+    effect f(s)
+}
+
+apply(print, "x")
+apply(fn(text) {
+    effect print("closure ${text}")
+}, "y")
