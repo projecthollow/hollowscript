@@ -286,7 +286,7 @@ function Install-HollowScript {
             for ($hop = 0; $hop -le 5; $hop++) {
                 $isLoopbackHttp = ($current.Scheme -eq 'http') -and ($loopbackHosts -contains $current.Host)
                 if ($current.Scheme -ne 'https' -and -not (-not $secureTransport -and $isLoopbackHttp)) {
-                    Fail "refusing to download from $current: it is not https://"
+                    Fail "refusing to download from ${current}: it is not https://"
                 }
                 $request = [System.Net.HttpWebRequest]::Create($current)
                 $request.AllowAutoRedirect = $false

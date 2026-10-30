@@ -526,7 +526,9 @@ mod tests {
     /// `IoError` is a type the program can write.
     #[test]
     fn fs_reads_and_writes_within_its_grants_and_refuses_outside_them() {
-        let dir = std::env::temp_dir().join(format!(
+        // Keep fixture names valid inside language strings on every host.
+        // ScopeRoot still receives native host paths, never language paths.
+        let dir = std::path::PathBuf::from(format!(
             "hollowscript-cli-fs-{}-{}",
             std::process::id(),
             line!()
@@ -557,9 +559,9 @@ mod tests {
             "effect print(show(effect fs.read(\"OUT/made.txt\")))\n",
             "return 0\n",
         )
-        .replace("IN/", &format!("{}/", dir.join("in").display()))
-        .replace("OUT/", &format!("{}/", dir.join("out").display()))
-        .replace("SECRET/", &format!("{}/", dir.join("secret").display()));
+        .replace("IN/", &format!("{}/in/", dir.display()))
+        .replace("OUT/", &format!("{}/out/", dir.display()))
+        .replace("SECRET/", &format!("{}/secret/", dir.display()));
 
         let mut granted = Granted::none();
         granted.fs_read = vec![
@@ -590,7 +592,7 @@ mod tests {
     /// is section 9.5 rule 3's "one grant does not imply another".
     #[test]
     fn a_write_needs_a_write_grant() {
-        let dir = std::env::temp_dir().join(format!(
+        let dir = std::path::PathBuf::from(format!(
             "hollowscript-cli-fs-{}-{}",
             std::process::id(),
             line!()
@@ -625,14 +627,11 @@ mod tests {
     #[test]
     fn fs_read_of_a_file_larger_than_max_memory_bytes_faults_hs1002() {
         let dir =
-            std::env::temp_dir().join(format!("hollowscript-cli-fs-hs1002-{}", std::process::id()));
+            std::path::PathBuf::from(format!("hollowscript-cli-fs-hs1002-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("huge.txt");
-        {
-            let file = std::fs::File::create(&path).unwrap();
-            file.set_len(4 * 1024 * 1024 * 1024).unwrap(); // 4 GiB, sparse
-        }
+        crate::test_fs::sparse_file(&path, 4 * 1024 * 1024 * 1024);
         let source = format!(
             concat!(
                 "uses print, fs\n",
@@ -642,7 +641,7 @@ mod tests {
                 "}}\n",
                 "return 0\n",
             ),
-            path.display()
+            path.to_string_lossy().replace('\\', "/")
         );
         let mut granted = Granted::none();
         granted.fs_read = vec![crate::capabilities::ScopeRoot::new(&dir).unwrap()];

@@ -61,6 +61,49 @@ fn stderr(output: &Output) -> String {
 
 const MANY_LINES: &str = "uses print\n\nvariable i = 0\n\nwhile i < 100000 {\n    effect print(\"line ${i}\")\n    i = i + 1\n}\n";
 
+#[cfg(any(unix, windows))]
+#[test]
+fn a_hard_linked_import_has_a_portable_diagnostic_and_is_not_read() {
+    let dir = Dir::new("hardlink-diagnostic");
+    std::fs::create_dir(dir.path().join("imports")).unwrap();
+    dir.write(
+        "outside.hws",
+        "export constant greeting = \"single link\"\n",
+    );
+    dir.write(
+        "imports/main.hws",
+        "uses print\n\nimport greeting from \"./shared\"\n\neffect print(greeting)\n",
+    );
+    std::fs::hard_link(
+        dir.path().join("outside.hws"),
+        dir.path().join("imports/shared.hws"),
+    )
+    .unwrap();
+    let result = run(&dir, &["run", "imports/main.hws"]);
+    assert_eq!(result.status.code(), Some(1));
+    assert!(stderr(&result).is_empty());
+    assert_eq!(
+        stdout(&result).replace("\r\n", "\n"),
+        "imports/main.hws:3:22: error[HS0607]: The module 'shared.hws' could not be read: its hard link count is not exactly one, so its name cannot establish the file scope.\n"
+    );
+    let json = run(&dir, &["run", "--json", "imports/main.hws"]);
+    assert_eq!(json.status.code(), Some(1));
+    assert!(stdout(&json).contains("\"file\":\"main.hws\""));
+    std::fs::remove_file(dir.path().join("imports/shared.hws")).unwrap();
+    std::fs::copy(
+        dir.path().join("outside.hws"),
+        dir.path().join("imports/shared.hws"),
+    )
+    .unwrap();
+    let single = run(&dir, &["run", "imports/main.hws"]);
+    assert!(single.status.success());
+    assert_eq!(stdout(&single).trim(), "single link");
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("outside.hws")).unwrap(),
+        "export constant greeting = \"single link\"\n"
+    );
+}
+
 /// A reader that stops reading (`head -1`) closes the pipe; the command
 /// must stop quietly, not panic with "failed printing to stdout" and exit
 /// code 101. Standard output's read end is closed before the command has

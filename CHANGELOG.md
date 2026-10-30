@@ -11,6 +11,42 @@ The language specification has its own version, stated in
 `docs/spec/README.md`, and moves independently of this implementation's own
 release history.
 
+## [0.1.1] - 2026-10-30 (preview)
+
+This preview adds signed command line and C SDK archives for Linux on x86_64
+(static musl) and Windows on x86_64, alongside Apple Silicon macOS. Linux on
+ARM64, Intel macOS and downloadable WebAssembly builds remain outside the
+supported distribution.
+
+### Security
+
+- On Windows, `fs` and the module loader now read the hard link count from
+  the open handle and refuse a hard-linked file, as on Unix (`Denied` for
+  `fs`, HS0607 for an import). On every platform a file is accepted only when
+  its link count is exactly one, so an unavailable or zero count is refused
+  too, and the HS0607 reason now says so.
+
+### Fixed
+
+- The PowerShell installer parses under Windows PowerShell 5.1 and
+  PowerShell 7 (a URI variable is now delimited).
+- Diagnostics on Windows display paths with forward slashes, matching the
+  canonical module path, for example `imports/main.hws`.
+- The fuzz targets link on MSVC hosts.
+
+### Release process
+
+- Release archives use canonical tar metadata and are checked for path
+  boundaries. A release is published only when every uploaded asset, digest
+  and advertised platform matches reviewed native acceptance.
+- Build records distinguish native from cross-compiling builders. The Linux
+  archives are built on a native x86_64 Linux builder; the macOS and Windows
+  archives on Apple Silicon macOS. Each product matches a second build from
+  a different checkout and Cargo home on the same builder, which is not an
+  independent reproduction.
+- `latest.txt` is still unsigned and has no expiry; install an explicit
+  version where that matters.
+
 ## [0.1.0] - 2026-10-29 (preview)
 
 The first public preview distributes signed command line and C SDK archives

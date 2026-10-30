@@ -42,6 +42,8 @@ mod json;
 mod loader;
 mod random;
 mod stdio;
+#[cfg(test)]
+mod test_fs;
 
 use cli::{Command, Invocation, parse_args};
 use default_grants::{PrintSink, capabilities_for};

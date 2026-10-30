@@ -2,24 +2,33 @@
 
 HollowScript™ is a small, statically typed, embeddable programming language with a capability-based security model, in the class of Lua. This repository holds its native implementation: a compiler and bytecode virtual machine, an embedding API, a language server and a WebAssembly build of the VM.
 
-**Status: preview (v0.1.0).** The language runs end to end, from source to a verified bytecode container, on macOS, Linux and (pending a test on Windows itself) Windows, and in a browser through the WebAssembly build. Nothing is stable yet: the command line, the Rust API and the bytecode format may change in any release. It implements version 1.1.1 of the language specification, which is in `docs/spec/`; the shared conformance corpus is in `corpus/`, and the design of this implementation is recorded in `docs/design/`.
+**Status: preview (v0.1.1).** The language runs end to end, from source to a verified bytecode container, on macOS, Linux and Windows, and in a browser through the WebAssembly build. Nothing is stable yet: the command line, the Rust API and the bytecode format may change in any release. It implements version 1.1.1 of the language specification, which is in `docs/spec/`; the shared conformance corpus is in `corpus/`, and the design of this implementation is recorded in `docs/design/`.
 
 ## Install
 
-The v0.1.0 public preview supports **macOS on Apple Silicon**. Install the
-command line tool and language server with:
+The v0.1.1 public preview supports **macOS on Apple Silicon**, **Linux on
+x86_64** (static musl build) and **Windows on x86_64**. On macOS and Linux,
+install the command line tool and language server with:
 
 ```sh
-curl -fsSL https://get.hollowscript.org/install.sh | sh -s -- --version v0.1.0
+curl -fsSL https://get.hollowscript.org/install.sh | sh -s -- --version v0.1.1
 ```
 
-The installer verifies the release signature with minisign or OpenSSH and
-checks the archive's SHA-256 before installing. Restart your shell, then run
-`hollowscript version`. To uninstall, run the same installer with `--uninstall`.
+On Windows, in PowerShell:
+
+```powershell
+$env:HOLLOWSCRIPT_VERSION = 'v0.1.1'; irm https://get.hollowscript.org/install.ps1 | iex
+```
+
+The installers verify the release signature with minisign or OpenSSH and
+check the archive's SHA-256 before installing. Restart your shell, then run
+`hollowscript version`. To uninstall, run the same installer with `--uninstall`
+(`-Uninstall` on Windows). The Windows executables are not Authenticode
+signed, so Smart App Control, where it is turned on, may refuse to run them.
 See the [install guide](https://hollowscript.org/get-started/) for verification,
 preview limitations and alternative installation directories.
 
-Intel macOS, Linux, Windows, downloadable WebAssembly builds and registry
+Intel macOS, Linux on ARM64, downloadable WebAssembly builds and registry
 packages are outside this preview's supported distribution. The source
 contains those build targets, but their presence is not a support claim.
 Build from source with the pinned Rust toolchain using [Building](#building).

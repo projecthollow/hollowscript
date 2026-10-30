@@ -45,7 +45,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-check",
@@ -57,14 +57,14 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-bytecode"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-core",
 ]
 
 [[package]]
 name = "hollowscript-capi"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript",
  "hollowscript-bytecode",
@@ -73,7 +73,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-check"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-core",
  "hollowscript-syntax",
@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-compiler"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-check",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-core"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "hollowscript-fuzz"
@@ -110,14 +110,14 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-syntax"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-core",
 ]
 
 [[package]]
 name = "hollowscript-vm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-core",
@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-core",

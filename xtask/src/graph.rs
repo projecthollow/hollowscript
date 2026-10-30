@@ -110,6 +110,7 @@ const ALLOWED: &[(&str, &[&str])] = &[
 const EXTERNAL: &[(&str, &[&str])] = &[
     ("cap-std", &["hollowscript-cli", "hollowscript-hostfs"]),
     ("libc", &["hollowscript-hostfs"]),
+    ("cap-primitives", &["hollowscript-hostfs"]),
     ("ureq", &["hollowscript-cli"]),
     ("base64", &["xtask"]),
     ("ed25519-dalek", &["xtask"]),

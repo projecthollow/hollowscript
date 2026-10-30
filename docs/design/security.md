@@ -221,8 +221,9 @@ Everything below is in service of those two.
   server uses too, so the two cannot disagree. The module is opened without
   waiting (`O_NONBLOCK`), so a named pipe is refused at once (HS0607) and not
   waited on for ever; what was opened must be a regular file, judged from the
-  open handle and not from a second look at the name; on Unix a file with more
-  than one hard link is refused (HS0607), since a name inside the root can be
+  open handle and not from a second look at the name; a file with more than
+  one hard link, or whose link count is unavailable, is refused (HS0607),
+  since a name inside the root can be
   the same file as one outside it; and the file is read through a limit,
   never in full: at most the language's own limit for one module (4,194,304
   bytes, HS0002) and for a whole program (67,108,864, HS0612), plus one
@@ -247,16 +248,19 @@ Everything below is in service of those two.
   afterwards (700 MB piped in used to give a resident size of 705 MB against a
   64 MiB limit).
 - **A file with more than one hard link is refused by `fs` and the module
-  loader, on Unix.** A hard link inside a granted root and a file outside it
+  loader.** A hard link inside a granted root and a file outside it
   can be one file, and a handle opened inside the root cannot tell; reading or
   writing the one reads or writes the other. `fs.read`, `fs.write` and
   `fs.append` answer `Denied` for a regular file whose link count (read from
   the open handle) is above one, and the loader refuses it. This is a
   deliberate trade, not a precise test: a file that is legitimately hard
   linked (a deduplicating store, say) is refused as well, and a program cannot
-  create a link, so only a file someone else linked is affected. On Windows
-  the link count is not read, so a hard link there is **not** detected; the
-  other guarantees of this section hold on every platform.
+  create a link, so only a file someone else linked is affected. On Unix the
+  count is `st_nlink` from `fstat`; on Windows it is the handle's
+  `nNumberOfLinks` (`GetFileInformationByHandle`, through `cap-primitives`),
+  and a count the platform does not report is refused rather than assumed
+  to be one. The Windows check is implemented and unit tested but has not
+  yet passed native Windows acceptance.
 - **`http`'s address safety covers the full IANA special-purpose registries,
   not only loopback, private, link-local and multicast.** The CLI host
   refuses the unspecified address, CGNAT, cloud metadata addresses,
@@ -445,9 +449,9 @@ Everything below is in service of those two.
   logical limit is close to the real one, but "grows with how many times
   the loop ran, not with what it kept" is no longer a
   separate, larger gap on top of that.
-- **Hard links on Windows, and legitimate hard links everywhere.** See the
-  hard-link bullet above: Windows is not covered, and on Unix a harmless
-  file with two names is refused as well.
+- **Legitimate hard links.** See the hard-link bullet above: a harmless file
+  with two names is refused as well, on every platform. The Windows check
+  still needs native acceptance before Windows support is claimed.
 - **A named pipe between the check and the open, on Windows.** The
   non-blocking open and the check on the open handle are Unix measures; on
   Windows the host `stat`s a name before opening it and refuses a non-regular

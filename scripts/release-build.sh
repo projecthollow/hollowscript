@@ -53,9 +53,16 @@ out_dir="$repo_root/dist"
 verify_reproducible=1
 release_version=""
 rehearsal=0
+verification_cargo_home="different"
 
 while [ $# -gt 0 ]; do
     case "$1" in
+        --verification-cargo-home)
+            [ $# -ge 2 ] || die "--verification-cargo-home needs different or fixed"
+            verification_cargo_home="$2"
+            case "$verification_cargo_home" in different | fixed) : ;; *) die "invalid verification Cargo home mode" ;; esac
+            shift 2
+            ;;
         --targets)
             [ $# -ge 2 ] || die "--targets needs a value"
             targets_arg="$2"
@@ -327,14 +334,8 @@ finalise_product() {
 # binary and library that is packaged.
 leak_needles=("$HOME" "$repo_root" "$CARGO_TARGET_DIR" "$cargo_home" "$sysroot")
 check_no_leaks() {
-    local path="$1" needle
-    for needle in "${leak_needles[@]}"; do
-        if LC_ALL=C grep -a -q -F -- "$needle" "$path"; then
-            printf 'release-build.sh: %s contains the local path %s:\n' "$path" "$needle" >&2
-            LC_ALL=C grep -a -o -F -- "$needle" "$path" | head -3 >&2 || true
-            die "a shipped file leaks a local path; not packaging it"
-        fi
-    done
+    python3 scripts/release-tools.py check-path "$1" "${leak_needles[@]}" \
+        || die "a shipped file leaks a builder path; not packaging it"
 }
 
 # --- reproducibility check, every target ------------------------------------------
@@ -347,7 +348,7 @@ check_no_leaks() {
 # build takes from the machine or the clock, differs between the two and
 # fails this, even where the leak check above would not know what to look for.
 if [ "$verify_reproducible" -eq 1 ]; then
-    step "reproducibility: building every target again from another path with another CARGO_HOME"
+    step "reproducibility: separate source/target paths (Cargo home mode: $verification_cargo_home)"
     scratch="$(mktemp -d)"
     second_checkout="$scratch/a-second-checkout"
     second_target_dir="$scratch/target"
@@ -367,6 +368,11 @@ if [ "$verify_reproducible" -eq 1 ]; then
         || die "copying the tree for the reproducibility build failed"
     ln -s "$cargo_home/registry/index" "$second_home/registry/index"
     ln -s "$cargo_home/registry/cache" "$second_home/registry/cache"
+    if [ "$verification_cargo_home" = fixed ]; then
+        # The pinned non-Apple builder treats this path as an input. The
+        # second build still has a fresh target directory and source path.
+        second_home="$cargo_home"
+    fi
     build_all "$second_checkout" "$second_target_dir" "$second_home" --offline
     compared=0
     for target in "${targets[@]}"; do
@@ -383,7 +389,7 @@ if [ "$verify_reproducible" -eq 1 ]; then
             compared=$((compared + 1))
         done
     done
-    printf 'reproducible: all %d shipped products, for every target, byte-identical across two builds\n' "$compared"
+    printf 'reproducible: all %d shipped products match separate source/target paths (Cargo home mode: %s)\n' "$compared" "$verification_cargo_home"
     rm -rf "$scratch"
 fi
 
@@ -428,20 +434,9 @@ normalise_tree() {
     find "$dir" -exec env TZ=UTC touch -h -t "$stamp" {} +
 }
 
-tar_flavour_flags=()
-if tar --version 2>/dev/null | grep -q bsdtar; then
-    tar_flavour_flags=(--uid 0 --gid 0 --uname "" --gname "" --no-xattrs --no-acls --no-fflags --format ustar)
-else
-    tar_flavour_flags=(--owner=0 --group=0 --numeric-owner --format=ustar)
-fi
-
 archive_tar() {
     local name="$1"
-    (
-        cd "$stage"
-        find "$name" | LC_ALL=C sort \
-            | COPYFILE_DISABLE=1 tar "${tar_flavour_flags[@]}" --no-recursion -T - -cf -
-    ) | gzip -n -9 >"$out_dir/$name.tar.gz"
+    python3 scripts/release-tools.py archive "$stage/$name" "$out_dir/$name.tar.gz" "$SOURCE_DATE_EPOCH"
 }
 
 archive_zip() {
@@ -598,6 +593,8 @@ cat "$out_dir/SHA256SUMS"
     printf 'commit=%s\n' "$commit"
     printf 'rehearsal=%s\n' "$rehearsal"
     printf 'targets=%s\n' "${targets[*]}"
+    printf 'verification_cargo_home=%s\n' "$verification_cargo_home"
+    printf 'verified_reproducible=%s\n' "$verify_reproducible"
     for note in "${notes[@]+"${notes[@]}"}"; do printf 'note=%s\n' "$note"; done
 } >"$out_dir/release-build-info.txt"
 

@@ -798,13 +798,14 @@ mod tests {
 
     #[test]
     fn fs_operations_stay_inside_the_granted_root() {
-        let dir =
-            std::env::temp_dir().join(format!("hollowscript-cli-test-{}", std::process::id()));
+        // Language paths are relative and slash-separated even on Windows;
+        // native absolute paths belong only in the host's ScopeRoot grant.
+        let dir = std::path::PathBuf::from(format!("hollowscript-cli-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let root = ScopeRoot::new(&dir).unwrap();
 
-        let inside = dir.join("a.txt").to_string_lossy().into_owned();
+        let inside = dir.join("a.txt").to_string_lossy().replace('\\', "/");
         assert_eq!(fs_write(&inside, "hi", std::slice::from_ref(&root)), Ok(2));
         assert_eq!(
             fs_read(&inside, std::slice::from_ref(&root), u64::MAX, || false),
@@ -812,7 +813,7 @@ mod tests {
         );
         assert_eq!(fs_exists(&inside, std::slice::from_ref(&root)), Ok(true));
 
-        let sub = dir.join("sub").to_string_lossy().into_owned();
+        let sub = dir.join("sub").to_string_lossy().replace('\\', "/");
         assert_eq!(fs_mkdir(&sub, std::slice::from_ref(&root)), Ok(true));
         assert_eq!(
             fs_mkdir(&sub, std::slice::from_ref(&root)),
@@ -820,7 +821,7 @@ mod tests {
             "already exists"
         );
 
-        let outside = std::env::temp_dir().join("outside-hollowscript-test.txt");
+        let outside = std::path::Path::new("outside-hollowscript-test.txt");
         let outside_str = outside.to_string_lossy().into_owned();
         assert_eq!(
             check_scope(&outside_str, std::slice::from_ref(&root)).err(),
@@ -834,6 +835,7 @@ mod tests {
             "already gone"
         );
 
+        drop(root);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -841,6 +843,8 @@ mod tests {
     fn a_malformed_path_is_invalid_not_denied() {
         assert_eq!(check_scope("", &[]).err(), Some(IoErrorKind::Invalid));
         assert_eq!(check_scope("a\0b", &[]).err(), Some(IoErrorKind::Invalid));
+        assert_eq!(check_scope("C:/a", &[]).err(), Some(IoErrorKind::Invalid));
+        assert_eq!(check_scope(r"a\b", &[]).err(), Some(IoErrorKind::Invalid));
     }
 
     /// The race this module closes: a path that is inside the granted root
@@ -898,7 +902,7 @@ mod tests {
     #[test]
     fn fs_read_stops_early_once_cancelled() {
         let dir =
-            std::env::temp_dir().join(format!("hollowscript-cli-fs-cancel-{}", std::process::id()));
+            std::path::PathBuf::from(format!("hollowscript-cli-fs-cancel-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let root = ScopeRoot::new(&dir).unwrap();
@@ -906,7 +910,7 @@ mod tests {
         let chunks_in_file = 8;
         let contents = "a".repeat(READ_CHUNK_BYTES * chunks_in_file);
         std::fs::write(&path, &contents).unwrap();
-        let target = path.to_string_lossy().into_owned();
+        let target = path.to_string_lossy().replace('\\', "/");
 
         let mut polls = 0;
         let outcome = fs_read(&target, std::slice::from_ref(&root), u64::MAX, || {
@@ -919,6 +923,7 @@ mod tests {
             "a cancelled read must stop long before the last of {chunks_in_file} chunks, stopped after {polls}"
         );
 
+        drop(root);
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -932,18 +937,16 @@ mod tests {
     #[test]
     fn fs_read_refuses_a_file_larger_than_the_allowance_before_reading_it() {
         let dir =
-            std::env::temp_dir().join(format!("hollowscript-cli-fs-large-{}", std::process::id()));
+            std::path::PathBuf::from(format!("hollowscript-cli-fs-large-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let root = ScopeRoot::new(&dir).unwrap();
         let path = dir.join("huge.txt");
-        {
-            let file = std::fs::File::create(&path).unwrap();
-            file.set_len(8 * 1024 * 1024 * 1024).unwrap(); // 8 GiB, sparse
-        }
-        let target = path.to_string_lossy().into_owned();
+        crate::test_fs::sparse_file(&path, 8 * 1024 * 1024 * 1024);
+        let target = path.to_string_lossy().replace('\\', "/");
         let outcome = fs_read(&target, std::slice::from_ref(&root), 1000, || false);
         assert_eq!(outcome, ReadOutcome::TooLarge(8 * 1024 * 1024 * 1024));
+        drop(root);
         std::fs::remove_dir_all(&dir).ok();
     }
 

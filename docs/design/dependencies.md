@@ -51,6 +51,13 @@ gain one without it being a policy change.
 
 ## Every dependency's licence must be Apache-2.0 or MIT compatible
 
+The Windows host filesystem directly pins `cap-primitives` 4.0.3 (MIT OR
+Apache-2.0, with an additional Apache-2.0 WITH LLVM-exception option), already
+used by `cap-std`. Its narrow `_WindowsByHandle` trait preserves the optional
+handle link count; the convenience trait in `cap-fs-ext` would panic if that
+count were absent. Missing counts and counts other than one are refused
+normally. This interface is version-pinned and adds no unsafe code.
+
 The workspace's own licence is `Apache-2.0 OR MIT` (set once, in
 `Cargo.toml`'s `[workspace.package]`, and inherited by every crate). A
 dependency added in the future must carry a licence compatible with

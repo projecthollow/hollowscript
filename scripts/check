@@ -14,6 +14,14 @@ step() {
 
 mode="${1:-full}"
 
+step "Windows installer: native PowerShell parser"
+if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/test-install-windows.ps1
+fi
+if command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-install-windows.ps1
+fi
+
 step "cargo fmt --check"
 cargo fmt --all --check
 
@@ -106,6 +114,7 @@ else
 fi
 
 step "installer and release scripts: behaviour against offline fixture releases"
+python3 scripts/test-release-tools.py
 # Needs python3, minisign and ssh-keygen; no network, no real key.
 scripts/test-install
 scripts/test-release

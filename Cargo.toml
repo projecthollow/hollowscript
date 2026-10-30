@@ -6,7 +6,7 @@ members = ["crates/hollowscript", "crates/hollowscript-bytecode", "crates/hollow
 exclude = ["fuzz"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0 OR MIT"
@@ -17,16 +17,16 @@ categories = ["compilers"]
 # Internal crates. Declared once here so that every member refers to the same
 # path. Entries for crates that do not exist yet are ignored by Cargo.
 [workspace.dependencies]
-hollowscript = { path = "crates/hollowscript", version = "0.1.0" }
-hollowscript-bytecode = { path = "crates/hollowscript-bytecode", version = "0.1.0" }
-hollowscript-check = { path = "crates/hollowscript-check", version = "0.1.0" }
-hollowscript-compiler = { path = "crates/hollowscript-compiler", version = "0.1.0" }
-hollowscript-core = { path = "crates/hollowscript-core", version = "0.1.0" }
-hollowscript-hostfs = { path = "crates/hollowscript-hostfs", version = "0.1.0" }
-hollowscript-ide = { path = "crates/hollowscript-ide", version = "0.1.0" }
-hollowscript-lsp = { path = "crates/hollowscript-lsp", version = "0.1.0" }
-hollowscript-syntax = { path = "crates/hollowscript-syntax", version = "0.1.0" }
-hollowscript-vm = { path = "crates/hollowscript-vm", version = "0.1.0" }
+hollowscript = { path = "crates/hollowscript", version = "0.1.1" }
+hollowscript-bytecode = { path = "crates/hollowscript-bytecode", version = "0.1.1" }
+hollowscript-check = { path = "crates/hollowscript-check", version = "0.1.1" }
+hollowscript-compiler = { path = "crates/hollowscript-compiler", version = "0.1.1" }
+hollowscript-core = { path = "crates/hollowscript-core", version = "0.1.1" }
+hollowscript-hostfs = { path = "crates/hollowscript-hostfs", version = "0.1.1" }
+hollowscript-ide = { path = "crates/hollowscript-ide", version = "0.1.1" }
+hollowscript-lsp = { path = "crates/hollowscript-lsp", version = "0.1.1" }
+hollowscript-syntax = { path = "crates/hollowscript-syntax", version = "0.1.1" }
+hollowscript-vm = { path = "crates/hollowscript-vm", version = "0.1.1" }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

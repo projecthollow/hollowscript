@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-check",
@@ -284,14 +284,14 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-bytecode"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-core",
 ]
 
 [[package]]
 name = "hollowscript-capi"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript",
  "hollowscript-bytecode",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-check"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-core",
  "hollowscript-syntax",
@@ -308,7 +308,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cap-std",
  "hollowscript",
@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-compiler"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-check",
@@ -330,7 +330,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-conformance"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript",
  "hollowscript-core",
@@ -338,19 +338,20 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-core"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "hollowscript-hostfs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
+ "cap-primitives",
  "cap-std",
  "libc",
 ]
 
 [[package]]
 name = "hollowscript-ide"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-check",
  "hollowscript-core",
@@ -359,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-lsp"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-check",
  "hollowscript-core",
@@ -370,14 +371,14 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-syntax"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-core",
 ]
 
 [[package]]
 name = "hollowscript-vm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript-bytecode",
  "hollowscript-core",
@@ -385,7 +386,7 @@ dependencies = [
 
 [[package]]
 name = "hollowscript-wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hollowscript",
  "hollowscript-bytecode",
@@ -1000,7 +1001,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",

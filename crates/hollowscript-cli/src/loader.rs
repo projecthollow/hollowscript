@@ -88,14 +88,20 @@ impl Program {
     }
 
     /// `canonical_path` as a path on disk, for a diagnostic to name.
+    /// Display Windows separators as `/`, matching canonical module paths
+    /// and the cross-platform diagnostic format. Opening still uses `root`.
     pub(crate) fn display(&self, canonical_path: &str) -> String {
         if self.root == Path::new(".") {
             return canonical_path.to_owned();
         }
-        self.root
+        let display = self
+            .root
             .join(canonical_path)
             .to_string_lossy()
-            .into_owned()
+            .into_owned();
+        #[cfg(windows)]
+        let display = display.replace('\\', "/");
+        display
     }
 }
 
@@ -150,6 +156,14 @@ mod tests {
         let bare = Program::at("main.hws");
         assert_eq!(bare.entry(), "main.hws");
         assert_eq!(bare.display("main.hws"), "main.hws");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn native_windows_entry_paths_display_forward_slashes() {
+        let program = Program::at(r"app\main.hws");
+        assert_eq!(program.display("main.hws"), "app/main.hws");
+        assert_eq!(program.display("sub/util.hws"), "app/sub/util.hws");
     }
 
     #[test]
@@ -325,7 +339,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     #[test]
     fn a_module_that_is_a_second_hard_link_is_refused() {
         let dir = temp_dir("hardlink");

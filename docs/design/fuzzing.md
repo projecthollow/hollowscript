@@ -27,6 +27,14 @@ does not run any target, only compiles every one of them, which is enough
 to catch that class of drift without needing nightly or `cargo-fuzz` in the
 gate itself.
 
+On Windows MSVC, `fuzz/build.rs` selects `/SUBSYSTEM:CONSOLE` for the nine
+`no_main` libFuzzer targets. Without a subsystem, the linker cannot infer
+the CRT entry point from the Rust objects and reports LNK1561 before pulling
+libFuzzer's C `main` from its static library. The two ordinary Rust tools
+(`gen_seeds` and `leak_check`) retain their normal entry points. Other target
+environments receive no additional linker arguments. The gate still links
+every fuzz executable; it does not replace the build with a type check.
+
 ## Running it
 
 ```

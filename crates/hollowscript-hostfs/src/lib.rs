@@ -22,13 +22,13 @@
 //!   (`fstat`), never from a second look at the name.
 //! - **Regular files only.** A directory, a named pipe, a device or a socket
 //!   is refused ([`OpenFailure::NotRegular`]).
-//! - **One name only (Unix).** A regular file with more than one hard link is
+//! - **One name only.** A regular file with more than one hard link is
 //!   refused ([`OpenFailure::HardLinked`]): a hard link inside a root can be
 //!   the same file as one outside it, and nothing in the handle can tell
 //!   which name is the "real" one. This is a deliberate trade: a file that is
 //!   legitimately hard linked (a deduplicating store, say) is refused too.
-//!   On Windows the number of links is not read, so a hard link there is
-//!   *not* detected; every other guarantee above still holds.
+//!   Windows reads the count from the open handle through `cap-primitives`.
+//!   An unavailable count is refused rather than assumed safe.
 //! - **Only so many bytes.** [`read_up_to`] reads at most `limit + 1` bytes
 //!   however large the file really is, so a caller learns it was too large
 //!   without having held the file in memory.
@@ -68,7 +68,7 @@ pub enum OpenFailure {
     /// The entry is a directory, a named pipe, a device, a socket or
     /// something else that is not a regular file.
     NotRegular,
-    /// The entry is a regular file with more than one hard link (Unix).
+    /// The regular file's hard link count is not exactly one, or unavailable.
     HardLinked,
 }
 
@@ -118,12 +118,25 @@ fn non_blocking(_options: &mut OpenOptions) {}
 #[cfg(unix)]
 fn is_hard_linked(metadata: &cap_std::fs::Metadata) -> bool {
     use cap_std::fs::MetadataExt as _;
-    metadata.nlink() > 1
+    refuse_link_count(Some(metadata.nlink()))
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+fn is_hard_linked(metadata: &cap_std::fs::Metadata) -> bool {
+    // Keep the optional handle count: the convenience trait in cap-fs-ext
+    // panics when it is absent. This narrow trait is pinned with cap-std's
+    // implementation so an unavailable count can be refused normally.
+    use cap_primitives::fs::_WindowsByHandle as _;
+    refuse_link_count(metadata.number_of_links().map(u64::from))
+}
+
+#[cfg(not(any(unix, windows)))]
 fn is_hard_linked(_metadata: &cap_std::fs::Metadata) -> bool {
-    false
+    true
+}
+
+fn refuse_link_count(count: Option<u64>) -> bool {
+    count != Some(1)
 }
 
 /// Reads at most `limit + 1` bytes of `reader`: the whole of it if it is no
@@ -258,7 +271,7 @@ fn read_exact_file(dir: &Dir, segment: &str, limit: u64) -> Result<Vec<u8>, Read
         }
         Err(OpenFailure::HardLinked) => {
             return Err(ReadError::Failed(
-                "it has more than one hard link, which could be a file outside the program's directory"
+                "its hard link count is not exactly one, so its name cannot establish the file scope"
                     .to_owned(),
             ));
         }
@@ -375,7 +388,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).ok();
     }
 
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     #[test]
     fn a_file_with_a_second_hard_link_is_refused() {
         let dir = temp_dir("hardlink");
@@ -391,6 +404,14 @@ mod tests {
             matches!(root.read_module("linked.hws", 1024), Err(ReadError::Failed(reason)) if reason.contains("hard link"))
         );
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn an_unknown_or_multiple_link_count_is_refused() {
+        assert!(super::refuse_link_count(None));
+        assert!(super::refuse_link_count(Some(0)));
+        assert!(super::refuse_link_count(Some(2)));
+        assert!(!super::refuse_link_count(Some(1)));
     }
 
     #[test]
@@ -437,10 +458,17 @@ mod tests {
         let dir = temp_dir("open-dir");
         std::fs::create_dir_all(dir.join("sub")).unwrap();
         let handle = Dir::open_ambient_dir(&dir, ambient_authority()).unwrap();
-        assert!(matches!(
-            open_regular(&handle, Path::new("sub"), Access::Read),
-            Err(OpenFailure::NotRegular)
-        ));
+        let result = open_regular(&handle, Path::new("sub"), Access::Read);
+        // Windows denies a directory open before a file handle is returned;
+        // Unix opens it and then rejects its kind. Neither may return a file.
+        match result {
+            Err(OpenFailure::NotRegular) => {}
+            #[cfg(windows)]
+            Err(OpenFailure::Io(error)) => {
+                assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+            }
+            other => panic!("a directory must be refused, got {other:?}"),
+        }
         std::fs::remove_dir_all(&dir).ok();
     }
 }
