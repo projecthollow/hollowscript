@@ -1,0 +1,5 @@
+export record Person = { name: String, age: Int }
+export enum Choice<T> { First(T), Last }
+export fn twice(n: Int): Int {
+    return n * 2
+}

@@ -1,0 +1,80 @@
+{
+  "title": "A closing brace inside an open parenthesis does not end the interpolation",
+  "spec": "1.5",
+  "parse": [
+    {
+      "severity": "error",
+      "code": "HS0006",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 3
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0006",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0006",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 3
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0006",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Parentheses do not turn a call that returns nothing into a value",
+  "spec": "3.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0345"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0345"
+      }
+    ]
+  }
+}

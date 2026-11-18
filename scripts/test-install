@@ -105,7 +105,8 @@ mkbin() {
     mkdir -p "$1"
     local t p
     for t in "${@:2}"; do
-        p="$(command -v "$t" 2>/dev/null || true)"
+        # Builtins such as printf are not filesystem link targets.
+        p="$(type -P "$t" 2>/dev/null || true)"
         [ -z "$p" ] || ln -sf "$p" "$1/$t"
     done
 }

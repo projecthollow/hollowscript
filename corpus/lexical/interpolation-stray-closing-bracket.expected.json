@@ -1,0 +1,40 @@
+{
+  "title": "A closing square bracket with nothing open does not end the interpolation and is a syntax error",
+  "spec": "1.5",
+  "parse": [
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 3
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 3
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 3
+      }
+    ]
+  }
+}

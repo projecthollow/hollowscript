@@ -146,6 +146,28 @@ impl Analysis {
         stringify(&json)
     }
 
+    /// Entry-module diagnostics with exact UTF-16 spans for editor actions.
+    pub(crate) fn diagnostics_json(&self) -> String {
+        let items = self
+            .workspace
+            .diagnostics
+            .iter()
+            .filter_map(|diagnostic| {
+                let location = diagnostic.location.as_ref()?;
+                if location.file.as_ref() != self.workspace.entry_name {
+                    return None;
+                }
+                Some(object([
+                    ("code", Json::String(diagnostic.code.to_text().clone())),
+                    ("message", Json::String(diagnostic.message.clone())),
+                    ("start", number(self.entry.to_utf16(location.span.start))),
+                    ("end", number(self.entry.to_utf16(location.span.end))),
+                ]))
+            })
+            .collect();
+        stringify(&Json::Array(items))
+    }
+
     /// `[{"label":"total","kind":"constant","detail":"Int"}, ...]` for what
     /// can be written at the UTF-16 `offset`.
     pub(crate) fn completions_json(&self, offset: u32) -> String {
@@ -436,6 +458,28 @@ mod tests {
         assert_eq!(String::from_utf16(&units[start..end]).unwrap(), "name");
         assert_eq!(start, 7);
         assert_eq!(source.find("name"), Some(9));
+    }
+
+    #[test]
+    fn highlight_marks_a_rejected_character_invalid_with_utf16_offsets() {
+        // The face is two UTF-16 code units, so the accented letter in the
+        // identifier after it is at unit 10, not at byte 12.
+        let source = "\"\u{1f600}\" + caf\u{e9}";
+        let items = array(&highlight_json(source));
+        let last = items.last().unwrap();
+        assert_eq!(field(last, "class"), &Json::String("invalid".to_owned()));
+        let start = match field(last, "start") {
+            Json::Int(n) => usize::try_from(*n).unwrap(),
+            other => panic!("{other:?}"),
+        };
+        let end = match field(last, "end") {
+            Json::Int(n) => usize::try_from(*n).unwrap(),
+            other => panic!("{other:?}"),
+        };
+        let units: Vec<u16> = source.encode_utf16().collect();
+        assert_eq!(String::from_utf16(&units[start..end]).unwrap(), "\u{e9}");
+        assert_eq!((start, end), (10, 11));
+        assert_eq!(source.find('\u{e9}'), Some(12));
     }
 
     #[test]

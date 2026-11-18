@@ -1,0 +1,5 @@
+uses random
+
+export fn roll(lo: Int, hi: Int): Int {
+    return effect random.int(lo, hi)
+}

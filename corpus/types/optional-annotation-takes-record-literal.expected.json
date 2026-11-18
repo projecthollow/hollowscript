@@ -1,0 +1,15 @@
+{
+  "title": "A record literal is checked against T when its expected type is T?",
+  "spec": "2.9",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "{flat: String(\"2\"), street: String(\"1 Park\")}"
+  }
+}

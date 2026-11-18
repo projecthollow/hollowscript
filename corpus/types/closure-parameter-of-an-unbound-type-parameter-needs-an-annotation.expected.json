@@ -1,0 +1,30 @@
+{
+  "title": "A closure parameter whose expected type is a still unbound type variable is one HS0309",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0309",
+      "contains": "'x'"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0309",
+        "contains": "'x'"
+      }
+    ]
+  }
+}

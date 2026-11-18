@@ -1,0 +1,29 @@
+fn sw<A, B>(f: fn(A): B, a: A): B {
+    return f(a)
+}
+
+fn outer<B, A>(f: fn(B): A, b: B): A {
+    return sw(f, b)
+}
+
+fn viaMap<T>(items: [T], f: fn(T): T): [T] {
+    return items.map(fn(x: T): T {
+        return sw(f, x)
+    })
+}
+
+constant label = outer(
+    fn(n: Int): String {
+        return "n${n}"
+    },
+    1
+)
+
+constant doubled = viaMap(
+    [1, 2],
+    fn(n: Int): Int {
+        return n * 2
+    }
+)
+
+return "${label} ${doubled.length()}"

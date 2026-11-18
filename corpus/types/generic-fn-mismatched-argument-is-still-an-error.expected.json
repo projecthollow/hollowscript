@@ -1,0 +1,30 @@
+{
+  "title": "A value of a type parameter is opaque, so an argument of another type is still HS0301",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0301",
+      "contains": "Expected T, found Int"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0301",
+        "contains": "Expected T, found Int"
+      }
+    ]
+  }
+}

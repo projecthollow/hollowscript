@@ -1,0 +1,7 @@
+fn f() {
+    return
+}
+
+for i in f() {
+    return i
+}

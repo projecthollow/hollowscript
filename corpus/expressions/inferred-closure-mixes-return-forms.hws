@@ -1,0 +1,8 @@
+constant pick = fn(n: Int) {
+    if n > 0 {
+        return 1
+    }
+    return
+}
+
+return pick(1)

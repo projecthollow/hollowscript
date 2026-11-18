@@ -1,0 +1,66 @@
+name: HollowScript Windows package
+on:
+  pull_request:
+    paths:
+      - .github/workflows/windows-store.yml
+      - internal/windows-store/**
+      - editors/vscode/src/discovery.js
+      - editors/vscode/src/extension.js
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/windows-store.yml
+      - internal/windows-store/**
+      - editors/vscode/src/discovery.js
+      - editors/vscode/src/extension.js
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the public runtime archive
+        shell: pwsh
+        run: |
+          $url = 'https://get.hollowscript.org/v0.1.1/hollowscript-0.1.1-x86_64-pc-windows-gnu.zip'
+          Invoke-WebRequest -Uri $url -OutFile "${env:RUNNER_TEMP}/hollowscript-0.1.1-x86_64-pc-windows-gnu.zip"
+      - name: Build x64 MSIX
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%v in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do call "%%v\VC\Auxiliary\Build\vcvars64.bat"
+          where cl.exe || exit /b 1
+          where makeappx.exe || exit /b 1
+          pwsh -NoProfile -File internal/windows-store/pack.ps1 -ReleaseDirectory "%RUNNER_TEMP%" -OutputFile "dist/HollowScript-WindowsTest.msix" -PackageName HollowScript.WindowsTest -Publisher "CN=HollowScript Windows Test" -PackageVersion 1.0.3.0
+      - name: Test packaged executables and aliases
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%v in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do call "%%v\VC\Auxiliary\Build\vcvars64.bat"
+          where cl.exe || exit /b 1
+          where makeappx.exe || exit /b 1
+          pwsh -NoProfile -File internal/windows-store/test-package.ps1 -PackageFile dist/HollowScript-WindowsTest.msix -ScreenshotFile "%CD%/dist/HollowScript-Quickstart.png"
+      - name: Build Store identity MSIX
+        shell: cmd
+        run: |
+          for /f "usebackq delims=" %%v in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do call "%%v\VC\Auxiliary\Build\vcvars64.bat"
+          where cl.exe || exit /b 1
+          where makeappx.exe || exit /b 1
+          pwsh -NoProfile -File internal/windows-store/pack.ps1 -ReleaseDirectory "%RUNNER_TEMP%" -OutputFile "dist/HollowScript.msix" -PackageName Soulstack.HollowScript -Publisher "CN=AF0401D1-7295-488F-BD08-46848986ED6B" -PackageVersion 1.0.3.0
+      - name: Retain Store candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: hollowscript-store-msix
+          path: dist/HollowScript.msix
+          if-no-files-found: error
+      - name: Retain native quickstart capture
+        if: ${{ hashFiles('dist/HollowScript-Quickstart.png') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hollowscript-quickstart
+          path: dist/HollowScript-Quickstart*.png
+      - name: Retain test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hollowscript-windows-test-msix
+          path: dist/HollowScript-WindowsTest.msix

@@ -255,7 +255,7 @@ work list to visit it, including a plain `Int`, `Float`, `Bool` or `none`
 that cannot itself lead anywhere else in the heap and, once popped, was
 immediately discarded by exactly that check (`Heap::node_cost` already
 returns 0 for a non-heap value without looking anything up). For a
-1,000,000-element list, that is 1,000,000 needless 24-byte
+1,000,000-element list, that is 1,000,000 needless 32-byte
 (`size_of::<Value>()`, on a 64-bit host) copies into a `Vec` on top of the
 list's own storage, once per traversal, and this one program's run reaches
 that walk at least twice (`check_retained` after the call, plus the
@@ -269,7 +269,7 @@ elements only ever contributed 0 to any count. Verified with `cargo test -p
 hollowscript-vm`, the full conformance corpus and specification examples
 (unchanged), and this program specifically: 578 MB to 194 MB, roughly 9.0x
 the logical accounting down to roughly 3.0x. That remaining 3.0x is
-`Value`'s own representation size (24 bytes for a tagged union that must
+`Value`'s own representation size (32 bytes for a tagged union that must
 hold either a full 64-bit scalar or a generational handle, `index: u32` and
 a deliberately wide `generation: u64` for long-lived hosts;
 `hollowscript-vm/src/arena.rs`'s own doc comment explains why the
@@ -445,7 +445,7 @@ above: a smaller threshold measured a much larger regression here
 
 Everything above this point measures a list of `Int`s: the cheapest
 possible element, with no `String` node cost of its own to add on top of
-`Value`'s 24 bytes. `docs/design/security.md`'s "what it deliberately does
+`Value`'s 32 bytes. `docs/design/security.md`'s "what it deliberately does
 not promise" used to generalise the resulting 3.0x (`range(0, 8000000)`)
 and roughly-3x (`list-sort`, after the mid-run collection fix above) into
 a single floor for every shape; two further measurements show that a
@@ -510,7 +510,7 @@ bytes allocated since the last collection against its threshold using
 section 11.4's own node-cost formula, the same figure a run's own counters
 charge: 8 bytes for a list element, matching the specification's own
 `Value`. What `list.append` actually allocates for that element is a
-`Value` in this implementation's own representation, 24 bytes (the
+`Value` in this implementation's own representation, 32 bytes (the
 tagged-union size `docs/design/security.md`'s "a list of scalars" already
 explains), so a threshold sized in node-cost bytes let roughly three times
 more real garbage than intended sit between collections before the trigger
@@ -545,7 +545,7 @@ is; each range is three to five runs.)
 The 1,000-character shape is a real, repeatable improvement, well outside
 that noise band: the `String` itself, at 1,016 bytes real per element,
 dominates both the node-cost and the real-bytes formula for this shape, so
-correcting the *list's* own 8-versus-24-byte gap collects the growing list
+correcting the *list's* own 8-versus-32-byte gap collects the growing list
 of them substantially more often, and the loop runs faster too (`/usr/bin/time`'s
 "real": about 8.0 s before, about 5.0 s after, for a full run of this
 shape). The empty-`String` shape, whose element is nearly all list

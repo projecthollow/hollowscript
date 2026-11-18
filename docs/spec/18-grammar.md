@@ -228,7 +228,7 @@ All binary operators are left-associative. Levels, lowest to highest: `or`; `and
 - **Restricted expressions.** In the condition of `if` and `while`, the scrutinee of `match` and the collection of `for`, a `recordLiteral` may not appear except where [section 3.8](03-expressions.md#38-list-map-and-record-literals) allows it (HS0110). A `{` there would otherwise begin the block.
 - **Generics.** `<` and `>` in an expression are always comparison operators. Type arguments are never written in expressions.
 - **Map or list.** In a `[` expression, the literal is a `mapLiteral` if the first expression is followed by `:`, and a `listLiteral` otherwise.
-- **Interpolation.** The expression inside `${` and `}` is an `expression` in the sense of this section, lexed as described in [section 1.5](01-lexical-structure.md#15-string-literals).
+- **Interpolation.** The expression inside `${` and `}` is an `expression` in the sense of this section, lexed as described in [section 1.5](01-lexical-structure.md#15-string-literals). Which `}` ends it is decided by the lexer's bracket count there, not by the parser, and a line terminator inside it is an ordinary one while a bracket is open (section 1.8 then applies as anywhere else: the `TERM` is discarded inside brackets and record braces and separates statements inside a block).
 
 ## 18.9 Syntax errors and recovery
 

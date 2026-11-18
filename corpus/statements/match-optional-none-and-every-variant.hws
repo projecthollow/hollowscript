@@ -1,0 +1,11 @@
+enum Shape { Circle(Int), Square(Int) }
+
+fn describe(shape: Shape?): String {
+    match shape {
+        none { return "nothing" }
+        Circle(r) { return "circle ${r}" }
+        Square(s) { return "square ${s}" }
+    }
+}
+
+return [describe(none), describe(Shape.Circle(1)), describe(Shape.Square(2))]

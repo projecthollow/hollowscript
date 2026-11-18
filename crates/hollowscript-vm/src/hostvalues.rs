@@ -370,7 +370,7 @@ impl<'a> HostCall<'a> {
     ///
     /// # Errors
     ///
-    /// Returns HS1099 if the heap's object count is exhausted.
+    /// Returns HS1015 if the heap cannot take another object.
     pub fn string(&mut self, text: impl Into<String>) -> Result<Value, Fault> {
         self.alloc(Object::Str(text.into()))
     }
@@ -379,7 +379,7 @@ impl<'a> HostCall<'a> {
     ///
     /// # Errors
     ///
-    /// Returns HS1099 if the heap's object count is exhausted.
+    /// Returns HS1015 if the heap cannot take another object.
     pub fn list(&mut self, items: Vec<Value>) -> Result<Value, Fault> {
         self.alloc(Object::List(items))
     }
@@ -392,8 +392,8 @@ impl<'a> HostCall<'a> {
     ///
     /// Returns HS1013 if two entries have the same key, which is not a
     /// question of order and so cannot be repaired here: the host has
-    /// described one map with two values for one key. Returns HS1099 if the
-    /// heap's object count is exhausted.
+    /// described one map with two values for one key. Returns HS1015 if the
+    /// heap cannot take another object.
     pub fn map(&mut self, mut entries: Vec<MapEntry>) -> Result<Value, Fault> {
         entries.sort_by(|a, b| self.heap.compare_keys(a.key, b.key));
         if entries
@@ -499,7 +499,7 @@ impl<'a> HostCall<'a> {
     fn alloc(&mut self, object: Object) -> Result<Value, Fault> {
         self.heap
             .alloc(object)
-            .map_err(|_| Fault::internal("the heap's object count is exhausted"))
+            .map_err(|_| Fault::implementation_limit(crate::interp::HEAP_FULL))
     }
 }
 

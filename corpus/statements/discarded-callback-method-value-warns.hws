@@ -1,0 +1,7 @@
+variable total = 0
+constant xs = [1, 2]
+xs.map(fn(n) {
+    total = total + n
+    return n
+})
+return total

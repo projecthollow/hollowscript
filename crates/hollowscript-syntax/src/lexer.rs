@@ -10,8 +10,9 @@
 //! String interpolation is lexed without recursion: entering `${` pushes a
 //! frame on an explicit stack and control returns to the main scan loop,
 //! which lexes the interpolation's expression as ordinary tokens (counting
-//! braces so that a record literal inside it does not close the
-//! interpolation early); the matching `}` pops the frame and resumes
+//! `(`, `[` and `{` so that a bracket opened inside it neither closes the
+//! interpolation early nor lets a line terminator end it, section 1.5); the
+//! matching `}` pops the frame and resumes
 //! scanning the string's text. This keeps the lexer's own native stack usage
 //! independent of how deeply strings and interpolations nest.
 
@@ -318,8 +319,17 @@ impl Lexer<'_> {
         let start = self.pos;
         self.pos += 2;
         while let Some(c) = self.peek_char() {
-            if c == '\n' || c == '\r' {
+            if c == '\n' || (c == '\r' && self.peek_char_at(1) == Some('\n')) {
                 break;
+            }
+            if c == '\r' {
+                // Not a line terminator (section 1.1): HS0005, and the
+                // comment goes on to the next real one.
+                self.push_diag(
+                    Code::HS0005,
+                    &[("char", &'\r')],
+                    Span::new(self.pos, self.pos + 1),
+                );
             }
             if is_rejected(c) {
                 let width = u32::try_from(c.len_utf8()).unwrap_or(1);
@@ -592,20 +602,18 @@ impl Lexer<'_> {
             // Section 1.2: an identifier is ASCII. A letter or digit that is
             // not is part of the name the author wrote, not the start of the
             // next token, so the whole word is taken as one malformed
-            // identifier and reported once. Splitting it instead would leave
-            // the ASCII prefix behind as a name nobody wrote: `café` would
-            // declare `caf`.
+            // identifier and each such code point is reported. Splitting it
+            // instead would leave the ASCII prefix behind as a name nobody
+            // wrote: `café` would declare `caf`.
             if c.is_alphanumeric() {
-                if !malformed {
-                    let width = u32::try_from(c.len_utf8()).unwrap_or(1);
-                    self.push_diag(
-                        Code::HS0005,
-                        &[("char", &c)],
-                        Span::new(self.pos, self.pos + width),
-                    );
-                    malformed = true;
-                }
-                self.pos += u32::try_from(c.len_utf8()).unwrap_or(1);
+                let width = u32::try_from(c.len_utf8()).unwrap_or(1);
+                self.push_diag(
+                    Code::HS0005,
+                    &[("char", &c)],
+                    Span::new(self.pos, self.pos + width),
+                );
+                malformed = true;
+                self.pos += width;
                 continue;
             }
             break;
@@ -903,6 +911,18 @@ mod tests {
     }
 
     #[test]
+    fn each_rejected_code_point_in_an_identifier_is_reported_once() {
+        // Section 1.9: HS0005 is reported once for each code point, and the
+        // word stays one malformed identifier token.
+        assert_eq!(codes("a\u{e9}\u{e8}"), vec![Code::HS0005, Code::HS0005]);
+        assert_eq!(
+            kinds("a\u{e9}\u{e8}"),
+            vec![TokenKind::Ident, TokenKind::Term, TokenKind::Eof]
+        );
+        assert_eq!(codes("na\u{ef}ve\u{e9}"), vec![Code::HS0005, Code::HS0005]);
+    }
+
+    #[test]
     fn future_keywords_are_still_tokens() {
         // `test`/`assert` are not in the Term-triggering set, so none is
         // inserted at EOF here.
@@ -1009,6 +1029,23 @@ mod tests {
     #[test]
     fn lone_cr_is_unrecognised() {
         assert_eq!(codes("a\rb"), vec![Code::HS0005]);
+    }
+
+    #[test]
+    fn a_lone_cr_in_a_comment_is_unrecognised_and_the_comment_continues() {
+        // Section 1.2: a comment runs to the next line terminator, and a CR
+        // not followed by LF is not one.
+        let source = Source::new(SourceId(0), "main.hws", "a // x\ry\nb").unwrap();
+        let out = lex(&source, &mut Control::none());
+        assert_eq!(out.comments.len(), 1);
+        assert_eq!(out.comments[0].span, hollowscript_core::Span::new(2, 8));
+        let codes: Vec<Code> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(codes, vec![Code::HS0005]);
+        // A CR LF still ends the comment.
+        assert_eq!(
+            kinds("// x\r\nb"),
+            vec![TokenKind::Ident, TokenKind::Term, TokenKind::Eof]
+        );
     }
 
     #[test]

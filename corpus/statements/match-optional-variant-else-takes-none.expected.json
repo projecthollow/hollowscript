@@ -1,0 +1,15 @@
+{
+  "title": "else covers the none of an optional enum scrutinee when only variant arms are written",
+  "spec": "7.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"other\"), String(\"circle 1\"), String(\"other\")]"
+  }
+}

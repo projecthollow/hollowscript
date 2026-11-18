@@ -1,0 +1,17 @@
+{
+  "title": "Discarding the value of a library call warns, because the library call itself has no effect",
+  "spec": "17.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 2,
+      "code": "HS0804"
+    }
+  ],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(1)"
+  }
+}

@@ -125,6 +125,8 @@ andThen<U>(next: fn(T): Result<U, E>): Result<U, E>
 - `mapError(f)` applies `f` to the `Err` payload and wraps the result in `Err`; an `Ok` is returned unchanged.
 - `andThen(f)` applies `f` to the `Ok` payload and returns its `Result` as the result; an `Err` is returned unchanged.
 
+A callback of `map`, `mapError` or `andThen` that returns nothing (a closure with no `return e`, or a function value whose type has no return type) gives the method no value to wrap or return, and is HS0301.
+
 Each of these has cost 1 plus the cost of the callback ([section 11.3](11-resource-limits.md#113-steps)).
 
 ```hollow

@@ -1,0 +1,15 @@
+{
+  "title": "A closure returning X where a generic fn expects U? or [U]? binds U and is accepted",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(true), Bool(true)]"
+  }
+}

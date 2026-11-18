@@ -1,6 +1,6 @@
 # The HollowScript language specification
 
-**Version 1.1.1**
+**Version 1.2.0**
 
 HollowScript is a small, statically typed, embeddable programming language with capability-based security, in the class of Lua. This is its normative specification. It is written to be implemented independently: two implementations built from it alone, and checked against the shared conformance corpus ([Chapter 19](19-conformance.md)), behave identically on every program, except in the last binary digit of the results of the functions to which [section 13.2](13-stdlib-core.md#132-numbers) gives a tolerance.
 

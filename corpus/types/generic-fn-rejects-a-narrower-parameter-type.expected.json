@@ -1,0 +1,42 @@
+{
+  "title": "A generic call holds every argument to its substituted parameter type, so a narrower function or list is HS0301",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 12,
+      "code": "HS0301",
+      "contains": "Expected fn(Int?): Bool, found fn(Int): Bool"
+    },
+    {
+      "severity": "error",
+      "line": 18,
+      "code": "HS0301",
+      "contains": "Expected [Int?], found [Int]"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 12,
+        "code": "HS0301",
+        "contains": "Expected fn(Int?): Bool, found fn(Int): Bool"
+      },
+      {
+        "severity": "error",
+        "line": 18,
+        "code": "HS0301",
+        "contains": "Expected [Int?], found [Int]"
+      }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "title": "A capability call that returns nothing cannot be used as a value",
+  "spec": "3.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0345"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0345"
+      }
+    ]
+  }
+}

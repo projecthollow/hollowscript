@@ -1,0 +1,15 @@
+{
+  "title": "A field path narrows through an optional field that is itself narrowed",
+  "spec": "4.8",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"flat 2B\"), String(\"flat 2B\"), String(\"2B\"), String(\"no flat\"), String(\"no flat\"), String(\"no flat\")]"
+  }
+}

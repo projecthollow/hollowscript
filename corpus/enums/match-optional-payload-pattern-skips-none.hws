@@ -1,0 +1,12 @@
+enum Shape { Circle(Int), Square(Int) }
+
+enum Slot { Holds(Shape?), Empty }
+
+fn describe(slot: Slot): String {
+    match slot {
+        Holds(Circle(r)) { return "circle ${r}" }
+        else { return "other" }
+    }
+}
+
+return [describe(Slot.Holds(none)), describe(Slot.Holds(Shape.Circle(1))), describe(Slot.Empty)]

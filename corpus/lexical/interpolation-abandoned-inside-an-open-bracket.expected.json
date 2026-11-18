@@ -1,0 +1,40 @@
+{
+  "title": "An interpolation abandoned at a line terminator leaves the enclosing interpolation, which has a bracket open, running",
+  "spec": "1.5",
+  "parse": [
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 7
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 7
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 7
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 7
+      }
+    ]
+  }
+}

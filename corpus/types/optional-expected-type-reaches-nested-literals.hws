@@ -1,0 +1,17 @@
+record Address = { street: String, flat: String? }
+
+record Customer = { name: String, address: Address? }
+
+fn describe(customer: Customer): String {
+    if customer.address != none {
+        return "${customer.name} at ${customer.address.street}"
+    }
+    return customer.name
+}
+
+constant homes: [Address?] = [{ street: "1 Park", flat: "2" }, none]
+
+return [
+    describe({ name: "Priya", address: { street: "4 Mill Lane", flat: "2B" } }),
+    "${homes.length()}"
+]

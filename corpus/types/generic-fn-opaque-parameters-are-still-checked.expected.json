@@ -1,0 +1,66 @@
+{
+  "title": "A generic body's own type parameters are opaque and distinct from each other and from concrete types",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0301",
+      "contains": "Expected B, found A"
+    },
+    {
+      "severity": "error",
+      "line": 11,
+      "code": "HS0301",
+      "contains": "Expected T, found Int"
+    },
+    {
+      "severity": "error",
+      "line": 19,
+      "code": "HS0301",
+      "contains": "Expected Int, found T"
+    },
+    {
+      "severity": "error",
+      "line": 23,
+      "code": "HS0301",
+      "contains": "Expected A, found B"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0301",
+        "contains": "Expected B, found A"
+      },
+      {
+        "severity": "error",
+        "line": 11,
+        "code": "HS0301",
+        "contains": "Expected T, found Int"
+      },
+      {
+        "severity": "error",
+        "line": 19,
+        "code": "HS0301",
+        "contains": "Expected Int, found T"
+      },
+      {
+        "severity": "error",
+        "line": 23,
+        "code": "HS0301",
+        "contains": "Expected A, found B"
+      }
+    ]
+  }
+}

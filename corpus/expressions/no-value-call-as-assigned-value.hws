@@ -1,0 +1,7 @@
+fn f() {
+    return
+}
+
+variable v = 1
+v = f()
+return v

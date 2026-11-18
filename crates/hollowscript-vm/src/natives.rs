@@ -245,28 +245,6 @@ fn list_of_strings_memory(count: u64, total_bytes: u64) -> u64 {
         .saturating_add(total_bytes)
 }
 
-/// The number of lines `split_lines` would return for `text`, and the total
-/// bytes they would hold between them, worked out without building any of
-/// them.
-fn lines_stats(text: &str) -> (u64, u64) {
-    if text.is_empty() {
-        return (0, 0);
-    }
-    let body = text.strip_suffix('\n').unwrap_or(text);
-    let body = body.strip_suffix('\r').unwrap_or(body);
-    if body.is_empty() {
-        return (1, 0);
-    }
-    let mut count = 0u64;
-    let mut bytes = 0u64;
-    for line in body.split('\n') {
-        let line = line.strip_suffix('\r').unwrap_or(line);
-        count += 1;
-        bytes += line.len() as u64;
-    }
-    (count, bytes)
-}
-
 impl Interpreter {
     /// Calls the roster entry at `position` with `args` (the receiver first
     /// for a method), charging its cost as section 13.1 states.
@@ -487,9 +465,12 @@ impl Interpreter {
                     .charge_memory(16u64.saturating_add(length_u64.saturating_mul(8)), limits)?;
                 let count = usize::try_from(length)
                     .map_err(|_| Fault::internal("a range longer than this host can hold"))?;
-                let items = (0..count)
-                    .map(|i| Value::Int(start.wrapping_add(i64::try_from(i).unwrap_or(i64::MAX))))
-                    .collect();
+                // The charge above is the language's count; the machine may
+                // still not have room for the 32 bytes a `Value` really is
+                // (`crate::alloc`), and that is HS1015, not a trap.
+                let items = crate::alloc::collect((0..count).map(|i| {
+                    Value::Int(start.wrapping_add(i64::try_from(i).unwrap_or(i64::MAX)))
+                }))?;
                 self.alloc_object(Object::List(items))
             }
 
@@ -647,18 +628,14 @@ impl Interpreter {
                 // enough to fault the run never gets as far as being built.
                 let len = crate::json::write_len(&json, if pretty { Some(indent) } else { None });
                 charge_n(counters, limits, control, len)?;
-                self.alloc_sized_string(
-                    len,
-                    || {
-                        if pretty {
-                            crate::json::pretty(&json, indent)
-                        } else {
-                            crate::json::stringify(&json)
-                        }
-                    },
-                    counters,
-                    limits,
-                )
+                // `try_pretty` and `try_stringify` reserve the exact size once.
+                counters.charge_memory(len.saturating_add(16), limits)?;
+                let text = if pretty {
+                    crate::json::try_pretty(&json, indent)?
+                } else {
+                    crate::json::try_stringify(&json)?
+                };
+                self.alloc_object(Object::Str(text))
             }
             "json.field" | "json.at" => {
                 charge_one(counters, limits, control)?;
@@ -983,18 +960,110 @@ impl Interpreter {
             .unwrap_or_else(|index| index)
     }
 
-    /// Allocates a string whose size is charged before it is built, for the
-    /// functions whose result can be astronomically larger than their input
-    /// (`repeat`, `padStart`, `padEnd`, `join`).
-    fn alloc_sized_string(
-        &mut self,
+    /// Sorts `items` stably by key and folds each run of equal keys into one
+    /// with `keep(first, last)`, in place: what `mapFrom` and `set` build
+    /// from a list in any order.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::alloc::OutOfMemory`] if the host cannot give the standard
+    /// library's sort its scratch buffer (see `list.sort`).
+    fn sort_and_dedupe<T: Copy>(
+        &self,
+        items: &mut Vec<T>,
+        key: impl Fn(&T) -> MapKey,
+        keep: impl Fn(T, T) -> T,
+    ) -> Result<(), crate::alloc::OutOfMemory> {
+        crate::alloc::probe(items.len().saturating_mul(size_of::<T>()))?;
+        items.sort_by(|a, b| self.heap.compare_keys(key(a), key(b)));
+        let mut kept = 0;
+        let mut start = 0;
+        while let Some(first) = items.get(start).copied() {
+            let mut end = start + 1;
+            while items
+                .get(end)
+                .is_some_and(|next| self.heap.keys_equal(key(next), key(&first)))
+            {
+                end += 1;
+            }
+            let last = items.get(end - 1).copied().unwrap_or(first);
+            if let Some(slot) = items.get_mut(kept) {
+                *slot = keep(first, last);
+            }
+            kept += 1;
+            start = end;
+        }
+        items.truncate(kept);
+        Ok(())
+    }
+
+    /// How many keys two sorted lists have in common, in one walk of both.
+    fn common_keys<T>(&self, mine: &[T], theirs: &[T], key: impl Fn(&T) -> MapKey) -> usize {
+        let (mut i, mut j, mut common) = (0, 0, 0);
+        while let (Some(a), Some(b)) = (mine.get(i), theirs.get(j)) {
+            match self.heap.compare_keys(key(a), key(b)) {
+                std::cmp::Ordering::Less => i += 1,
+                std::cmp::Ordering::Greater => j += 1,
+                std::cmp::Ordering::Equal => {
+                    common += 1;
+                    i += 1;
+                    j += 1;
+                }
+            }
+        }
+        common
+    }
+
+    /// Merges two sorted lists into `out`, keeping one of each key both
+    /// have: `theirs` when `prefer_theirs` (a map's `merge`, where the later
+    /// entry wins), `mine` otherwise. `out` is expected to have room already
+    /// (see [`Interpreter::common_keys`]), so nothing here allocates.
+    fn merge_sorted<T: Copy>(
+        &self,
+        mine: &[T],
+        theirs: &[T],
+        key: impl Fn(&T) -> MapKey,
+        prefer_theirs: bool,
+        out: &mut Vec<T>,
+    ) {
+        let (mut i, mut j) = (0, 0);
+        while let (Some(a), Some(b)) = (mine.get(i), theirs.get(j)) {
+            match self.heap.compare_keys(key(a), key(b)) {
+                std::cmp::Ordering::Less => {
+                    out.push(*a);
+                    i += 1;
+                }
+                std::cmp::Ordering::Greater => {
+                    out.push(*b);
+                    j += 1;
+                }
+                std::cmp::Ordering::Equal => {
+                    out.push(if prefer_theirs { *b } else { *a });
+                    i += 1;
+                    j += 1;
+                }
+            }
+        }
+        out.extend_from_slice(mine.get(i..).unwrap_or(&[]));
+        out.extend_from_slice(theirs.get(j..).unwrap_or(&[]));
+    }
+
+    /// An empty string with room for exactly `bytes`, after charging that
+    /// size (and the object's header) to the memory counter, for every
+    /// string function whose result's size is known, or worked out, before
+    /// it is built (`repeat`, `padStart`, `join`, `replace`, `toUpper`,
+    /// `substring`, `trim` and the rest). The charge comes first, so the
+    /// language's limit (HS1002) is what stops an absurd request; the
+    /// allocation is fallible, so a request the machine cannot meet is
+    /// HS1015 and not an abort (`crate::alloc`).
+    fn sized_string(
         bytes: u64,
-        build: impl FnOnce() -> String,
         counters: &mut RunCounters,
         limits: &Limits,
-    ) -> Result<Value, Fault> {
+    ) -> Result<String, Fault> {
         counters.charge_memory(bytes.saturating_add(16), limits)?;
-        self.alloc_object(Object::Str(build()))
+        let capacity = usize::try_from(bytes).map_err(|_| crate::alloc::OutOfMemory)?;
+        Ok(crate::alloc::string_with_capacity(capacity)?)
     }
 
     /// The library functions of chapters 8 and 14: lists, maps, sets, strings
@@ -1039,7 +1108,6 @@ impl Interpreter {
                     .unwrap_or(Value::None))
             }
             "list.contains" | "list.indexOf" => {
-                let items = want_list(&self.heap, receiver)?.to_vec();
                 let wanted = arg(args, 1)?;
                 // Section 14.1: the charge is N x (1 + t), so that it covers
                 // the comparisons whatever their result. Bounded by the
@@ -1050,7 +1118,8 @@ impl Interpreter {
                 let tree = self
                     .heap
                     .tree_size_bounded(wanted, limits.max_steps.saturating_mul(64));
-                let n = (items.len() as u64).saturating_mul(1u64.saturating_add(tree));
+                let length = want_list(&self.heap, receiver)?.len() as u64;
+                let n = length.saturating_mul(1u64.saturating_add(tree));
                 charge_n(counters, limits, control, n)?;
                 // Each element is compared with its own walk, which pays for
                 // any pairs past what `tree` bytes account for (see
@@ -1058,7 +1127,7 @@ impl Interpreter {
                 // neither exponential nor out of the step limit's reach.
                 let allowance = tree / 8 + 1;
                 let mut found = None;
-                for (index, &item) in items.iter().enumerate() {
+                for (index, &item) in want_list(&self.heap, receiver)?.iter().enumerate() {
                     if self.values_equal(item, wanted, allowance, counters, limits, control)? {
                         found = Some(index);
                         break;
@@ -1079,7 +1148,7 @@ impl Interpreter {
                 charge_n(counters, limits, control, length as u64)?;
                 let appended = arg(args, 1)?;
                 counters.charge_memory(8, limits)?;
-                if append_in_place && self.heap.append_list_in_place(h, appended) {
+                if append_in_place && self.heap.append_list_in_place(h, appended)? {
                     return Ok(Value::Heap(h));
                 }
                 let items = want_list(&self.heap, receiver)?;
@@ -1089,8 +1158,7 @@ impl Interpreter {
                 // capacity for the copy and then grow again (a second copy
                 // of every element) the moment `push` found no room for the
                 // one it adds.
-                let mut out = Vec::with_capacity(items.len() + 1);
-                out.extend_from_slice(items);
+                let mut out = crate::alloc::copy_of(items, 1)?;
                 out.push(appended);
                 self.alloc_object(Object::List(out))
             }
@@ -1103,8 +1171,7 @@ impl Interpreter {
                 // One allocation sized for both halves, rather than cloning
                 // `items` at its own length and then growing it again for
                 // `other` (see `list.append`'s own comment above).
-                let mut out = Vec::with_capacity(items.len() + other.len());
-                out.extend_from_slice(items);
+                let mut out = crate::alloc::copy_of(items, other.len())?;
                 out.extend_from_slice(other);
                 self.alloc_object(Object::List(out))
             }
@@ -1119,23 +1186,25 @@ impl Interpreter {
                     "list.take" => (0, clamp_position(want_int(arg(args, 1)?)?, length)),
                     _ => (clamp_position(want_int(arg(args, 1)?)?, length), length),
                 };
-                let out: Vec<Value> = if start >= up_to {
-                    Vec::new()
-                } else {
-                    items.get(start..up_to).unwrap_or(&[]).to_vec()
-                };
-                charge_n(counters, limits, control, out.len() as u64)?;
-                self.alloc_charged(Object::List(out), counters, limits)
+                let count = up_to.saturating_sub(start);
+                charge_n(counters, limits, control, count as u64)?;
+                let paid = Heap::list_node_cost(count);
+                counters.charge_memory(paid, limits)?;
+                let items = want_list(&self.heap, receiver)?;
+                let out = crate::alloc::copy_of(items.get(start..start + count).unwrap_or(&[]), 0)?;
+                self.alloc_paid(Object::List(out), paid)
             }
             "list.reverse" => {
                 let items = want_list(&self.heap, receiver)?;
                 charge_n(counters, limits, control, items.len() as u64)?;
-                let out: Vec<Value> = items.iter().rev().copied().collect();
-                self.alloc_charged(Object::List(out), counters, limits)
+                let paid = Heap::list_node_cost(items.len());
+                counters.charge_memory(paid, limits)?;
+                let out: Vec<Value> = crate::alloc::collect(items.iter().rev().copied())?;
+                self.alloc_paid(Object::List(out), paid)
             }
             "list.sort" => {
-                let items = want_list(&self.heap, receiver)?.to_vec();
-                let n = items.len() as u64;
+                let length = want_list(&self.heap, receiver)?.len();
+                let n = length as u64;
                 // Section 14.1: sorting is charged for N * ceil(log2(N + 1))
                 // element steps.
                 charge_n(
@@ -1144,7 +1213,16 @@ impl Interpreter {
                     control,
                     n.saturating_mul(ceil_log2(n.saturating_add(1))),
                 )?;
-                let mut out = items;
+                let paid = Heap::list_node_cost(length);
+                counters.charge_memory(paid, limits)?;
+                let mut out = crate::alloc::copy_of(want_list(&self.heap, receiver)?, 0)?;
+                // The standard library's stable sort takes a buffer of its own
+                // and aborts if it cannot have it. How large is an internal
+                // detail (driftsort asks for at most `len` elements, and for
+                // all of them below a few hundred thousand), so check that
+                // there is room for the most it could ask for: a whole second
+                // copy.
+                crate::alloc::probe(length.saturating_mul(size_of::<Value>()))?;
                 // A stable sort, as section 14.1 requires, over the natural
                 // order of `Int`, `Float` and `String`.
                 let mut failure = None;
@@ -1157,16 +1235,16 @@ impl Interpreter {
                 if let Some(fault) = failure {
                     return Err(fault);
                 }
-                self.alloc_charged(Object::List(out), counters, limits)
+                self.alloc_paid(Object::List(out), paid)
             }
             "list.join" => {
-                let items = want_list(&self.heap, receiver)?.to_vec();
-                let separator = want_str(&self.heap, arg(args, 1)?)?.to_owned();
+                let items = want_list(&self.heap, receiver)?;
+                let separator = want_str(&self.heap, arg(args, 1)?)?;
                 // Sizes are read from the heap without copying any piece: a
                 // call that turns out to be over budget must not pay for
                 // copies it will never use.
                 let mut bytes: u64 = 0;
-                for item in &items {
+                for item in items {
                     bytes = bytes.saturating_add(want_str(&self.heap, *item)?.len() as u64);
                 }
                 bytes = bytes.saturating_add(
@@ -1177,11 +1255,17 @@ impl Interpreter {
                 // and the separator are empty.
                 let n = bytes.max(items.len() as u64);
                 charge_n(counters, limits, control, n)?;
-                let mut pieces = Vec::with_capacity(items.len());
-                for item in items {
-                    pieces.push(want_str(&self.heap, item)?.to_owned());
+                // Charged above, so `bytes` is known: the text is built piece
+                // by piece into one buffer of exactly that size, with no
+                // second copy of every piece.
+                let mut joined = Self::sized_string(bytes, counters, limits)?;
+                for (index, item) in items.iter().enumerate() {
+                    if index > 0 {
+                        joined.push_str(separator);
+                    }
+                    joined.push_str(want_str(&self.heap, *item)?);
                 }
-                self.alloc_sized_string(bytes, || pieces.join(&separator), counters, limits)
+                self.alloc_object(Object::Str(joined))
             }
 
             // -- Section 14.2, maps. --
@@ -1212,25 +1296,24 @@ impl Interpreter {
                 let entries = want_map(&self.heap, receiver)?;
                 charge_n(counters, limits, control, entries.len() as u64)?;
                 if let Some(index) = self.find_entry(entries, key) {
-                    let mut out = entries.to_vec();
+                    let mut out = crate::alloc::copy_of(entries, 0)?;
                     if let Some(entry) = out.get_mut(index) {
                         entry.value = value;
                     }
                     self.alloc_object(Object::Map(out))
                 } else {
+                    // Section 11.4 charges `with` for what it adds.
+                    counters.charge_memory(24, limits)?;
                     // Sized for the one new entry up front, so the copy of
                     // `entries` this needs is the only one: `to_vec()` then
                     // `insert` would grow (and so copy every entry again)
                     // the moment `insert` found no spare capacity, as
                     // `list.append`'s own comment above explains.
-                    let mut out = Vec::with_capacity(entries.len() + 1);
-                    out.extend_from_slice(entries);
+                    let mut out = crate::alloc::copy_of(entries, 1)?;
                     let place = out
                         .binary_search_by(|entry| self.heap.compare_keys(entry.key, key))
                         .unwrap_or_else(|index| index);
                     out.insert(place, MapEntry { key, value });
-                    // Section 11.4 charges `with` for what it adds.
-                    counters.charge_memory(24, limits)?;
                     self.alloc_object(Object::Map(out))
                 }
             }
@@ -1238,70 +1321,82 @@ impl Interpreter {
                 let key = self.to_map_key(arg(args, 1)?)?;
                 let entries = want_map(&self.heap, receiver)?;
                 charge_n(counters, limits, control, entries.len() as u64)?;
-                let mut out = entries.to_vec();
-                if let Some(index) = self.find_entry(entries, key) {
+                let found = self.find_entry(entries, key);
+                let paid = Heap::map_node_cost(entries.len() - usize::from(found.is_some()));
+                counters.charge_memory(paid, limits)?;
+                let mut out = crate::alloc::copy_of(want_map(&self.heap, receiver)?, 0)?;
+                if let Some(index) = found {
                     out.remove(index);
                 }
-                self.alloc_charged(Object::Map(out), counters, limits)
+                self.alloc_paid(Object::Map(out), paid)
             }
             "map.merge" => {
-                let mine = want_map(&self.heap, receiver)?.to_vec();
-                let theirs = want_map(&self.heap, arg(args, 1)?)?.to_vec();
+                let mine = want_map(&self.heap, receiver)?;
+                let theirs = want_map(&self.heap, arg(args, 1)?)?;
                 charge_n(
                     counters,
                     limits,
                     control,
                     (mine.len() + theirs.len()) as u64,
                 )?;
-                // Capacity for the worst case (no key in common) up front,
-                // rather than letting the loop below grow `out` (and so
-                // copy it) again each time `theirs` overflows its capacity.
-                let mut out = mine;
-                out.reserve_exact(theirs.len());
-                for entry in theirs {
-                    match out.binary_search_by(|e| self.heap.compare_keys(e.key, entry.key)) {
-                        Ok(index) => {
-                            if let Some(slot) = out.get_mut(index) {
-                                *slot = entry;
-                            }
-                        }
-                        Err(index) => out.insert(index, entry),
-                    }
-                }
-                self.alloc_charged(Object::Map(out), counters, limits)
+                // The answer's size is worked out first, then charged, then
+                // the two sorted lists are merged into one buffer of exactly
+                // that size. On a key both have, `theirs` wins.
+                let common = self.common_keys(mine, theirs, |e| e.key);
+                let length = mine.len() + theirs.len() - common;
+                let paid = Heap::map_node_cost(length);
+                counters.charge_memory(paid, limits)?;
+                let mut out = crate::alloc::vec_with_capacity(length)?;
+                self.merge_sorted(mine, theirs, |e| e.key, true, &mut out);
+                self.alloc_paid(Object::Map(out), paid)
             }
             "map.keys" | "map.values" => {
                 let entries = want_map(&self.heap, receiver)?;
                 charge_n(counters, limits, control, entries.len() as u64)?;
+                let paid = Heap::list_node_cost(entries.len());
+                counters.charge_memory(paid, limits)?;
                 let out: Vec<Value> = if name == "map.keys" {
-                    entries.iter().map(|e| key_as_value(e.key)).collect()
+                    crate::alloc::collect(entries.iter().map(|e| key_as_value(e.key)))?
                 } else {
-                    entries.iter().map(|e| e.value).collect()
+                    crate::alloc::collect(entries.iter().map(|e| e.value))?
                 };
-                self.alloc_charged(Object::List(out), counters, limits)
+                self.alloc_paid(Object::List(out), paid)
             }
             "map.entries" => {
-                let entries = want_map(&self.heap, receiver)?.to_vec();
-                charge_n(counters, limits, control, entries.len() as u64)?;
-                let mut out = Vec::with_capacity(entries.len());
+                let length = want_map(&self.heap, receiver)?.len();
+                charge_n(counters, limits, control, length as u64)?;
+                // The list and every two-field `MapEntry` record in it.
+                let record = Heap::list_node_cost(2);
+                let paid = Heap::list_node_cost(length);
+                counters.charge_memory(
+                    paid.saturating_add(record.saturating_mul(length as u64)),
+                    limits,
+                )?;
+                let entries = crate::alloc::copy_of(want_map(&self.heap, receiver)?, 0)?;
+                let mut out = crate::alloc::vec_with_capacity(length)?;
                 for entry in entries {
-                    let record = self.alloc_charged(
+                    let fields = vec![key_as_value(entry.key), entry.value];
+                    out.push(self.alloc_paid(
                         Object::Record {
                             shape: Vec::new(),
-                            fields: vec![key_as_value(entry.key), entry.value],
+                            fields,
                         },
-                        counters,
-                        limits,
-                    )?;
-                    out.push(record);
+                        record,
+                    )?);
                 }
-                self.alloc_charged(Object::List(out), counters, limits)
+                self.alloc_paid(Object::List(out), paid)
             }
             "mapFrom" => {
-                let items = want_list(&self.heap, receiver)?.to_vec();
+                let items = want_list(&self.heap, receiver)?;
                 charge_n(counters, limits, control, items.len() as u64)?;
-                let mut out: Vec<MapEntry> = Vec::new();
-                for item in items {
+                // Every entry is read into one buffer of exactly `n`, sorted
+                // stably and then deduplicated in place: O(n log n), where
+                // inserting into a sorted list was O(n^2) for keys that
+                // arrive in descending order. The answer's size is known
+                // once duplicates are gone, and is charged then, before the
+                // heap allocation.
+                let mut out: Vec<MapEntry> = crate::alloc::vec_with_capacity(items.len())?;
+                for &item in items {
                     let Value::Heap(h) = item else {
                         return Err(Fault::internal("mapFrom needs a list of MapEntry"));
                     };
@@ -1316,34 +1411,42 @@ impl Interpreter {
                         ),
                         _ => return Err(Fault::internal("mapFrom needs a list of MapEntry")),
                     };
-                    let key = self.to_map_key(key)?;
-                    match out.binary_search_by(|e| self.heap.compare_keys(e.key, key)) {
-                        // "if a key occurs more than once, the later entry wins"
-                        Ok(index) => {
-                            if let Some(slot) = out.get_mut(index) {
-                                slot.value = value;
-                            }
-                        }
-                        Err(index) => out.insert(index, MapEntry { key, value }),
-                    }
+                    out.push(MapEntry {
+                        key: self.to_map_key(key)?,
+                        value,
+                    });
                 }
-                self.alloc_charged(Object::Map(out), counters, limits)
+                // "if a key occurs more than once, the later entry wins": a
+                // stable sort keeps equal keys in their order, so the last
+                // of each run is the later entry. The first's key is kept, as
+                // inserting did.
+                self.sort_and_dedupe(
+                    &mut out,
+                    |e| e.key,
+                    |first, last| MapEntry {
+                        key: first.key,
+                        value: last.value,
+                    },
+                )?;
+                let paid = Heap::map_node_cost(out.len());
+                counters.charge_memory(paid, limits)?;
+                self.alloc_paid(Object::Map(out), paid)
             }
 
             // -- Section 14.3, sets. --
             "set" => {
-                let items = want_list(&self.heap, receiver)?.to_vec();
+                let items = want_list(&self.heap, receiver)?;
                 charge_n(counters, limits, control, items.len() as u64)?;
-                let mut out: Vec<MapKey> = Vec::new();
-                for item in items {
-                    let key = self.to_map_key(item)?;
-                    if let Err(index) =
-                        out.binary_search_by(|element| self.heap.compare_keys(*element, key))
-                    {
-                        out.insert(index, key);
-                    }
+                // As for `mapFrom`: one buffer of `n`, sorted and
+                // deduplicated, keeping the first of equal elements.
+                let mut out: Vec<MapKey> = crate::alloc::vec_with_capacity(items.len())?;
+                for &item in items {
+                    out.push(self.to_map_key(item)?);
                 }
-                self.alloc_charged(Object::Set(out), counters, limits)
+                self.sort_and_dedupe(&mut out, |&key| key, |first, _| first)?;
+                let paid = Heap::set_node_cost(out.len());
+                counters.charge_memory(paid, limits)?;
+                self.alloc_paid(Object::Set(out), paid)
             }
             "set.length" => {
                 charge_one(counters, limits, control)?;
@@ -1365,17 +1468,16 @@ impl Interpreter {
                 let items = want_set(&self.heap, receiver)?;
                 charge_n(counters, limits, control, items.len() as u64)?;
                 if self.find_element(items, key).is_some() {
-                    self.alloc_object(Object::Set(items.to_vec()))
+                    self.alloc_object(Object::Set(crate::alloc::copy_of(items, 0)?))
                 } else {
+                    // Section 11.4 charges `with` for what it adds.
+                    counters.charge_memory(16, limits)?;
                     // Sized for the one new element up front, so the copy
                     // of `items` this needs is the only one (see
                     // `list.append`'s own comment above).
-                    let mut out = Vec::with_capacity(items.len() + 1);
-                    out.extend_from_slice(items);
+                    let mut out = crate::alloc::copy_of(want_set(&self.heap, receiver)?, 1)?;
                     let place = self.place_of(&out, key);
                     out.insert(place, key);
-                    // Section 11.4 charges `with` for what it adds.
-                    counters.charge_memory(16, limits)?;
                     self.alloc_object(Object::Set(out))
                 }
             }
@@ -1383,65 +1485,56 @@ impl Interpreter {
                 let key = self.to_map_key(arg(args, 1)?)?;
                 let items = want_set(&self.heap, receiver)?;
                 charge_n(counters, limits, control, items.len() as u64)?;
-                let mut out = items.to_vec();
-                if let Some(index) = self.find_element(&out, key) {
+                let found = self.find_element(items, key);
+                let paid = Heap::set_node_cost(items.len() - usize::from(found.is_some()));
+                counters.charge_memory(paid, limits)?;
+                let mut out = crate::alloc::copy_of(want_set(&self.heap, receiver)?, 0)?;
+                if let Some(index) = found {
                     out.remove(index);
                 }
-                self.alloc_charged(Object::Set(out), counters, limits)
+                self.alloc_paid(Object::Set(out), paid)
             }
             "set.union" | "set.intersect" | "set.difference" | "set.isSubsetOf" => {
-                let mine = want_set(&self.heap, receiver)?.to_vec();
-                let theirs = want_set(&self.heap, arg(args, 1)?)?.to_vec();
+                let mine = want_set(&self.heap, receiver)?;
+                let theirs = want_set(&self.heap, arg(args, 1)?)?;
                 charge_n(
                     counters,
                     limits,
                     control,
                     (mine.len() + theirs.len()) as u64,
                 )?;
-                let in_theirs =
-                    |me: &Interpreter, key: MapKey| me.find_element(&theirs, key).is_some();
-                match name {
-                    "set.isSubsetOf" => {
-                        Ok(Value::Bool(mine.iter().all(|&key| in_theirs(self, key))))
-                    }
-                    "set.intersect" => {
-                        let out: Vec<MapKey> = mine
-                            .iter()
+                // Both are sorted, so one walk counts what they share, which
+                // gives the answer's exact size before any of it is built.
+                let common = self.common_keys(mine, theirs, |&key| key);
+                let length = match name {
+                    "set.isSubsetOf" => return Ok(Value::Bool(common == mine.len())),
+                    "set.union" => mine.len() + theirs.len() - common,
+                    "set.intersect" => common,
+                    _ => mine.len() - common,
+                };
+                let paid = Heap::set_node_cost(length);
+                counters.charge_memory(paid, limits)?;
+                let mut out = crate::alloc::vec_with_capacity(length)?;
+                if name == "set.union" {
+                    self.merge_sorted(mine, theirs, |&key| key, false, &mut out);
+                } else {
+                    let keep = name == "set.intersect";
+                    out.extend(
+                        mine.iter()
                             .copied()
-                            .filter(|&key| in_theirs(self, key))
-                            .collect();
-                        self.alloc_charged(Object::Set(out), counters, limits)
-                    }
-                    "set.difference" => {
-                        let out: Vec<MapKey> = mine
-                            .iter()
-                            .copied()
-                            .filter(|&key| !in_theirs(self, key))
-                            .collect();
-                        self.alloc_charged(Object::Set(out), counters, limits)
-                    }
-                    _ => {
-                        // Capacity for the worst case (nothing in common)
-                        // up front, rather than growing (and so copying)
-                        // `out` again partway through the loop below.
-                        let mut out = mine;
-                        out.reserve_exact(theirs.len());
-                        for key in theirs {
-                            if let Err(index) = out
-                                .binary_search_by(|element| self.heap.compare_keys(*element, key))
-                            {
-                                out.insert(index, key);
-                            }
-                        }
-                        self.alloc_charged(Object::Set(out), counters, limits)
-                    }
+                            .filter(|&key| self.find_element(theirs, key).is_some() == keep),
+                    );
                 }
+                self.alloc_paid(Object::Set(out), paid)
             }
             "set.toList" => {
                 let items = want_set(&self.heap, receiver)?;
                 charge_n(counters, limits, control, items.len() as u64)?;
-                let out: Vec<Value> = items.iter().map(|&key| key_as_value(key)).collect();
-                self.alloc_charged(Object::List(out), counters, limits)
+                let paid = Heap::list_node_cost(items.len());
+                counters.charge_memory(paid, limits)?;
+                let out: Vec<Value> =
+                    crate::alloc::collect(items.iter().map(|&key| key_as_value(key)))?;
+                self.alloc_paid(Object::List(out), paid)
             }
 
             // -- Section 8.4, Result. --
@@ -1519,10 +1612,7 @@ impl Interpreter {
     ) -> Result<Value, Fault> {
         // The receiver is borrowed, not copied: most methods only read it,
         // and charging before copying means a call that turns out to be
-        // over budget never pays for a copy it will not use. Only `repeat`,
-        // `padStart` and `padEnd` need an owned copy, because their result
-        // is built by a closure that must be free of `self` so it can run
-        // after `alloc_sized_string` has charged the memory it will take.
+        // over budget never pays for a copy it will not use.
         let text = want_str(&self.heap, arg(args, 0)?)?;
         let bytes = text.len() as u64;
         match name {
@@ -1560,7 +1650,7 @@ impl Interpreter {
                 // a long string into single code points multiplies it many
                 // times over in per-object overhead alone.
                 counters.charge_memory(list_of_strings_memory(count, bytes), limits)?;
-                let pieces: Vec<String> = text.chars().map(|c| c.to_string()).collect();
+                let pieces = owned_pieces(count, code_points(text))?;
                 self.alloc_owned_string_list(pieces)
             }
             "string.contains" | "string.indexOf" => {
@@ -1594,22 +1684,39 @@ impl Interpreter {
                 let start = clamp_position(want_int(arg(args, 1)?)?, length);
                 let up_to = clamp_position(want_int(arg(args, 2)?)?, length);
                 let piece = if start >= up_to {
-                    String::new()
+                    ""
                 } else {
-                    let from = byte_of_char(text, start);
-                    let to = byte_of_char(text, up_to);
-                    text.get(from..to).unwrap_or("").to_owned()
+                    text.get(byte_of_char(text, start)..byte_of_char(text, up_to))
+                        .unwrap_or("")
                 };
-                self.alloc_string_charged(piece, counters, limits)
+                let mut out = Self::sized_string(piece.len() as u64, counters, limits)?;
+                out.push_str(piece);
+                self.alloc_object(Object::Str(out))
             }
             "string.toUpper" | "string.toLower" => {
                 charge_n(counters, limits, control, bytes)?;
-                let converted = if name == "string.toUpper" {
-                    text.to_uppercase()
+                // Section 11.4: the exact size is worked out without building
+                // the result, charged, and then the result is built in one
+                // buffer of exactly that size.
+                let upper = name == "string.toUpper";
+                let size: usize = if upper {
+                    text.chars()
+                        .map(|c| c.to_uppercase().map(char::len_utf8).sum::<usize>())
+                        .sum()
                 } else {
-                    text.to_lowercase()
+                    // `Σ` lowers to `σ` or `ς`, both two bytes, so the
+                    // context rule does not change the size.
+                    text.chars()
+                        .map(|c| c.to_lowercase().map(char::len_utf8).sum::<usize>())
+                        .sum()
                 };
-                self.alloc_string_charged(converted, counters, limits)
+                let mut out = Self::sized_string(size as u64, counters, limits)?;
+                if upper {
+                    out.extend(text.chars().flat_map(char::to_uppercase));
+                } else {
+                    to_lowercase_into(text, &mut out);
+                }
+                self.alloc_object(Object::Str(out))
             }
             "string.trim" | "string.trimStart" | "string.trimEnd" => {
                 charge_n(counters, limits, control, bytes)?;
@@ -1617,9 +1724,10 @@ impl Interpreter {
                     "string.trim" => text.trim(),
                     "string.trimStart" => text.trim_start(),
                     _ => text.trim_end(),
-                }
-                .to_owned();
-                self.alloc_string_charged(trimmed, counters, limits)
+                };
+                let mut out = Self::sized_string(trimmed.len() as u64, counters, limits)?;
+                out.push_str(trimmed);
+                self.alloc_object(Object::Str(out))
             }
             "string.split" => {
                 charge_n(counters, limits, control, bytes)?;
@@ -1632,19 +1740,23 @@ impl Interpreter {
                     (count, bytes.saturating_sub(removed))
                 };
                 counters.charge_memory(list_of_strings_memory(count, piece_bytes), limits)?;
-                let pieces: Vec<String> = if separator.is_empty() {
+                let pieces = if separator.is_empty() {
                     // "With the empty separator it returns the code points."
-                    text.chars().map(|c| c.to_string()).collect()
+                    owned_pieces(count, code_points(text))?
                 } else {
-                    text.split(separator).map(str::to_owned).collect()
+                    owned_pieces(count, text.split(separator))?
                 };
                 self.alloc_owned_string_list(pieces)
             }
             "string.lines" => {
                 charge_n(counters, limits, control, bytes)?;
-                let (count, piece_bytes) = lines_stats(text);
+                let (count, piece_bytes) = split_lines(text)
+                    .fold((0u64, 0u64), |(count, total), line| {
+                        (count + 1, total + line.len() as u64)
+                    });
                 counters.charge_memory(list_of_strings_memory(count, piece_bytes), limits)?;
-                self.alloc_owned_string_list(split_lines(text))
+                let pieces = owned_pieces(count, split_lines(text))?;
+                self.alloc_owned_string_list(pieces)
             }
             "string.replace" => {
                 let target = want_str(&self.heap, arg(args, 1)?)?;
@@ -1665,15 +1777,15 @@ impl Interpreter {
                 let output = bytes.saturating_sub(removed).saturating_add(added);
                 let n = (bytes + target.len() as u64).max(output);
                 charge_n(counters, limits, control, n)?;
-                let target = target.to_owned();
-                let replacement = replacement.to_owned();
-                let text = text.to_owned();
-                self.alloc_sized_string(
-                    output,
-                    || text.replace(target.as_str(), &replacement),
-                    counters,
-                    limits,
-                )
+                let mut replaced = Self::sized_string(output, counters, limits)?;
+                let mut last = 0;
+                for (at, found) in text.match_indices(target) {
+                    replaced.push_str(text.get(last..at).unwrap_or(""));
+                    replaced.push_str(replacement);
+                    last = at + found.len();
+                }
+                replaced.push_str(text.get(last..).unwrap_or(""));
+                self.alloc_object(Object::Str(replaced))
             }
             "string.repeat" => {
                 let count = want_int(arg(args, 1)?)?;
@@ -1689,8 +1801,13 @@ impl Interpreter {
                 let times = usize::try_from(count).map_err(|_| {
                     Fault::internal("a repeat count larger than this host can hold")
                 })?;
-                let text = text.to_owned();
-                self.alloc_sized_string(size, || text.repeat(times), counters, limits)
+                let mut repeated = Self::sized_string(size, counters, limits)?;
+                if !text.is_empty() {
+                    for _ in 0..times {
+                        repeated.push_str(text);
+                    }
+                }
+                self.alloc_object(Object::Str(repeated))
             }
             "string.padStart" | "string.padEnd" => {
                 let width = want_int(arg(args, 1)?)?;
@@ -1720,21 +1837,15 @@ impl Interpreter {
                 // one call allocate far past `maxMemoryBytes`.
                 let size = bytes.saturating_add(padding_bytes(fill, needed));
                 charge_n(counters, limits, control, size)?;
-                let fill = fill.to_owned();
-                let text = text.to_owned();
-                self.alloc_sized_string(
-                    size,
-                    || {
-                        let padding: String = fill.chars().cycle().take(needed).collect();
-                        if name == "string.padStart" {
-                            format!("{padding}{text}")
-                        } else {
-                            format!("{text}{padding}")
-                        }
-                    },
-                    counters,
-                    limits,
-                )
+                let mut padded = Self::sized_string(size, counters, limits)?;
+                if name == "string.padEnd" {
+                    padded.push_str(text);
+                }
+                padded.extend(fill.chars().cycle().take(needed));
+                if name == "string.padStart" {
+                    padded.push_str(text);
+                }
+                self.alloc_object(Object::Str(padded))
             }
             _ => Err(Fault::internal(&format!(
                 "the standard library function '{name}' is not implemented yet"
@@ -1747,7 +1858,7 @@ impl Interpreter {
     /// already charged the list's, and every string's, exact memory with
     /// [`list_of_strings_memory`] before building `pieces`.
     fn alloc_owned_string_list(&mut self, pieces: Vec<String>) -> Result<Value, Fault> {
-        let mut items = Vec::with_capacity(pieces.len());
+        let mut items = crate::alloc::vec_with_capacity(pieces.len())?;
         for piece in pieces {
             items.push(self.alloc_object(Object::Str(piece))?);
         }
@@ -1757,18 +1868,118 @@ impl Interpreter {
 
 /// `lines` (section 13.3): divides at LF or CR LF, drops the terminators,
 /// and a terminator at the very end does not make a final empty line.
-fn split_lines(text: &str) -> Vec<String> {
-    if text.is_empty() {
-        return Vec::new();
-    }
+fn split_lines(text: &str) -> impl Iterator<Item = &str> {
     let body = text.strip_suffix('\n').unwrap_or(text);
     let body = body.strip_suffix('\r').unwrap_or(body);
-    if body.is_empty() {
-        return vec![String::new()];
+    // An empty text has no lines at all; one that is only a terminator has
+    // one empty line, which is what splitting an empty body gives.
+    (!text.is_empty())
+        .then(|| body.split('\n'))
+        .into_iter()
+        .flatten()
+        .map(|line| line.strip_suffix('\r').unwrap_or(line))
+}
+
+/// The code points of `text`, each as the slice of `text` it occupies.
+fn code_points(text: &str) -> impl Iterator<Item = &str> {
+    text.char_indices()
+        .map(|(at, c)| text.get(at..at + c.len_utf8()).unwrap_or(""))
+}
+
+/// A copy of each of `count` pieces, asking the allocator for every one, for
+/// `chars`, `split` and `lines`: cutting a long string into many small ones
+/// is many allocations, any of which the host may refuse.
+fn owned_pieces<'a>(
+    count: u64,
+    pieces: impl Iterator<Item = &'a str>,
+) -> Result<Vec<String>, crate::alloc::OutOfMemory> {
+    let count = usize::try_from(count).map_err(|_| crate::alloc::OutOfMemory)?;
+    let mut out = crate::alloc::vec_with_capacity(count)?;
+    for piece in pieces {
+        crate::alloc::push(&mut out, crate::alloc::owned(piece)?)?;
     }
-    body.split('\n')
-        .map(|line| line.strip_suffix('\r').unwrap_or(line).to_owned())
-        .collect()
+    Ok(out)
+}
+
+/// Appends `text` in lower case to `out`, exactly as `str::to_lowercase`
+/// would build it (section 13.3: full mappings and the final sigma rule),
+/// into a buffer the caller has already sized, so nothing here grows it.
+///
+/// Every code point but `Σ` lowers on its own. `Σ` is `ς` at the end of a
+/// word and `σ` elsewhere, by Unicode's final sigma context, which reads
+/// whether its neighbours are case-ignorable and cased. The standard
+/// library does not expose those, so [`sigma_is_final`] asks
+/// `str::to_lowercase` about each neighbour on a three code point string.
+fn to_lowercase_into(text: &str, out: &mut String) {
+    for (at, c) in text.char_indices() {
+        if c == 'Σ' {
+            out.push(if sigma_is_final(text, at) { 'ς' } else { 'σ' });
+        } else {
+            out.extend(c.to_lowercase());
+        }
+    }
+}
+
+/// Unicode's final sigma condition for the `Σ` at byte `at` of `text`: a
+/// cased letter before it, and none after it, each looking past any
+/// case-ignorable code points in between.
+///
+/// Linear over a whole string: `Σ` is not case-ignorable, so the scans from
+/// one `Σ` stop at its neighbours, and each code point is read by at most
+/// two of them.
+fn sigma_is_final(text: &str, at: usize) -> bool {
+    let before = text.get(..at).unwrap_or("").chars().rev();
+    let after = text.get(at + 'Σ'.len_utf8()..).unwrap_or("").chars();
+    ignorable_then_cased(before) && !ignorable_then_cased(after)
+}
+
+/// Whether the first code point of `chars` that is not case-ignorable is
+/// cased.
+fn ignorable_then_cased(mut chars: impl Iterator<Item = char>) -> bool {
+    chars.find(|&c| !case_ignorable(c)).is_some_and(cased)
+}
+
+/// Whether `c` is case-ignorable in Unicode's sense. ASCII is answered
+/// directly (`'`, `.`, `:`, `^` and `` ` `` are the case-ignorable ASCII code
+/// points), with no allocation, since a run of apostrophes or full stops
+/// next to a `Σ` is the common case. Anything else is read off
+/// `str::to_lowercase`: with a cased letter (`A`) before `c`, a final sigma
+/// after `c` means `c` was skipped or is cased; with an uncased one (`1`)
+/// before it, it means `c` is cased and was not skipped.
+///
+/// shortcut: a non-ASCII neighbour of a `Σ` costs two small `to_lowercase`
+/// calls; upgrade to a property table if long non-ASCII ignorable runs
+/// beside sigmas ever matter.
+fn case_ignorable(c: char) -> bool {
+    if c.is_ascii() {
+        return matches!(c, '\'' | '.' | ':' | '^' | '`');
+    }
+    lowers_to_final_sigma(&['A', c]) && !lowers_to_final_sigma(&['1', c])
+}
+
+/// Whether `c`, which is not case-ignorable, is cased in Unicode's sense:
+/// ASCII letters directly, and anything else by whether `c` then a `Σ`
+/// lowers to a final sigma.
+fn cased(c: char) -> bool {
+    if c.is_ascii() {
+        return c.is_ascii_alphabetic();
+    }
+    lowers_to_final_sigma(&[c])
+}
+
+/// Whether `before` followed by a `Σ` lowers to a string ending in `ς`. The
+/// probe is encoded on the stack, so the only allocation is the answer.
+fn lowers_to_final_sigma(before: &[char]) -> bool {
+    // At most two code points and a `Σ`: 4 + 4 + 2 bytes.
+    let mut buffer = [0u8; 12];
+    let mut len = 0;
+    for c in before.iter().take(2).copied().chain(['Σ']) {
+        len += c
+            .encode_utf8(buffer.get_mut(len..).unwrap_or_default())
+            .len();
+    }
+    std::str::from_utf8(buffer.get(..len).unwrap_or_default())
+        .is_ok_and(|probe| probe.to_lowercase().ends_with('ς'))
 }
 
 /// What calling a library function produced.
@@ -1792,10 +2003,20 @@ pub struct NativeJob {
     native: u32,
     /// The closure to call.
     callback: Value,
-    /// The elements, in call order: a list's elements, a set's elements, or
-    /// a map's values.
+    /// The list the elements are read from, by position, through the heap.
+    /// Not copied into the job (a copy is another 32 bytes per element of
+    /// real memory that nothing charges). The job is a root of the collector,
+    /// so the list stays alive; it only ever grows past `len`, and
+    /// `call_native` marked it shared, so `append` never extends it in place.
+    /// `None` for every other job, which keeps its elements in `items`.
+    source: Option<Value>,
+    /// How many elements there are to call the closure on.
+    len: usize,
+    /// The elements of a job with no `source`: a snapshot of a map's values
+    /// or a set's elements (either can be rewritten in place under the job),
+    /// or the one payload of a `Result` job.
     items: Vec<Value>,
-    /// The keys, for a map, aligned with `items`; empty otherwise.
+    /// The keys matching `items`, for a map or a set job.
     keys: Vec<MapKey>,
     /// The next element to call the closure on.
     index: usize,
@@ -1814,6 +2035,35 @@ pub struct NativeJob {
 }
 
 impl NativeJob {
+    /// The element at `index`, and its key for a map or a set, or `None` once
+    /// every element has been visited.
+    ///
+    /// # Errors
+    ///
+    /// An internal fault if the source list is gone or shorter than `len`:
+    /// the job is a root and a list never shrinks, so that is a defect, and
+    /// it is reported rather than ending the walk early with a plausible,
+    /// short answer.
+    fn element(&self, heap: &Heap, index: usize) -> Result<Option<(Value, Option<MapKey>)>, Fault> {
+        if index >= self.len {
+            return Ok(None);
+        }
+        let found = match self.source {
+            Some(Value::Heap(h)) => match heap.get(h) {
+                Some(Object::List(items)) => items.get(index).map(|&value| (value, None)),
+                _ => None,
+            },
+            Some(_) => None,
+            None => self
+                .items
+                .get(index)
+                .map(|&value| (value, self.keys.get(index).copied())),
+        };
+        found
+            .map(Some)
+            .ok_or_else(|| Fault::internal("a library job's collection is gone"))
+    }
+
     /// Every value this job is holding in its own private storage, for a
     /// mid-run collection: this is the "job stack of library functions that
     /// call closures" the collector's design doc talks about (a `Frame::Native`
@@ -1822,6 +2072,7 @@ impl NativeJob {
     /// while this job is on top of the frame stack must keep alive).
     pub(crate) fn push_roots(&self, out: &mut Vec<Value>) {
         out.push(self.callback);
+        out.extend(self.source);
         out.extend(self.items.iter().copied());
         out.extend(self.keys.iter().copied().map(key_as_value));
         out.extend(self.kept.iter().copied());
@@ -1831,6 +2082,23 @@ impl NativeJob {
         if let Some(sort) = &self.sort {
             sort.push_roots(out);
         }
+    }
+}
+
+#[cfg(test)]
+impl NativeJob {
+    /// Every element the job would call its closure on, read the way the
+    /// job itself reads them.
+    pub(crate) fn elements(&self, heap: &Heap) -> Result<Vec<(Value, Option<MapKey>)>, Fault> {
+        (0..self.len)
+            .filter_map(|index| self.element(heap, index).transpose())
+            .collect()
+    }
+
+    /// The collection the job reads through the heap, if any, and how many
+    /// values it copied into its own storage.
+    pub(crate) fn storage(&self) -> (Option<Value>, usize) {
+        (self.source, self.items.len() + self.keys.len())
     }
 }
 
@@ -1867,9 +2135,15 @@ impl Sort {
         out.extend(self.taken.iter().copied());
     }
 
-    /// The merge schedule of `len` elements, in post-order.
-    fn plan_for(len: usize) -> Vec<(usize, usize, usize)> {
-        let mut plan = Vec::new();
+    /// The merge schedule of `len` elements, in post-order. A binary merge
+    /// schedule over `len > 1` elements has exactly `len - 1` merges, so the
+    /// plan is asked for once, at exactly that size, and never grows.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::alloc::OutOfMemory`] if the host cannot give the plan.
+    fn plan_for(len: usize) -> Result<Vec<(usize, usize, usize)>, crate::alloc::OutOfMemory> {
+        let mut plan = crate::alloc::vec_with_capacity(len.saturating_sub(1))?;
         // `(lo, hi, expanded)`: a range yet to be split, or one whose halves
         // are already scheduled and which is therefore ready to merge.
         let mut stack = vec![(0usize, len, false)];
@@ -1888,7 +2162,7 @@ impl Sort {
             stack.push((mid, hi, false));
             stack.push((lo, mid, false));
         }
-        plan
+        Ok(plan)
     }
 }
 
@@ -1926,9 +2200,20 @@ fn want_bool(value: Value) -> Result<bool, Fault> {
 }
 
 impl Interpreter {
-    /// Builds the job for a library function that calls a closure. The whole
-    /// receiver is read here, once, so that the job does not hold a heap
-    /// handle whose contents could be collected under it.
+    /// Builds the job for a library function that calls a closure.
+    ///
+    /// The order is section 11.3's and 11.4's: the step charge, then the
+    /// memory of an answer whose size is already known (`list.map`,
+    /// `list.sortBy`, `map.mapValues`), and only then anything the job
+    /// allocates for itself, so a call the language's limits refuse faults
+    /// the same way on every host.
+    ///
+    /// A list job reads its receiver through the heap rather than copying it:
+    /// a list only ever grows past the `len` the job read (`Op::ListAppend`),
+    /// and `call_native` has already marked it shared, so `append` never
+    /// changes it in place. A map or a set can be rewritten in place
+    /// (`Op::MapPut`, which bytecode that did not come from the compiler can
+    /// aim at any map a closure captured), so those jobs keep a snapshot.
     fn start_callback_native(
         &mut self,
         position: u32,
@@ -1939,50 +2224,25 @@ impl Interpreter {
         counters: &mut RunCounters,
     ) -> Result<NativeJob, Fault> {
         let receiver = arg(args, 0)?;
-        let mut sort = None;
-        let (items, keys) = match name {
-            "list.sortBy" => {
-                let values = want_list(&self.heap, receiver)?.to_vec();
-                let plan = Sort::plan_for(values.len());
-                sort = Some(Sort {
-                    values,
-                    plan,
-                    step: 0,
-                    left: 0,
-                    right: 0,
-                    taken: Vec::new(),
-                });
-                (Vec::new(), Vec::new())
-            }
+        // Section 8.4: a `Result` job calls the callback at most once, and
+        // only for the variant the function acts on.
+        let mut payload = None;
+        let len = match name {
             "list.all" | "list.any" | "list.each" | "list.filter" | "list.find"
-            | "list.flatMap" | "list.map" => {
-                (want_list(&self.heap, receiver)?.to_vec(), Vec::new())
+            | "list.flatMap" | "list.map" | "list.reduce" | "list.sortBy" => {
+                want_list(&self.heap, receiver)?.len()
             }
-            "list.reduce" => (want_list(&self.heap, receiver)?.to_vec(), Vec::new()),
-            "map.each" | "map.filter" | "map.mapValues" => {
-                let entries = want_map(&self.heap, receiver)?;
-                (
-                    entries.iter().map(|e| e.value).collect(),
-                    entries.iter().map(|e| e.key).collect(),
-                )
-            }
-            "set.each" | "set.filter" => {
-                let elements = want_set(&self.heap, receiver)?.to_vec();
-                (
-                    elements.iter().copied().map(key_as_value).collect(),
-                    elements,
-                )
-            }
-            // Section 8.4: the callback is called at most once, and only for
-            // the variant the function acts on.
+            "map.each" | "map.filter" | "map.mapValues" => want_map(&self.heap, receiver)?.len(),
+            "set.each" | "set.filter" => want_set(&self.heap, receiver)?.len(),
             "result.andThen" | "result.map" | "result.mapError" => {
-                let (variant, payload) = self.result_parts(receiver)?;
+                let (variant, value) = self.result_parts(receiver)?;
                 let acts = if name == "result.mapError" {
                     variant != 0
                 } else {
                     variant == 0
                 };
-                (if acts { vec![payload] } else { Vec::new() }, Vec::new())
+                payload = acts.then_some(value);
+                usize::from(acts)
             }
             _ => {
                 return Err(Fault::internal(
@@ -1994,11 +2254,11 @@ impl Interpreter {
         // the closure is charged as a call when its frame is pushed.
         if name.starts_with("result.") {
             charge_one(counters, limits, control)?;
-        } else if let Some(sorting) = &sort {
+        } else if name == "list.sortBy" {
             // Section 14.1 charges a sort for `N * ceil(log2(N + 1))`
             // element steps; the comparator's own calls are charged as
             // calls of a closure.
-            let n = sorting.values.len() as u64;
+            let n = len as u64;
             charge_n(
                 counters,
                 limits,
@@ -2006,8 +2266,53 @@ impl Interpreter {
                 n.saturating_mul(ceil_log2(n.saturating_add(1))),
             )?;
         } else {
-            charge_n(counters, limits, control, items.len() as u64)?;
+            charge_n(counters, limits, control, len as u64)?;
         }
+        let paid = match name {
+            "list.map" | "list.sortBy" => Heap::list_node_cost(len),
+            "map.mapValues" => Heap::map_node_cost(len),
+            _ => 0,
+        };
+        counters.charge_memory(paid, limits)?;
+        let mut sort = None;
+        let mut source = None;
+        let (items, keys) = match name {
+            "list.sortBy" => {
+                let values = crate::alloc::copy_of(want_list(&self.heap, receiver)?, 0)?;
+                let plan = Sort::plan_for(values.len())?;
+                // A merge takes at most every element, and the buffer is
+                // reused for each merge, so it is asked for once here.
+                let taken = crate::alloc::vec_with_capacity(values.len())?;
+                sort = Some(Sort {
+                    values,
+                    plan,
+                    step: 0,
+                    left: 0,
+                    right: 0,
+                    taken,
+                });
+                (Vec::new(), Vec::new())
+            }
+            _ if name.starts_with("list.") => {
+                source = Some(receiver);
+                (Vec::new(), Vec::new())
+            }
+            _ if name.starts_with("map.") => {
+                let entries = want_map(&self.heap, receiver)?;
+                (
+                    crate::alloc::collect(entries.iter().map(|e| e.value))?,
+                    crate::alloc::collect(entries.iter().map(|e| e.key))?,
+                )
+            }
+            _ if name.starts_with("set.") => {
+                let elements = crate::alloc::copy_of(want_set(&self.heap, receiver)?, 0)?;
+                (
+                    crate::alloc::collect(elements.iter().copied().map(key_as_value))?,
+                    elements,
+                )
+            }
+            _ => (payload.into_iter().collect(), Vec::new()),
+        };
         let callback = arg(args, if name == "list.reduce" { 2 } else { 1 })?;
         // `reduce`'s accumulator starts at its first argument; every other
         // job uses this slot for the answer it has settled on.
@@ -2016,14 +2321,41 @@ impl Interpreter {
         } else {
             receiver
         };
+        // The answer of a `map` has exactly as many elements as the source,
+        // so its buffer is sized once, not grown by doubling (which would hold
+        // the old buffer and the new one at the same time).
+        let (kept, kept_keys) = match name {
+            "list.map" => (crate::alloc::vec_with_capacity(len)?, Vec::new()),
+            // A filter's answer is at most as long as its source. Room for
+            // all of it up front, when the machine has it, means the buffer is
+            // never grown by doubling (which holds the old buffer and the new
+            // at once, and was what ran a filter of 5 million elements out of
+            // memory before the language's own limit stopped it). When the
+            // machine does not have it the buffer grows as it is filled. A
+            // capped reserve that then doubles would save memory only for a
+            // filter that keeps little, and would peak higher (old and new
+            // buffer at once) for one that keeps most; the full reserve is
+            // never more than the source, which is already in memory.
+            "list.filter" => (
+                crate::alloc::vec_with_capacity(len).unwrap_or_default(),
+                Vec::new(),
+            ),
+            "map.mapValues" => (
+                crate::alloc::vec_with_capacity(len)?,
+                crate::alloc::vec_with_capacity(len)?,
+            ),
+            _ => (Vec::new(), Vec::new()),
+        };
         Ok(NativeJob {
             native: position,
             callback,
+            source,
+            len,
             items,
             keys,
             index: 0,
-            kept: Vec::new(),
-            kept_keys: Vec::new(),
+            kept,
+            kept_keys,
             accumulator,
             sort,
             last: None,
@@ -2050,23 +2382,24 @@ impl Interpreter {
             .name;
 
         if job.sort.is_some() {
-            return self.advance_sort(frames, counters, limits);
+            return self.advance_sort(frames);
         }
 
         // Use the answer the last callback gave, which may finish the job.
         if let Some(answer) = job.last.take() {
-            let element = job.items.get(job.index).copied().unwrap_or(Value::None);
-            let key = job.keys.get(job.index).copied();
+            let (element, key) = job
+                .element(&self.heap, job.index)?
+                .unwrap_or((Value::None, None));
             job.index += 1;
             match name {
-                "list.map" => job.kept.push(answer),
+                "list.map" => crate::alloc::push(&mut job.kept, answer)?,
                 "list.flatMap" => {
-                    let pieces = want_list(&self.heap, answer)?.to_vec();
-                    job.kept.extend(pieces);
+                    let pieces = want_list(&self.heap, answer)?;
+                    crate::alloc::extend_from_slice(&mut job.kept, pieces)?;
                 }
                 "list.filter" => {
                     if want_bool(answer)? {
-                        job.kept.push(element);
+                        crate::alloc::push(&mut job.kept, element)?;
                     }
                 }
                 "list.find" => {
@@ -2089,15 +2422,15 @@ impl Interpreter {
                 "map.filter" | "set.filter" => {
                     if want_bool(answer)? {
                         if let Some(key) = key {
-                            job.kept_keys.push(key);
-                            job.kept.push(element);
+                            crate::alloc::push(&mut job.kept_keys, key)?;
+                            crate::alloc::push(&mut job.kept, element)?;
                         }
                     }
                 }
                 "map.mapValues" => {
                     if let Some(key) = key {
-                        job.kept_keys.push(key);
-                        job.kept.push(answer);
+                        crate::alloc::push(&mut job.kept_keys, key)?;
+                        crate::alloc::push(&mut job.kept, answer)?;
                     }
                 }
                 // Section 8.4: `map` and `mapError` wrap the answer in the
@@ -2120,8 +2453,7 @@ impl Interpreter {
         let Some(crate::interp::Frame::Native(job)) = frames.last_mut() else {
             return Err(Fault::internal("no library function to advance"));
         };
-        if let Some(&element) = job.items.get(job.index) {
-            let key = job.keys.get(job.index).copied();
+        if let Some((element, key)) = job.element(&self.heap, job.index)? {
             let call_args = match name {
                 "list.reduce" => vec![job.accumulator, element],
                 "map.each" | "map.filter" => vec![
@@ -2151,7 +2483,15 @@ impl Interpreter {
             )
         };
         let value = match name {
-            "list.map" | "list.flatMap" | "list.filter" => {
+            // Charged when the job started, the answer's size being known.
+            "list.map" => self.alloc_object(Object::List(kept))?,
+            "list.flatMap" | "list.filter" => {
+                let mut kept = kept;
+                if kept.capacity() > kept.len() {
+                    // A buffer sized for the whole source that kept only a
+                    // part of it gives the rest back.
+                    kept.shrink_to_fit();
+                }
                 self.alloc_charged(Object::List(kept), counters, limits)?
             }
             // `find` answers `none` and `each` answers nothing; both are
@@ -2163,12 +2503,18 @@ impl Interpreter {
             // did not act on is returned unchanged.
             "list.reduce" | "result.andThen" | "result.map" | "result.mapError" => accumulator,
             "map.filter" | "map.mapValues" => {
-                let entries = kept_keys
-                    .into_iter()
-                    .zip(kept)
-                    .map(|(key, value)| MapEntry { key, value })
-                    .collect();
-                self.alloc_charged(Object::Map(entries), counters, limits)?
+                let entries = crate::alloc::collect(
+                    kept_keys
+                        .into_iter()
+                        .zip(kept)
+                        .map(|(key, value)| MapEntry { key, value }),
+                )?;
+                if name == "map.mapValues" {
+                    // Charged when the job started.
+                    self.alloc_object(Object::Map(entries))?
+                } else {
+                    self.alloc_charged(Object::Map(entries), counters, limits)?
+                }
             }
             "set.filter" => self.alloc_charged(Object::Set(kept_keys), counters, limits)?,
             _ => {
@@ -2191,8 +2537,6 @@ impl Interpreter {
     fn advance_sort(
         &mut self,
         frames: &mut [crate::interp::Frame],
-        counters: &mut RunCounters,
-        limits: &Limits,
     ) -> Result<crate::interp::Step, Fault> {
         let Some(crate::interp::Frame::Native(job)) = frames.last_mut() else {
             return Err(Fault::internal("no sort to advance"));
@@ -2229,9 +2573,10 @@ impl Interpreter {
 
         loop {
             let Some(&(lo, mid, hi)) = sort.plan.get(sort.step) else {
-                // Every merge is done: the array is sorted.
+                // Every merge is done: the array is sorted. Its memory was
+                // charged when the job started.
                 let values = std::mem::take(&mut sort.values);
-                let list = self.alloc_charged(Object::List(values), counters, limits)?;
+                let list = self.alloc_object(Object::List(values))?;
                 return Ok(crate::interp::Step::Return(Some(list)));
             };
             if lo + sort.left < mid && mid + sort.right < hi {
@@ -2261,12 +2606,14 @@ impl Interpreter {
                     sort.taken.push(value);
                 }
             }
-            let merged = std::mem::take(&mut sort.taken);
-            for (offset, value) in merged.into_iter().enumerate() {
+            // Copied back by index and cleared, so the buffer sized at the
+            // start is the one every merge uses.
+            for (offset, &value) in sort.taken.iter().enumerate() {
                 if let Some(slot) = sort.values.get_mut(lo + offset) {
                     *slot = value;
                 }
             }
+            sort.taken.clear();
             sort.step += 1;
             sort.left = 0;
             sort.right = 0;
@@ -2467,15 +2814,71 @@ mod tests {
         assert_eq!(parse_float("0e99999999999999999999"), Ok(0.0));
     }
 
+    /// `to_lowercase_into` is `str::to_lowercase`, final sigma included,
+    /// on every string of up to four code points over an alphabet of cased,
+    /// uncased, case-ignorable (and both) code points and `Σ` itself.
+    #[test]
+    fn lower_case_matches_the_standard_library() {
+        use super::to_lowercase_into;
+        let alphabet = [
+            'Σ', 'Α', 'a', '1', ' ', '\'', '.', '\u{301}', '\u{2B0}', 'İ', 'ß', '\u{390}', '-',
+            '\u{AD}',
+        ];
+        let mut layer = vec![String::new()];
+        let mut strings = Vec::new();
+        for _ in 0..4 {
+            layer = layer
+                .iter()
+                .flat_map(|s| alphabet.iter().map(move |&c| format!("{s}{c}")))
+                .collect();
+            strings.extend(layer.iter().cloned());
+        }
+        for text in strings.iter().map(String::as_str).chain([
+            "ΑΣ ΣΑΣ İ",
+            "ὈΔΥΣΣΕΎΣ",
+            "Σ",
+            "aΣ\u{301}",
+            "aΣ\u{301}b",
+        ]) {
+            let mut out = String::new();
+            to_lowercase_into(text, &mut out);
+            assert_eq!(out, text.to_lowercase(), "{text:?}");
+        }
+    }
+
+    /// The allocation-free ASCII answers of `case_ignorable` and `cased` are
+    /// what the standard library says, for every ASCII code point beside a
+    /// `Σ`, on both sides.
+    #[test]
+    fn the_ascii_fast_path_matches_the_standard_library() {
+        use super::to_lowercase_into;
+        for c in (0u8..128).map(char::from) {
+            for text in [
+                format!("a{c}Σ"),
+                format!("aΣ{c}"),
+                format!("{c}Σ"),
+                format!("Σ{c}a"),
+                format!("a{c}{c}Σ{c}{c}b"),
+            ] {
+                let mut out = String::new();
+                to_lowercase_into(&text, &mut out);
+                assert_eq!(out, text.to_lowercase(), "{text:?}");
+            }
+        }
+    }
+
     /// Section 13.3: `lines` drops the terminators, and one at the very end
     /// does not make a final empty line.
     #[test]
     fn lines_follows_section_13_3() {
-        assert_eq!(split_lines("a\nb\n"), ["a", "b"]);
-        assert_eq!(split_lines("a\n\nb"), ["a", "", "b"]);
-        assert!(split_lines("").is_empty());
-        assert_eq!(split_lines("a\r\nb"), ["a", "b"]);
-        assert_eq!(split_lines("\n"), [""]);
+        let lines = |text| split_lines(text).collect::<Vec<_>>();
+        assert_eq!(lines("a\nb\n"), ["a", "b"]);
+        assert_eq!(lines("a\n\nb"), ["a", "", "b"]);
+        assert!(lines("").is_empty());
+        assert_eq!(lines("a\r\nb"), ["a", "b"]);
+        assert_eq!(lines("\n"), [""]);
+        assert_eq!(lines("\r\n"), [""]);
+        assert_eq!(lines("a\r"), ["a"]);
     }
 
     /// Section 14.1 fixes the algorithm so that the calls to `compare` are
@@ -2485,19 +2888,22 @@ mod tests {
     #[test]
     fn the_merge_schedule_is_the_recursions_post_order() {
         use super::Sort;
-        assert!(Sort::plan_for(0).is_empty());
-        assert!(Sort::plan_for(1).is_empty());
-        assert_eq!(Sort::plan_for(2), [(0, 1, 2)]);
+        assert!(Sort::plan_for(0).unwrap().is_empty());
+        assert!(Sort::plan_for(1).unwrap().is_empty());
+        assert_eq!(Sort::plan_for(2).unwrap(), [(0, 1, 2)]);
         // Four elements: [0,2) and [2,4) each merge before [0,4).
-        assert_eq!(Sort::plan_for(4), [(0, 1, 2), (2, 3, 4), (0, 2, 4)]);
+        assert_eq!(
+            Sort::plan_for(4).unwrap(),
+            [(0, 1, 2), (2, 3, 4), (0, 2, 4)]
+        );
         // Five: the halves are [0,2) and [2,5), and the right half's own
         // halves are [2,3) and [3,5), so its merges come before the last.
         assert_eq!(
-            Sort::plan_for(5),
+            Sort::plan_for(5).unwrap(),
             [(0, 1, 2), (3, 4, 5), (2, 3, 5), (0, 2, 5)]
         );
         // Every merge covers a real range, and the last covers all of it.
-        let plan = Sort::plan_for(9);
+        let plan = Sort::plan_for(9).unwrap();
         assert!(plan.iter().all(|&(lo, mid, hi)| lo < mid && mid < hi));
         assert_eq!(plan.last().copied(), Some((0, 4, 9)));
     }

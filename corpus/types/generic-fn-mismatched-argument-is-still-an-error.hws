@@ -1,0 +1,5 @@
+fn withOne<T>(items: [T]): [T] {
+    return items.append(1)
+}
+
+return withOne(["a"])

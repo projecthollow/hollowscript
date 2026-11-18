@@ -1,0 +1,15 @@
+{
+  "title": "A list literal under an optional list type is a coercion site for its elements",
+  "spec": "2.7",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Float(1.0), Float(2.0)]"
+  }
+}

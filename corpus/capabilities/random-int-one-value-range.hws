@@ -1,0 +1,3 @@
+uses random
+
+return effect random.int(3, 4)

@@ -214,10 +214,9 @@ match n {
 
 ## 7.6 Narrowing in `match`
 
-If the scrutinee is a path ([section 4.8](04-statements.md#48-optional-narrowing)) of optional type `U?` and some arm has `none` as a pattern or as one of its alternatives, then in every arm that does not have `none` among its patterns:
+If some arm has `none` as a pattern or as one of its alternatives and the scrutinee has optional type `U?`, then in every arm that does not have `none` among its patterns a binding pattern at the top level of the arm has type `U`. This holds whatever the scrutinee expression is, a call included, because the scrutinee is evaluated once ([section 7.5](#75-the-match-statement)) and the arm is reached only after the `none` arm has failed to match.
 
-- the path is narrowed to `U` in the arm's block, subject to the boundary and shared-mutable rules of [section 4.8](04-statements.md#48-optional-narrowing); and
-- a binding pattern at the top level of the arm has type `U`.
+If, in addition, the scrutinee is a path ([section 4.8](04-statements.md#48-optional-narrowing)), the path is narrowed to `U` in the arm's block, subject to the boundary and shared-mutable rules of [section 4.8](04-statements.md#48-optional-narrowing). A scrutinee that is not a path is never narrowed, since evaluating it again would not give the same value.
 
 After the `match` statement, the facts are the intersection of the facts at the end of every arm that can complete normally, as for `if` ([section 4.8](04-statements.md#48-optional-narrowing)); a `match` all of whose arms cannot complete normally leaves the incoming facts.
 

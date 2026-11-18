@@ -1,0 +1,11 @@
+uses print
+
+fn greet(name: String) {
+    effect print("Hello ${name}")
+}
+
+greet("Ada")
+effect print("!")
+[1, 2].each(fn(n) {
+    effect print("${n}")
+})

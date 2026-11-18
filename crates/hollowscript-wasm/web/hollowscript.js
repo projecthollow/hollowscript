@@ -8,7 +8,7 @@
 // `env.hs_capability_result_len`, `env.hs_capability_take_result`,
 // `env.hs_wasm_poll_cancel`), documented alongside `web/README.md`, and the
 // linear memory it imports (`env.memory`), which this file creates with the
-// maximum the module declares (256 MiB) or a lower one the host asks for.
+// maximum the module declares (512 MiB) or a lower one the host asks for.
 //
 // Values cross as text. A result comes back in the rendering
 // `corpus/FORMAT.md` fixes, and arguments go in as a JSON array of scalars,
@@ -25,8 +25,9 @@
 // shadow-stack pointer is never restored, so every later call would start
 // from a corrupted stack). This file therefore watches every call into the
 // module: the first one that traps (a `WebAssembly.RuntimeError`, which is
-// also what a program that allocates past the memory ceiling ends in, since
-// Rust aborts when an allocation fails, or the engine's own stack overflow) marks the whole `HollowScript` or
+// also what a program that allocates past the memory ceiling can end in at an
+// allocation the VM does not make fallibly, since Rust aborts when one fails,
+// or the engine's own stack overflow) marks the whole `HollowScript` or
 // `HollowScriptTooling` instance dead, not only the `Instance`,
 // `AsyncInstance` or `Analysis` handle that was mid-call, throws a
 // `HollowScriptTrap`, and makes every later call on anything that came from
@@ -291,11 +292,36 @@ const INERT_AFTER_TRAP = new Set([
   "hs_wasm_free",
   "hs_wasm_dispose",
   "hs_wasm_analysis_dispose",
+  // `_run` puts the result format back in a `finally`. If that threw on a
+  // module the run itself had just trapped, it would replace the trap that
+  // matters with "trapped earlier".
+  "hs_wasm_set_result_format",
 ]);
 
 /** Whether the instance behind `exports` has trapped. */
 function hasTrapped(exports) {
   return exports[GUARD].trap !== null;
+}
+
+/**
+ * Uploads each of `contents` (byte arrays) with `upload`, calls `fn` with the
+ * `[pointer, length]` of every one, and frees every buffer it uploaded,
+ * however it ends. An upload the module's memory cannot hold throws a
+ * `RangeError` and leaves the instance usable, so the buffers uploaded before
+ * it are freed too, rather than left in a linear memory that never shrinks.
+ */
+function withUploads(exports, upload, contents, fn) {
+  const buffers = [];
+  try {
+    for (const bytes of contents) {
+      buffers.push(upload(bytes));
+    }
+    return fn(buffers);
+  } finally {
+    for (const [pointer, length] of buffers) {
+      exports.hs_wasm_free(pointer, length);
+    }
+  }
 }
 
 /** The largest limit of chapter 11: 2^63 - 1. */
@@ -600,15 +626,18 @@ export class HollowScript {
    *   Time a batched run spends suspended, waiting for the host's answer, is
    *   not charged: each `call` and each `resume` has the whole budget.
    * - `maxMemoryBytes`: a ceiling on the module's linear memory, in bytes
-   *   (rounded up to whole 64 KiB pages), lower than the 256 MiB the module
+   *   (rounded up to whole 64 KiB pages), lower than the 512 MiB the module
    *   declares and allows. The logical `memory` limit of `setLimits` is not a
    *   bound on this (the real footprint is several times larger and depends on
    *   how a value was built), so a host that runs scripts for others and
-   *   cares how much memory one instance can take sets this. When an
-   *   allocation fails at the ceiling the module traps: see
-   *   `HollowScriptTrap`. Must be at least what the module needs to start
-   *   (about 1.1 MiB for the VM, more for the `tooling` build) and at most
-   *   the 256 MiB it declares, or a `RangeError`.
+   *   cares how much memory one instance can take sets this. When the
+   *   allocation that fails at the ceiling is one the VM makes fallibly (a
+   *   list, the text a string function builds, the heap's own table, which
+   *   is nearly all of them) the call faults with HS1015 and the instance
+   *   carries on; at any other the module traps: see `HollowScriptTrap`. Must
+   *   be at least what the module needs to start (about 1.1 MiB for the VM,
+   *   more for the `tooling` build) and at most the 512 MiB it declares, or a
+   *   `RangeError`.
    */
   static async load(url, options = {}) {
     return HollowScript.fromBytes(await fetchModule(url), options);
@@ -705,7 +734,7 @@ export class HollowScript {
   }
 
   /**
-   * The most the module's linear memory can grow to, in bytes: the 256 MiB
+   * The most the module's linear memory can grow to, in bytes: the 512 MiB
    * the module declares, or the lower `maxMemoryBytes` the host asked for
    * (rounded up to whole pages). `null` for a module that defines its own
    * memory and so has no ceiling this wrapper knows.
@@ -887,6 +916,13 @@ export class HollowScript {
       return [0, 0];
     }
     const pointer = this.#exports.hs_wasm_alloc(length);
+    if (pointer === 0) {
+      // The module answers 0 for a length its memory cannot hold, where an
+      // allocation that failed inside it would have trapped the instance.
+      throw new RangeError(
+        `the module's memory cannot hold ${length} more bytes (its ceiling is ${this.#ceilingBytes ?? "its own"} bytes); lower the size or raise maxMemoryBytes`,
+      );
+    }
     new Uint8Array(this.#exports.memory.buffer, pointer, length).set(bytes);
     return [pointer, length];
   }
@@ -1073,25 +1109,23 @@ class Instance {
     // a buffer already uploaded by then was never freed.
     const encodedName = encoder.encode(name);
     const encodedArgs = encoder.encode(toJson(args));
-    const nameBuffer = this.#vm._upload(encodedName);
-    const argsBuffer = this.#vm._upload(encodedArgs);
-    let status;
-    try {
-      status = this.#vm._withActiveCapabilities(this.#capabilityHandlers, () =>
-        this.#vm._run(this.#format, () =>
-          this.#exports.hs_wasm_call(
-            this.#handle,
-            nameBuffer[0],
-            nameBuffer[1],
-            argsBuffer[0],
-            argsBuffer[1],
+    const status = withUploads(
+      this.#exports,
+      (bytes) => this.#vm._upload(bytes),
+      [encodedName, encodedArgs],
+      ([nameBuffer, argsBuffer]) =>
+        this.#vm._withActiveCapabilities(this.#capabilityHandlers, () =>
+          this.#vm._run(this.#format, () =>
+            this.#exports.hs_wasm_call(
+              this.#handle,
+              nameBuffer[0],
+              nameBuffer[1],
+              argsBuffer[0],
+              argsBuffer[1],
+            ),
           ),
         ),
-      );
-    } finally {
-      this.#exports.hs_wasm_free(nameBuffer[0], nameBuffer[1]);
-      this.#exports.hs_wasm_free(argsBuffer[0], argsBuffer[1]);
-    }
+    );
     const text = this.#vm._takeText();
     if (status !== 0) {
       throw this.#vm._failure(text);
@@ -1233,23 +1267,21 @@ class AsyncInstance {
     // As `Instance.call`: nothing is uploaded until nothing can throw.
     const encodedName = encoder.encode(name);
     const encodedArgs = encoder.encode(toJson(args));
-    const nameBuffer = this.#vm._upload(encodedName);
-    const argsBuffer = this.#vm._upload(encodedArgs);
-    let status;
-    try {
-      status = this.#vm._run(this.#format, () =>
-        this.#exports.hs_wasm_call_batched(
-          this.#handle,
-          nameBuffer[0],
-          nameBuffer[1],
-          argsBuffer[0],
-          argsBuffer[1],
+    const status = withUploads(
+      this.#exports,
+      (bytes) => this.#vm._upload(bytes),
+      [encodedName, encodedArgs],
+      ([nameBuffer, argsBuffer]) =>
+        this.#vm._run(this.#format, () =>
+          this.#exports.hs_wasm_call_batched(
+            this.#handle,
+            nameBuffer[0],
+            nameBuffer[1],
+            argsBuffer[0],
+            argsBuffer[1],
+          ),
         ),
-      );
-    } finally {
-      this.#exports.hs_wasm_free(nameBuffer[0], nameBuffer[1]);
-      this.#exports.hs_wasm_free(argsBuffer[0], argsBuffer[1]);
-    }
+    );
     return this.#settle(status);
   }
 
@@ -1316,7 +1348,7 @@ class AsyncInstance {
 
 /**
  * The lexical class of one highlighted range.
- * @typedef {"keyword" | "identifier" | "number" | "string" | "filter" | "operator" | "punctuation" | "comment"} HighlightClass
+ * @typedef {"keyword" | "identifier" | "number" | "string" | "filter" | "operator" | "punctuation" | "comment" | "invalid"} HighlightClass
  */
 
 /**
@@ -1339,7 +1371,7 @@ class AsyncInstance {
 
 /**
  * What a completion is.
- * @typedef {"variable" | "constant" | "function" | "parameter" | "type" | "enum" | "enumMember" | "capability" | "namespace" | "keyword"} CompletionKind
+ * @typedef {"variable" | "constant" | "function" | "parameter" | "type" | "enum" | "enumMember" | "field" | "method" | "capability" | "namespace" | "keyword"} CompletionKind
  */
 
 /**
@@ -1421,7 +1453,7 @@ export class HollowScriptTooling {
 
   /**
    * Instantiates the `tooling` module at `url`. `maxMemoryBytes` is as
-   * `HollowScript.load`'s: a lower ceiling than the module's 256 MiB on its
+   * `HollowScript.load`'s: a lower ceiling than the module's 512 MiB on its
    * linear memory (checking source can allocate for real too).
    */
   static async load(url, options = {}) {
@@ -1514,19 +1546,13 @@ export class HollowScriptTooling {
    * formatter cannot recover from.
    */
   format(source, entryName = "main.hws") {
-    const sourceBuffer = this.#upload(encoder.encode(source));
-    const nameBuffer = this.#upload(encoder.encode(entryName));
-    try {
-      this.#exports.hs_wasm_format(
-        sourceBuffer[0],
-        sourceBuffer[1],
-        nameBuffer[0],
-        nameBuffer[1],
-      );
-    } finally {
-      this.#exports.hs_wasm_free(sourceBuffer[0], sourceBuffer[1]);
-      this.#exports.hs_wasm_free(nameBuffer[0], nameBuffer[1]);
-    }
+    withUploads(
+      this.#exports,
+      (bytes) => this.#upload(bytes),
+      [encoder.encode(source), encoder.encode(entryName)],
+      ([sourceBuffer, nameBuffer]) =>
+        this.#exports.hs_wasm_format(sourceBuffer[0], sourceBuffer[1], nameBuffer[0], nameBuffer[1]),
+    );
     return JSON.parse(this.#takeText());
   }
 
@@ -1628,14 +1654,12 @@ export class HollowScriptTooling {
     if (filterSchema !== undefined) {
       texts.push(filterSchema === null ? "" : JSON.stringify(filterSchema));
     }
-    const buffers = texts.map((text) => this.#upload(encoder.encode(text)));
-    try {
-      return fn(...buffers.flat());
-    } finally {
-      for (const [pointer, length] of buffers) {
-        this.#exports.hs_wasm_free(pointer, length);
-      }
-    }
+    return withUploads(
+      this.#exports,
+      (bytes) => this.#upload(bytes),
+      texts.map((text) => encoder.encode(text)),
+      (buffers) => fn(...buffers.flat()),
+    );
   }
 
   /**
@@ -1643,8 +1667,9 @@ export class HollowScriptTooling {
    * lexer alone: stateless, needing no check and no capability interface,
    * and working on text that does not parse (an editor highlights on every
    * keystroke). The ranges are in order of where they start, never overlap,
-   * and are half-open in UTF-16 code units. Whitespace and a character the
-   * language has no token for are not covered.
+   * and are half-open in UTF-16 code units. Whitespace is not covered. A
+   * character the language rejects (HS0005 in `check`) is an `"invalid"`
+   * range of one code point.
    *
    * @param {string} source
    * @returns {HighlightRange[]}
@@ -1712,29 +1737,13 @@ export class HollowScriptTooling {
    * @returns {Analysis}
    */
   analyse(source, entryName = "main.hws", capabilities = [], modules = {}) {
-    const buffers = [
-      source,
-      entryName,
-      JSON.stringify(capabilities),
-      JSON.stringify(modules),
-    ].map((text) => this.#upload(encoder.encode(text)));
-    let handle;
-    try {
-      handle = this.#exports.hs_wasm_analyse(
-        buffers[0][0],
-        buffers[0][1],
-        buffers[1][0],
-        buffers[1][1],
-        buffers[2][0],
-        buffers[2][1],
-        buffers[3][0],
-        buffers[3][1],
-      );
-    } finally {
-      for (const [pointer, length] of buffers) {
-        this.#exports.hs_wasm_free(pointer, length);
-      }
-    }
+    const texts = [source, entryName, JSON.stringify(capabilities), JSON.stringify(modules)];
+    const handle = withUploads(
+      this.#exports,
+      (bytes) => this.#upload(bytes),
+      texts.map((text) => encoder.encode(text)),
+      (buffers) => this.#exports.hs_wasm_analyse(...buffers.flat()),
+    );
     if (handle === 0) {
       throw new Error(`analyse() failed: ${this.#takeText()}`);
     }
@@ -1755,6 +1764,13 @@ export class HollowScriptTooling {
       return [0, 0];
     }
     const pointer = this.#exports.hs_wasm_alloc(length);
+    if (pointer === 0) {
+      // The module answers 0 for a length its memory cannot hold, where an
+      // allocation that failed inside it would have trapped the instance.
+      throw new RangeError(
+        `the module's memory cannot hold ${length} more bytes; lower the size or raise maxMemoryBytes`,
+      );
+    }
     new Uint8Array(this.#exports.memory.buffer, pointer, length).set(bytes);
     return [pointer, length];
   }
@@ -1844,9 +1860,8 @@ export class Analysis {
    * A name comes into scope where the language says it does, so one declared
    * further down is not offered. The list is the same wherever in a word the
    * cursor is, so filter it by what has been typed. It is empty where a name
-   * cannot be written: in a comment, in the text of a string or a filter, and
-   * after a `.`. **Not done:** completing a field or method after a `.`, which
-   * needs the type of the receiver.
+   * cannot be written: in a comment or in the text of a string or a filter.
+   * After a dot it offers fields, methods or enum variants for the receiver.
    *
    * @param {number} offset
    * @returns {CompletionItem[]}
@@ -1888,6 +1903,11 @@ export class Analysis {
    */
   documentSymbols() {
     return this.#ask("documentSymbols", this.#exports.hs_wasm_analysis_symbols);
+  }
+
+  /** Entry-module diagnostics: code, message and exact UTF-16 start/end offsets. */
+  diagnostics() {
+    return this.#ask("diagnostics", this.#exports.hs_wasm_analysis_diagnostics);
   }
 
   /**

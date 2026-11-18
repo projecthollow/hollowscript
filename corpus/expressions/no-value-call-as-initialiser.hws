@@ -1,0 +1,6 @@
+fn f() {
+    return
+}
+
+constant x = f()
+return x

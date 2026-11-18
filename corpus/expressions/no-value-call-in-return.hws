@@ -1,0 +1,9 @@
+fn f() {
+    return
+}
+
+fn h(): Int {
+    return f()
+}
+
+return h()

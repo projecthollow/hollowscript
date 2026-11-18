@@ -1,0 +1,4 @@
+uses print
+
+effect print("v ${1 +
+    2}")

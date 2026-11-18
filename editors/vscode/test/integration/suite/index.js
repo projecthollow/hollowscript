@@ -41,13 +41,24 @@ const tests = [];
 /** @param {string} name @param {() => Promise<void>} body */
 const test = (name, body) => tests.push([name, body]);
 
+/** @param {string} source @returns {Promise<import("vscode").TextDocument>} */
+async function scratch(source) {
+  const document = await open("members.hws");
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), source);
+  assert.ok(await vscode.workspace.applyEdit(edit));
+  return document;
+}
+
 test("activates for a .hws file", async () => {
   const document = await open("sample.hws");
   assert.equal(document.languageId, "hollowscript");
-  const extension = vscode.extensions.getExtension("hollowscript.hollowscript");
+  const extension = vscode.extensions.getExtension("soulstack.hollowscript");
   assert.ok(extension, "extension not found");
   await extension.activate();
   assert.ok(extension.isActive);
+  if (process.env.TEST_EXTENSION_ROOT) assert.equal(extension.extensionPath, process.env.TEST_EXTENSION_ROOT);
+  if (process.env.TEST_RESTRICTED) assert.equal(vscode.workspace.isTrusted, false, "must run in Restricted Mode");
 });
 
 test("publishes diagnostics from the server", async () => {
@@ -118,9 +129,112 @@ test("restarts the language server on command", async () => {
   await vscode.commands.executeCommand("workbench.action.files.revert");
 });
 
+test("rename preserves Unicode before a reference", async () => {
+  const source = 'constant x = 7\nconstant text = "😀${x}"\nreturn text\n';
+  const document = await scratch(source);
+  const edit = /** @type {vscode.WorkspaceEdit} */ (await eventually(async () => {
+    const result = await vscode.commands.executeCommand("vscode.executeDocumentRenameProvider", document.uri, new vscode.Position(0, 9), "value");
+    return result || undefined;
+  }, "Unicode rename"));
+  assert.ok(await vscode.workspace.applyEdit(edit));
+  assert.ok(document.getText().includes('"😀${value}"'), document.getText());
+  const reference = document.positionAt(document.getText().indexOf("${value}") + 2);
+  const definitions = /** @type {vscode.Location[]} */ (await vscode.commands.executeCommand("vscode.executeDefinitionProvider", document.uri, reference));
+  assert.equal(definitions[0]?.range.start.character, 9);
+  const semantic = /** @type {vscode.SemanticTokens} */ (await vscode.commands.executeCommand("vscode.provideDocumentSemanticTokens", document.uri));
+  let line = 0, character = 0, found = false;
+  for (let i = 0; i < semantic.data.length; i += 5) {
+    line += semantic.data[i];
+    character = (semantic.data[i] === 0 ? character : 0) + semantic.data[i + 1];
+    if (line === reference.line && character === reference.character) found = true;
+  }
+  assert.ok(found, "semantic token must use the UTF-16 column after the emoji");
+  const replacement = new vscode.WorkspaceEdit();
+  replacement.replace(document.uri, new vscode.Range(reference, reference.translate(0, 5)), "missing");
+  assert.ok(await vscode.workspace.applyEdit(replacement));
+  await eventually(() => vscode.languages.getDiagnostics(document.uri).some((d) => String(d.code) === "HS0205" && d.range.start.line === 1), "Unicode edit synchronisation");
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+});
+
+test("member completion works with the released v0.1.1 server", async () => {
+  for (const [source, expected, kind] of [
+    ['constant s = "hi"\nreturn s.tr', "trim", vscode.CompletionItemKind.Method],
+    ['return "😀".trim().', "length", vscode.CompletionItemKind.Method],
+    ['constant xs = [1]\nreturn xs.', "append", vscode.CompletionItemKind.Method],
+    ['return ["a": 1].', "get", vscode.CompletionItemKind.Method],
+    ['return set([1]).', "union", vscode.CompletionItemKind.Method],
+    ['constant r: Result<Int, String> = success(1)\nreturn r.', "unwrapOr", vscode.CompletionItemKind.Method],
+    ['import Person from "./util"\nconstant p: Person = { name: "A", age: 1 }\nreturn p.', "age", vscode.CompletionItemKind.Field],
+    ['import Choice from "./util"\nreturn Choice.', "First", vscode.CompletionItemKind.EnumMember],
+    ['return json.', "parse", vscode.CompletionItemKind.Method],
+  ]) {
+    const document = await scratch(/** @type {string} */ (source));
+    const list = await eventually(async () => {
+      /** @type {vscode.CompletionList} */
+      const result = await vscode.commands.executeCommand("vscode.executeCompletionItemProvider", document.uri, document.positionAt(document.getText().length), ".");
+      return result?.items.some((i) => (typeof i.label === "string" ? i.label : i.label.label) === expected && i.kind === kind) ? result : undefined;
+    }, `member ${expected}`);
+    assert.ok(list.items.some((i) => i.detail));
+  }
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+});
+
+test("references, rename, signature help, folding, semantic tokens and quick fixes", async () => {
+  const source = 'import twice from "./util"\nconstant answer = twice(21)\nreturn answer\n';
+  const document = await scratch(source);
+  // Windows may preserve CRLF when applying text to an existing document.
+  // Compute offsets from the editor's actual text, as a provider caller does.
+  const call = document.positionAt(document.getText().indexOf("twice(21)"));
+  /** @type {vscode.Location[]} */
+  const references = await eventually(async () => {
+    const result = /** @type {vscode.Location[]} */ (await vscode.commands.executeCommand("vscode.executeReferenceProvider", document.uri, call));
+    return result?.length >= 2 ? result : undefined;
+  }, "cross-file references");
+  assert.ok(references.some((r) => r.uri.toString() === document.uri.toString()));
+  const definitions = /** @type {vscode.Location[]} */ (await vscode.commands.executeCommand("vscode.executeDefinitionProvider", document.uri, call));
+  assert.ok(definitions.some((r) => r.uri.fsPath.endsWith("util.hws")));
+  /** @type {vscode.WorkspaceEdit} */
+  const rename = await vscode.commands.executeCommand("vscode.executeDocumentRenameProvider", document.uri, call, "doubleValue");
+  assert.ok(rename.entries().length >= 2, "rename must reach the imported declaration");
+  /** @type {vscode.SignatureHelp} */
+  const signature = await vscode.commands.executeCommand("vscode.executeSignatureHelpProvider", document.uri, document.positionAt(document.getText().indexOf("21)")));
+  assert.ok(signature.signatures.some((s) => s.label.includes("Int")));
+  const sample = await open("sample.hws");
+  /** @type {vscode.FoldingRange[]} */
+  const folds = await vscode.commands.executeCommand("vscode.executeFoldingRangeProvider", sample.uri);
+  assert.ok(folds.length > 0);
+  /** @type {vscode.SemanticTokens} */
+  const tokens = await vscode.commands.executeCommand("vscode.provideDocumentSemanticTokens", sample.uri);
+  assert.ok(tokens.data.length > 0);
+  const broken = await scratch('effect print("hello")\n');
+  await eventually(() => vscode.languages.getDiagnostics(broken.uri).some((d) => String(d.code) === "HS0205"), "missing uses diagnostic");
+  /** @type {(vscode.CodeAction | vscode.Command)[]} */
+  const actions = await eventually(async () => {
+    const result = /** @type {vscode.CodeAction[]} */ (await vscode.commands.executeCommand("vscode.executeCodeActionProvider", broken.uri, new vscode.Range(0, 7, 0, 12), vscode.CodeActionKind.QuickFix.value));
+    return result.some((a) => a.title.includes("uses")) ? result : undefined;
+  }, "missing uses quick fix");
+  assert.ok(actions.some((a) => a.title.includes("uses")));
+  for (const [source, code, title] of [
+    ['fn apply(f: effect fn(String)) {\n    f("hello")\n}\n', 'HS0401', "effect"],
+    ['constant unused = 1\nreturn 2\n', 'HS0801', "unused"],
+  ]) {
+    const target = await scratch(source);
+    await eventually(() => vscode.languages.getDiagnostics(target.uri).some((d) => String(d.code) === code), `diagnostic ${code}`);
+    const fix = await eventually(async () => {
+      const fixes = /** @type {vscode.CodeAction[]} */ (await vscode.commands.executeCommand("vscode.executeCodeActionProvider", target.uri, new vscode.Range(0, 0, target.lineCount - 1, 0), vscode.CodeActionKind.QuickFix.value));
+      return fixes.find((a) => a.title.includes(title) && a.edit);
+    }, `${title} quick fix`);
+    assert.ok(fix?.edit, `missing ${title} fix`);
+    assert.ok(await vscode.workspace.applyEdit(fix.edit));
+    await eventually(() => !vscode.languages.getDiagnostics(target.uri).some((d) => String(d.code) === code), `fixed ${code}`);
+  }
+  await vscode.commands.executeCommand("workbench.action.files.revert");
+});
+
 async function run() {
   let failed = 0;
-  for (const [name, body] of tests) {
+  const selected = process.env.TEST_MISSING_SERVER ? tests.filter(([name]) => name.startsWith("activates") || name.startsWith("member completion")) : tests;
+  for (const [name, body] of selected) {
     try {
       await body();
       console.log(`  ok   ${name}`);
@@ -130,7 +244,7 @@ async function run() {
     }
   }
   if (failed > 0) throw new Error(`${failed} of ${tests.length} integration tests failed`);
-  console.log(`  ${tests.length} integration tests passed`);
+  console.log(`  ${selected.length} integration tests passed`);
 }
 
 module.exports = { run };

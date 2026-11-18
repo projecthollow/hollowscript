@@ -1,0 +1,6 @@
+fn f() {
+    return
+}
+
+constant xs: [Int] = [1, f()]
+return xs

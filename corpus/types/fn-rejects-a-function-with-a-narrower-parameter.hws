@@ -1,0 +1,7 @@
+fn callWithNone(f: fn(Int?): Bool): Bool {
+    return f(none)
+}
+
+return callWithNone(fn(n: Int): Bool {
+    return n > 0
+})

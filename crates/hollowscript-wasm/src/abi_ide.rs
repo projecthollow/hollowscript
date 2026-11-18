@@ -162,6 +162,12 @@ pub extern "C" fn hs_wasm_analysis_symbols(handle: u32) -> i32 {
     query(handle, crate::tooling::ide::Analysis::symbols_json)
 }
 
+/// Writes entry-module diagnostics with exact UTF-16 spans to the text channel.
+#[unsafe(no_mangle)]
+pub extern "C" fn hs_wasm_analysis_diagnostics(handle: u32) -> i32 {
+    query(handle, crate::tooling::ide::Analysis::diagnostics_json)
+}
+
 /// Ends an analysis and releases what it holds. A handle that names none is
 /// ignored, so a host may call this twice.
 #[unsafe(no_mangle)]

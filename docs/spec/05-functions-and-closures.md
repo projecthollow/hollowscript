@@ -13,7 +13,7 @@ typeParams = identifier { "," identifier } [ "," ] ;
 A function declaration appears only at the top level of a file and may be prefixed with `export` ([Chapter 10](10-modules.md)). It gives a name to a function whose parameters and return type are written out:
 
 - Every parameter has a declared type. Parameter names must be distinct (HS0201).
-- If the function returns a value, its return type is declared after the parameter list. If the return type is omitted, the function returns nothing, and a call to it can only be used as a statement ([section 4.9](04-statements.md#49-expression-statements)).
+- If the function returns a value, its return type is declared after the parameter list. If the return type is omitted, the function returns nothing, and a call to it can only be used as a statement ([section 4.9](04-statements.md#49-expression-statements)); anywhere else it is HS0345.
 - Type parameters, if any, follow the name ([section 2.10](02-types.md#210-generics)).
 - Parameters are constants and cannot be assigned (HS0206).
 - A function that declares a return type must return a value on every path ([section 4.7](04-statements.md#47-return-break-continue-and-reachability)).
@@ -60,7 +60,7 @@ closureParam  = identifier [ ":" type ] ;
 
 A closure is an anonymous function used as a value, with the same syntax as a declaration minus the name and type parameters. It is created each time its expression is evaluated.
 
-**Parameter types.** A closure parameter may omit its annotation when the closure appears where an expected function type is known: as an argument whose parameter type is a function type, in an annotated declaration, or as an operand of `return` in a function whose return type is a function type. Then the parameter takes the type at the same position in the expected function type; if there is also an annotation, it must be identical to that type (HS0301). A parameter with no annotation and no expected function type, or whose expected type still contains an unbound type variable ([section 2.10](02-types.md#210-generics)), is HS0309. The number of parameters must equal the number in the expected function type (HS0319).
+**Parameter types.** A closure parameter may omit its annotation when the closure appears where an expected function type is known: as an argument whose parameter type is a function type, in an annotated declaration (also when the annotation is an optional function type, [section 2.9](02-types.md#29-inference)), or as an operand of `return` in a function whose return type is a function type. Then the parameter takes the type at the same position in the expected function type; if there is also an annotation, it must be identical to that type (HS0301). A parameter with no annotation and no expected function type, or whose expected type still contains an unbound type variable ([section 2.10](02-types.md#210-generics)), is HS0309. The number of parameters must equal the number in the expected function type (HS0319).
 
 **Return type.** The return type of a closure is decided as follows:
 
@@ -69,7 +69,7 @@ A closure is an anonymous function used as a value, with the same syntax as a de
 3. Otherwise, if the expected function type has no return type (for example the parameter of `each`), the closure returns nothing and `return e` in it is HS0340.
 4. Otherwise (no expected function type), the closure's return type is the join ([section 2.9](02-types.md#29-inference), taken over all the operands at once) of the types of its `return` operands, or none if it has no `return e`. A closure that mixes `return e` and a bare `return` is HS0341.
 
-A closure that has a return type must return on every path (HS0342). If the expected return type is an unbound type variable (as `U` in `map`), the join of the `return` operands binds it ([section 2.10](02-types.md#210-generics)).
+A closure that has a return type, including one inferred by rule 4, must return on every path (HS0342). If the expected return type is, or contains, an unbound type variable (as `U` in `map`, or `[U]`), the return type is inferred from the `return` operands as in rule 4, with the same HS0341 and HS0342, and binds the variable ([section 2.10](02-types.md#210-generics)).
 
 **Type.** The type of a closure is `fn(P1, P2): R` with `R` omitted if it returns nothing. It is pure. Because a pure function type is assignable to the corresponding effectful one ([section 2.7](02-types.md#27-assignability-and-numeric-coercion)), a closure may be passed where an `effect fn(...)` is expected.
 

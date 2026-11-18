@@ -1,0 +1,11 @@
+{
+  "title": "A library function that calls a closure keeps walking its receiver after the closure rebinds the only variable that held it",
+  "spec": "14.1",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(999000), Int(4950), Int(50), Int(0), Int(0), Int(1)]"
+  }
+}

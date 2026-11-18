@@ -1,0 +1,8 @@
+fn firstOr<T>(items: [T], fallback: T): T {
+    match items.first() {
+        none { return fallback }
+        x { return x }
+    }
+}
+
+return [firstOr([1, 2], 0), firstOr([], 9)]

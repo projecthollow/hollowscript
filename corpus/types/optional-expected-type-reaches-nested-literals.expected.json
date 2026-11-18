@@ -1,0 +1,15 @@
+{
+  "title": "An expected T? reaches a record field, a list element and a call argument alike",
+  "spec": "2.9",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"Priya at 4 Mill Lane\"), String(\"2\")]"
+  }
+}

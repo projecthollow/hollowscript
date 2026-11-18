@@ -1,0 +1,6 @@
+uses print
+
+effect print("v ${{ a: 1, b: 2 }.b}")
+effect print("w ${{
+    a: 3
+}.a}")

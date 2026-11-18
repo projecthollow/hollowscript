@@ -62,7 +62,7 @@ step "compile the sample programs to bytecode"
 samples="$here"
 "$bin/examples/node_e2e_fixture" "$samples/sample.hws" "$work/sample.hsb"
 "$bin/examples/async_e2e_fixture" "$samples/async-sample.hws" "$work/async-sample.hsb"
-for name in load-result-sample deadline-sample deadline-load-sample results-sample results-load-fault-sample mutation-sample; do
+for name in load-result-sample deadline-sample deadline-load-sample results-sample results-load-fault-sample mutation-sample random-sample; do
     "$bin/hollowscript" build "$samples/$name.hws" -o "$work/$name.hsb"
 done
 
@@ -104,7 +104,8 @@ run memory-check "$work/vm.wasm" "$work/tooling.wasm" ${optimised[@]+"${optimise
 run tooling-check "$work/tooling.wasm"
 run ide-check "$work/tooling.wasm"
 run deep-nesting-check "$work/tooling.wasm"
-run trap-check "$work/tooling.wasm" "$work/vm.wasm"
+run trap-check "$work/tooling.wasm" "$work/vm.wasm" "$work/load-result-sample.hsb"
+run capability-argument-check "$work/vm.wasm" "$work/random-sample.hsb"
 run instance-churn-check "$work/vm.wasm" "$work/load-result-sample.hsb"
 run limits-check "$work/vm.wasm" "$work/deadline-sample.hsb"
 run wrapper-hygiene-check "$work/tooling.wasm" "$work/vm.wasm" "$work/load-result-sample.hsb"

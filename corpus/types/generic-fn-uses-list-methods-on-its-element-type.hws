@@ -1,0 +1,47 @@
+uses print
+
+fn withLast<T>(items: [T], extra: T): [T] {
+    return items.append(extra)
+}
+
+fn joined<T>(a: [T], b: [T]): [T] {
+    return a.concat(b)
+}
+
+fn has<T>(items: [T], x: T): Bool {
+    return items.contains(x)
+}
+
+fn keepIf<T>(items: [T], ok: fn(T): Bool): [T] {
+    return items.filter(ok)
+}
+
+fn sortedBy<T>(items: [T], score: fn(T): Int): [T] {
+    return items.sort(fn(a, b) {
+        return score(a) - score(b)
+    })
+}
+
+constant big = keepIf(
+    [1, 2, 3, 4],
+    fn(n) {
+        return n > 2
+    }
+)
+
+constant ordered = sortedBy(
+    ["ccc", "a", "bb"],
+    fn(s) {
+        return s.length()
+    }
+)
+
+effect print("${withLast([1, 2], 3).length()}")
+
+effect print("${joined(["a"], ["b", "c"]).join(",")}")
+
+effect print("${has([1, 2], 2)}")
+
+effect print("${big.length()}")
+
+effect print(ordered.join(","))

@@ -1,0 +1,5 @@
+record Address = { street: String, flat: String? }
+
+constant a: Address? = { street: "1 Park", flat: "2" }
+
+return a

@@ -1,0 +1,10 @@
+fn f() {
+    return
+}
+
+fn g(n: Int): Int {
+    return n
+}
+
+constant r = g(f())
+return r

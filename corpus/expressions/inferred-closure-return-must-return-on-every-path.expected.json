@@ -1,0 +1,24 @@
+{
+  "title": "A closure whose return type is inferred must return a value on every path",
+  "spec": "5.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0342"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0342"
+      }
+    ]
+  }
+}

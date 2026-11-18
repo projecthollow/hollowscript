@@ -1,0 +1,24 @@
+{
+  "title": "Returning a call that returns nothing from a function with no return type is HS0340 only",
+  "spec": "4.9",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 6,
+      "code": "HS0340"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 6,
+        "code": "HS0340"
+      }
+    ]
+  }
+}

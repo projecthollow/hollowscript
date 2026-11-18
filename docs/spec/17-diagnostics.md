@@ -132,11 +132,12 @@ Every diagnostic in this section has severity `error`. The *stage* is `lex`, `pa
 | HS0333 | check | '{enum}' has no variant '{name}'. | the variant name |
 | HS0334 | check | '{name}' must be called; a method or a function that takes any record is not a value. | the name |
 | HS0340 | check | This function returns nothing, so 'return' cannot carry a value. | the `return` |
-| HS0341 | check | This function declares a return type, so 'return' must carry a value. | the `return` |
-| HS0342 | check | {what} declares a return type, so every path must return a value. | the function name or `fn` |
+| HS0341 | check | This function returns a value, so 'return' must carry one. | the `return` |
+| HS0342 | check | {what} returns a value, so every path must return one. | the function name or `fn` |
 | HS0343 | check | Unreachable statement: nothing after return, break or continue in the same block ever runs. | the first unreachable statement |
 | HS0335 | check | This type is too large; the limit is {limit} nodes. | the type |
 | HS0344 | check | '{word}' can only be used inside a loop in the same function. | the `break` or `continue` |
+| HS0345 | check | This call returns nothing, so it has no value to use; a call to a function without a return type can only be a statement. | the call |
 
 ### Effects and capabilities
 
@@ -207,15 +208,18 @@ A limit of the implementation rather than of the language ([section 1.10](01-lex
 
 ## 17.3 Warnings
 
-Warnings are reported at severity `warning` and do not stop a program from running. These three are the only warnings, and this section is the one place that defines when they are reported.
+Warnings are reported at severity `warning` and do not stop a program from running. These four are the only warnings, and this section is the one place that defines when they are reported.
 
 | Code | Stage | Message | Span |
 |---|---|---|---|
 | HS0801 | check | Unused constant or variable '{name}'. | the name in its declaration |
 | HS0802 | check | Unused import '{name}'. | the name in the import |
 | HS0803 | check | The Result of this call is ignored; handle it, or use '?'. | the call |
+| HS0804 | check | The value of this call is discarded, and the library call itself has no effect; use the value or remove the call. | the call |
 
 A name is *used* if a reference that resolves to it is read anywhere, including inside a closure and including inside an expression that has another error; a reference that does not resolve is not a use. Warnings are reported whether or not the program has errors. Assigning to a `variable` is not a use. HS0801 is reported for every name that a `constant` or `variable` declaration binds, local or top-level, including the names of a destructuring pattern, when it is never read. It is not reported for a parameter of a `fn` or a closure, for a `for` loop variable or a name bound by a `for` pattern, for a name bound in the pattern of a `match` arm, for a name that begins with `_`, or for an exported declaration. A parameter never warns because it is part of a signature and a callback may ignore what it is given, and a loop variable or an arm binding names part of a value that the construct must bind.
+
+HS0804 is reported for an expression statement that is a call of a standard library function or method ([Chapters 13](13-stdlib-core.md) to [15](15-stdlib-data.md) and [section 8.4](08-errors-and-results.md#84-result-methods)), is not marked `effect`, is not followed by `?`, and has a value that is not a `Result` (a `Result` is HS0803, and a call never reports both). It is not reported for a call of a function that the program declares or of a function value, whatever it returns, because such a function may assign a `variable` that it captures or that is declared at the top level, and it is not reported for a call of a capability. A callback method such as `map` is not exempt, even when its callback assigns a `variable`: such an effect is better written with `each` or a `for` loop. A value discarded on purpose can be bound to a name that starts with an underscore (`constant _length = xs.length()`). Neither HS0803 nor HS0804 is reported for a parenthesised expression on a line of its own, which is HS0109 and not an expression statement ([section 4.9](04-statements.md#49-expression-statements)).
 
 ## 17.4 Faults and host errors
 

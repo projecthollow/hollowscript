@@ -45,6 +45,9 @@ pub enum Constructor {
         index: u32,
         /// The number of payload values.
         arity: u32,
+        /// How many variants the enum has, so a column of variants can be
+        /// judged complete from the rows alone, at any depth.
+        of: u32,
     },
     /// The record type's single constructor, one argument per field in
     /// ascending field name order.
@@ -152,21 +155,13 @@ pub struct MatchReport {
 ///
 /// `scrutinee_constructors` is the complete constructor set of the
 /// scrutinee's own type (empty for `Int`, `Float`, `String`, `Map` or `Set`,
-/// which have none); it is consulted only for the outermost column, the one
-/// column the scrutinee itself fills, because that is the only column this
-/// function is given a type for. Every other column comes from specializing
-/// a constructor's own sub-patterns, whose type this function is not told:
-/// for `Bool`, `none`/`some` and a record, section 7.7 already fixes what a
-/// complete signature looks like regardless of type (two booleans, the two
-/// optionality cases, or the type's one constructor), so nesting does not
-/// matter and completeness at any depth is decided from the rows alone. A
-/// nested column of variants is the one case this cannot cover: without the
-/// enum's own variant count this function cannot tell "every variant I see"
-/// from "every variant that exists", so it conservatively treats a nested
-/// variant column as never complete, which can only ever cost a spurious
-/// `else`, never accept a program that skips a case. Closing that gap needs
-/// this function, or its caller, to be given a type for every column, which
-/// is a real interface gap, not something to guess at here.
+/// which have none). It is used only to bound the list patterns it names:
+/// completeness of a column is decided from the rows alone, at every depth,
+/// because section 7.7 fixes what a complete signature is for each kind of
+/// column without naming a type: two booleans, the two optionality cases,
+/// the type's one record constructor, the list lengths up to the longest
+/// pattern and beyond, or, for a variant, every one of the `of` variants its
+/// own constructors carry.
 #[must_use]
 pub fn check_match(rows: &[Row], scrutinee_constructors: &[Constructor]) -> MatchReport {
     use hollowscript_core::limits::structural::{MAX_LIST_PATTERN_ELEMENTS, MAX_MATCH_ROWS};
@@ -182,12 +177,7 @@ pub fn check_match(rows: &[Row], scrutinee_constructors: &[Constructor]) -> Matc
 
     let mut budget = Budget::new();
     let wildcard_query = [Constructor::Wildcard];
-    let not_exhaustive = match useful(
-        rows,
-        &wildcard_query,
-        Some(scrutinee_constructors),
-        &mut budget,
-    ) {
+    let not_exhaustive = match useful(rows, &wildcard_query, &mut budget) {
         Ok(is_useful) => is_useful,
         Err(BudgetExceeded) => return too_complex_report(),
     };
@@ -195,12 +185,7 @@ pub fn check_match(rows: &[Row], scrutinee_constructors: &[Constructor]) -> Matc
     let mut unreachable = Vec::new();
     for (i, current) in rows.iter().enumerate() {
         let prior = rows.get(..i).unwrap_or(&[]);
-        let reachable = match useful(
-            prior,
-            &current.columns,
-            Some(scrutinee_constructors),
-            &mut budget,
-        ) {
+        let reachable = match useful(prior, &current.columns, &mut budget) {
             Ok(is_useful) => is_useful,
             Err(BudgetExceeded) => return too_complex_report(),
         };
@@ -239,15 +224,10 @@ fn is_literal_repeat(rows: &[Row], i: usize) -> bool {
 }
 
 /// `useful(matrix, query)`: whether some value the flattened `query` matches
-/// is matched by no row of `matrix`. `top` is `scrutinee_constructors`,
-/// consulted only while `query` still holds the scrutinee's own, outermost
-/// column (see [`check_match`]'s own documentation): every recursive call
-/// below passes `None`, because by then `query`'s head names a column this
-/// function was never given a type for.
+/// is matched by no row of `matrix`.
 fn useful(
     matrix: &[Row],
     query: &[Constructor],
-    top: Option<&[Constructor]>,
     budget: &mut Budget,
 ) -> Result<bool, BudgetExceeded> {
     budget.charge()?;
@@ -260,24 +240,24 @@ fn useful(
         Constructor::Wildcard => {
             // Rule 3.
             let sigma = column_constructors(matrix);
-            if is_complete(&sigma, top) {
-                for c in expand_signature(&sigma, top) {
+            if is_complete(&sigma) {
+                for c in expand_signature(&sigma) {
                     let mut sub_query = vec![Constructor::Wildcard; c.arity() as usize];
                     sub_query.extend_from_slice(tail);
-                    if useful(&specialize(matrix, &c), &sub_query, None, budget)? {
+                    if useful(&specialize(matrix, &c), &sub_query, budget)? {
                         return Ok(true);
                     }
                 }
                 Ok(false)
             } else {
-                useful(&default_matrix(matrix), tail, None, budget)
+                useful(&default_matrix(matrix), tail, budget)
             }
         }
         c => {
             // Rule 2: `query`'s own sub-patterns are already `tail`'s
             // leading columns (the flattening `check_match` documents), so
             // specializing the query is just using `tail` as it stands.
-            useful(&specialize(matrix, c), tail, None, budget)
+            useful(&specialize(matrix, c), tail, budget)
         }
     }
 }
@@ -377,9 +357,8 @@ fn list_covers(
 /// Whether `sigma` (a column's own observed constructors) is a *complete
 /// signature* of its type (section 7.7): every constructor the type has
 /// appears in `sigma`. See [`check_match`]'s own documentation for why this
-/// needs no external type information except for a variant at the outermost
-/// column (`top`).
-fn is_complete(sigma: &[Constructor], top: Option<&[Constructor]>) -> bool {
+/// needs no external type information.
+fn is_complete(sigma: &[Constructor]) -> bool {
     match sigma.first() {
         None | Some(Constructor::Literal(_) | Constructor::Wildcard) => false,
         Some(Constructor::Bool(_)) => {
@@ -390,11 +369,10 @@ fn is_complete(sigma: &[Constructor], top: Option<&[Constructor]>) -> bool {
         }
         Some(Constructor::Record { .. }) => true,
         Some(Constructor::ListLength { .. }) => list_signature_is_complete(sigma),
-        Some(Constructor::Variant { .. }) => top.is_some_and(|all| {
-            let declared: BTreeSet<u32> = all.iter().filter_map(variant_index).collect();
+        Some(Constructor::Variant { of, .. }) => {
             let seen: BTreeSet<u32> = sigma.iter().filter_map(variant_index).collect();
-            !declared.is_empty() && declared == seen
-        }),
+            *of > 0 && seen.len() == *of as usize
+        }
     }
 }
 
@@ -431,11 +409,9 @@ fn list_signature_is_complete(sigma: &[Constructor]) -> bool {
 }
 
 /// Given a complete `sigma`, the definitive constructors to case-split on:
-/// for most types this is a fixed or `sigma`-derived set, but for a variant
-/// it is read from `top` (see [`check_match`]'s documentation), since
-/// `sigma` alone might list a variant's declared arity inconsistently with
-/// another row naming the same variant.
-fn expand_signature(sigma: &[Constructor], top: Option<&[Constructor]>) -> Vec<Constructor> {
+/// for most types this is a fixed set, and for a variant and a list it is
+/// derived from `sigma`, which is complete and so names every constructor.
+fn expand_signature(sigma: &[Constructor]) -> Vec<Constructor> {
     match sigma.first() {
         Some(Constructor::Bool(_)) => vec![Constructor::Bool(true), Constructor::Bool(false)],
         Some(Constructor::None | Constructor::Some) => vec![Constructor::None, Constructor::Some],
@@ -461,12 +437,15 @@ fn expand_signature(sigma: &[Constructor], top: Option<&[Constructor]>) -> Vec<C
             });
             all
         }
-        Some(Constructor::Variant { .. }) => top.map_or_else(Vec::new, |all| {
-            all.iter()
-                .filter(|c| matches!(c, Constructor::Variant { .. }))
-                .cloned()
-                .collect()
-        }),
+        Some(Constructor::Variant { .. }) => {
+            let mut all: Vec<Constructor> = Vec::new();
+            for c in sigma {
+                if !all.iter().any(|a| variant_index(a) == variant_index(c)) {
+                    all.push(c.clone());
+                }
+            }
+            all
+        }
         _ => Vec::new(),
     }
 }
@@ -484,7 +463,15 @@ mod tests {
     fn arities_match_the_specification() {
         assert_eq!(Constructor::None.arity(), 0);
         assert_eq!(Constructor::Some.arity(), 1);
-        assert_eq!(Constructor::Variant { index: 2, arity: 3 }.arity(), 3);
+        assert_eq!(
+            Constructor::Variant {
+                index: 2,
+                arity: 3,
+                of: 3
+            }
+            .arity(),
+            3
+        );
         assert_eq!(
             Constructor::ListLength {
                 length: 4,
@@ -572,10 +559,22 @@ mod tests {
     #[test]
     fn an_enum_missing_a_variant_is_not_exhaustive() {
         let all = vec![
-            Constructor::Variant { index: 0, arity: 0 },
-            Constructor::Variant { index: 1, arity: 0 },
+            Constructor::Variant {
+                index: 0,
+                arity: 0,
+                of: 2,
+            },
+            Constructor::Variant {
+                index: 1,
+                arity: 0,
+                of: 2,
+            },
         ];
-        let rows = vec![row(vec![Constructor::Variant { index: 0, arity: 0 }])];
+        let rows = vec![row(vec![Constructor::Variant {
+            index: 0,
+            arity: 0,
+            of: 2,
+        }])];
         let report = check_match(&rows, &all);
         assert!(!report.exhaustive);
     }
@@ -583,12 +582,28 @@ mod tests {
     #[test]
     fn an_enum_with_every_variant_is_exhaustive_without_an_else() {
         let all = vec![
-            Constructor::Variant { index: 0, arity: 0 },
-            Constructor::Variant { index: 1, arity: 0 },
+            Constructor::Variant {
+                index: 0,
+                arity: 0,
+                of: 2,
+            },
+            Constructor::Variant {
+                index: 1,
+                arity: 0,
+                of: 2,
+            },
         ];
         let rows = vec![
-            row(vec![Constructor::Variant { index: 0, arity: 0 }]),
-            row(vec![Constructor::Variant { index: 1, arity: 0 }]),
+            row(vec![Constructor::Variant {
+                index: 0,
+                arity: 0,
+                of: 2,
+            }]),
+            row(vec![Constructor::Variant {
+                index: 1,
+                arity: 0,
+                of: 2,
+            }]),
         ];
         let report = check_match(&rows, &all);
         assert!(report.exhaustive);
@@ -655,15 +670,65 @@ mod tests {
         // dropping a matched head to reveal the payload's own column.
         let a = |payload: bool| {
             row(vec![
-                Constructor::Variant { index: 0, arity: 1 },
+                Constructor::Variant {
+                    index: 0,
+                    arity: 1,
+                    of: 1,
+                },
                 Constructor::Bool(payload),
             ])
         };
         let one_arm = vec![a(true)];
-        let scrutinee = vec![Constructor::Variant { index: 0, arity: 1 }];
+        let scrutinee = vec![Constructor::Variant {
+            index: 0,
+            arity: 1,
+            of: 1,
+        }];
         assert!(!check_match(&one_arm, &scrutinee).exhaustive);
 
         let both_arms = vec![a(true), a(false)];
         assert!(check_match(&both_arms, &scrutinee).exhaustive);
+    }
+
+    #[test]
+    fn a_nested_column_of_variants_is_complete_when_every_variant_is_listed() {
+        // enum Shape { Circle, Square } and enum Wrap { Box(Shape), Empty }:
+        // Box(Circle), Box(Square), Empty is exhaustive; without Square it is not.
+        let shape = |index: u32| Constructor::Variant {
+            index,
+            arity: 0,
+            of: 2,
+        };
+        let wrap = |index: u32, arity: u32| Constructor::Variant {
+            index,
+            arity,
+            of: 2,
+        };
+        let boxed = |index: u32| row(vec![wrap(0, 1), shape(index)]);
+        let empty = || row(vec![wrap(1, 0)]);
+        let scrutinee = vec![wrap(0, 1), wrap(1, 0)];
+
+        let all = vec![boxed(0), boxed(1), empty()];
+        let report = check_match(&all, &scrutinee);
+        assert!(report.exhaustive);
+        assert!(report.unreachable.is_empty());
+
+        let missing = vec![boxed(0), empty()];
+        assert!(!check_match(&missing, &scrutinee).exhaustive);
+    }
+
+    #[test]
+    fn a_none_arm_and_every_variant_is_exhaustive_on_an_optional_enum() {
+        let variant = |index: u32| Constructor::Variant {
+            index,
+            arity: 0,
+            of: 2,
+        };
+        let rows = vec![
+            row(vec![Constructor::None]),
+            row(vec![Constructor::Some, variant(0)]),
+            row(vec![Constructor::Some, variant(1)]),
+        ];
+        assert!(check_match(&rows, &[Constructor::None, Constructor::Some]).exhaustive);
     }
 }

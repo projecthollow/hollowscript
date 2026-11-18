@@ -1,127 +1,82 @@
 # HollowScript logo
 
-The master files for the HollowScript mark, its icon tile and its
-horizontal lockup. Use these files as they are; do not redraw the mark.
+The master files for the Script Fold mark, icon tile and horizontal lockup.
+Use these files unaltered; do not redraw the mark.
 
-The name HollowScript and this logo are trade marks of the project.
-**The files in this directory are not licensed under CC BY 4.0**, unlike
-the rest of `docs/`, **nor under Apache-2.0 or MIT**. Their use is
-governed by [TRADEMARKS.md](../../TRADEMARKS.md) alone.
+These files are **not licensed under CC BY 4.0, Apache-2.0 or MIT**.
+Their use is governed by [TRADEMARKS.md](../../TRADEMARKS.md), which does
+not claim registration or legal clearance.
 
 ## The mark
 
-Seven squares on a three by three grid, with the top and bottom cells of
-the middle column left out, so the grid reads as an H. The centre cell is
-the only one in the accent colour.
+A solid source-file silhouette, a separated upper-right fold and a
+transparent H that opens at the lower edge. The original reference's
+proportions and openings are intentional. Do not close the lower H,
+equalise its upper openings or replace it with a conventional letterform.
 
-- **The H** is the name.
-- **The grid** is the runtime: a fixed, bounded space the program runs in.
-- **The single green cell** is the capability the host grants. A
-  HollowScript program can do nothing outside itself unless its host hands
-  it a capability; the mark shows one granted cell inside an otherwise
-  neutral grid.
+The mark is drawn on a square 1254-unit canvas. It was traced directly
+from the selected reference, with subpixel contour simplification. Every
+variant uses the same outline. The silhouette was compared against the
+reference mask; overlap is 99.9984 percent. Flattening the fill removes
+tonal variation without changing the selected design.
 
-The mark belongs to the language alone. It shares no shape, asset or
-symbol with any other product's branding, and it is not a ghost or a
-hologram.
+## Colours and variants
 
-## Construction
+| File | Use |
+| ---- | --- |
+| `mark-light.svg` | Site green `#1f7a5c` on a light surface |
+| `mark-dark.svg` | Site green `#3fb27f` on a dark surface |
+| `mark-mono-black.svg` | The charcoal one-ink version |
+| `mark-mono-white.svg` | The white one-ink version |
+| `icon-tile.svg` | Green `#3fb27f` mark on a rounded `#1c1c1c` tile |
+| `lockup-light.svg`, `lockup-dark.svg` | Mark with the outlined wordmark |
+| `social-preview.svg` | Dark lockup on the tile colour, 1280 by 640, for the repository's social preview |
 
-The mark is drawn on a 48 by 48 unit square.
+The tile preserves the mark's square canvas and its clear space. The
+lockup retains the established Lexend 600 outlined wordmark and the
+unregistered trademark symbol. No installed font is needed to render it.
+Lexend is licensed under SIL Open Font License 1.1.
 
-- Nine cells of 12 by 12 units, corner radius 1.5 units.
-- Cells start at 3, 18 and 33 on each axis: a 3 unit margin on every side
-  and a 3 unit gap between cells.
-- The cells at (18, 3) and (18, 33) are removed.
-- The cell at (18, 18) is the core, filled with the accent colour. The
-  other six are the foreground colour.
+The coloured mark is the default across the sites and icons; the wordmark
+stays neutral. Use monochrome files when the medium allows only one ink.
+The two greens match the language site's accent tokens. Each clears 4.5:1
+contrast against its intended background. Do not use the dark-surface green
+on a light background.
 
-```
-        x = 3     x = 18    x = 33
-y = 3   [ fg ]    ( none )  [ fg ]
-y = 18  [ fg ]    [ core ]  [ fg ]
-y = 33  [ fg ]    ( none )  [ fg ]
-```
+## Generation
 
-Every coordinate in the master files is a whole or half unit, so the mark
-stays sharp at 16, 32 and 48 pixels.
+`symbol.svg` is the approved vector outline, and `palette.json` is the
+colour source. Run `python3 scripts/render-brand.py` from the repository
+root to rebuild all variants, lockups and PNGs with `rsvg-convert`. Run
+`python3 scripts/render-brand.py --check` to verify the committed exports.
+The renderer reads the vector directly; it does not retrace the reference
+image or need the private provenance files.
 
-**Icon tile.** A rounded square in `#1c1c1c` with a corner radius of 0.22
-of its width, and the mark scaled to 70 percent of the tile, centred, in
-the dark surface colours. `icon-tile.svg` is drawn on a 480 unit square
-so that the scaled mark keeps whole and half unit coordinates (cells of 84
-units at 93, 198 and 303, corner radius 10.5). Use the tile wherever a
-platform expects an app icon: editor extensions, touch icons, web app
-manifests.
+It also keeps the bundled VS Code client's `images/icon.svg` and
+`images/icon.png` aligned with the canonical tile, and writes `preview.svg`
+and `preview.png` for a light/dark and small-size review. Store publication
+is a separate release action; generating these assets does not publish it.
 
-**Lockup.** The mark followed by the wordmark "HollowScript" set in
-Lexend at weight 600 with letter spacing of -0.04 em, in the foreground
-colour only. At a mark height of 48 units the text is 36 units, the gap
-between the mark and the H is 13 units (about 0.27 of the mark's height)
-and the cap height is centred on the mark. The unregistered trade mark
-symbol follows the name, at 0.6 of the text size in Lexend 400, with its
-top level with the cap height, matching how the website shows the name in
-its header. Green appears only in the core cell. The letters are outlines,
-so the lockup needs no font to render. Lexend is licensed under the SIL
-Open Font License 1.1; the outlines here are artwork made with it, not a
-copy of the font.
-
-## Colours
-
-| Surface | Foreground | Core     | Background |
-| ------- | ---------- | -------- | ---------- |
-| Light   | `#1a1b20`  | `#1f7a5c` | `#ffffff`, or the page colour `#eceff5` |
-| Dark    | `#f4f4f5`  | `#3fb27f` | `#1c1c1c`  |
-
-These are the website's interface colours. The one-colour versions fill
-all seven cells with a single colour: black `#1a1b20` or white `#ffffff`.
-Use them where only one ink is available, such as a stamp, an embossed
-surface or a single-colour print run.
+The language website imports these files with its `npm run brand:import`
+command, then runs `npm run brand`. Its source/output fingerprint check
+protects the SVG favicon, ICO, installation icons and sharing image from
+stale exports. Consumers must import these masters rather than reconstruct
+the mark from screenshots.
 
 ## Clear space and size
 
-- Keep clear space of at least 0.25 of the mark's height on every side
-  (12 units at the 48 unit master), free of text, edges and other marks.
-  The lockup takes the same clear space, measured from the mark's height.
-- The smallest size for the mark and for the icon tile is 16 pixels. The
-  lockup should not be used with a mark shorter than 16 pixels; below
-  that, use the mark on its own.
+- Preserve the transparent margins in the square mark masters.
+- Keep at least one quarter of the visible mark's height free around a
+  mark or lockup when placing it beside other artwork.
+- Use the mark or tile from 16 pixels. Use the horizontal lockup from
+  a 24-pixel mark height; below that, use the mark alone.
+- Scale uniformly. Do not stretch, rotate, mirror, rearrange the outline,
+  add effects or combine it with another product's symbol.
+- Use only the provided flat fills. No gradients, shadows or textures.
 
-## Do and do not
+The PNG directory contains 512-pixel transparent marks, icon tiles at
+16, 32, 48, 128, 256 and 512 pixels and the 1280 by 640 social preview, rendered from the SVG masters with
+`rsvg-convert`. Regenerate those exports whenever a master changes.
 
-Do:
-
-- use the light files on light surfaces and the dark files on dark ones;
-- use a one-colour version when the medium has only one colour;
-- scale the files uniformly.
-
-Do not:
-
-- recolour any cell other than the core, or give the core any colour but
-  the accent of its surface;
-- rotate, mirror, skew or stretch the mark, or rearrange, add or remove
-  cells;
-- add shadows, glows, gradients, outlines, bevels or other effects;
-- set the wordmark in another typeface, weight or spacing, or colour it
-  green;
-- combine the mark with the Hollow ghost or any other product's logo, or
-  place it inside another badge system.
-
-## Files
-
-| File | What it is |
-| ---- | ---------- |
-| `mark-light.svg` | The mark for light surfaces |
-| `mark-dark.svg` | The mark for dark surfaces |
-| `mark-mono-black.svg` | One colour, black |
-| `mark-mono-white.svg` | One colour, white |
-| `icon-tile.svg` | The app and editor icon tile |
-| `lockup-light.svg` | Mark and wordmark for light surfaces |
-| `lockup-dark.svg` | Mark and wordmark for dark surfaces |
-| `png/icon-tile-16.png` to `png/icon-tile-512.png` | The tile at 16, 32, 48, 128, 256 and 512 pixels |
-| `png/mark-light-512.png`, `png/mark-dark-512.png` | The mark at 512 pixels, transparent background |
-| `png/mark-mono-black-512.png`, `png/mark-mono-white-512.png` | The one-colour marks at 512 pixels |
-
-The PNG files are rendered from the SVG masters with `rsvg-convert`, for
-example `rsvg-convert -w 512 -h 512 icon-tile.svg -o png/icon-tile-512.png`.
-When a master changes, render its PNG files again.
+These masters describe the current identity. Previously released source
+archives remain immutable; their artwork reflects their release date.

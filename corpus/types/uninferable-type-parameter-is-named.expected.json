@@ -1,0 +1,30 @@
+{
+  "title": "An unbound type parameter is reported by its declared name and its function",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0308",
+      "contains": "type parameter 'T' of 'first'"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0308",
+        "contains": "type parameter 'T' of 'first'"
+      }
+    ]
+  }
+}

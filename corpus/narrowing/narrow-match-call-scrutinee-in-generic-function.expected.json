@@ -1,0 +1,15 @@
+{
+  "title": "A binding after the none arm has the present type of a generic call scrutinee",
+  "spec": "7.6",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Int(1), Int(9)]"
+  }
+}

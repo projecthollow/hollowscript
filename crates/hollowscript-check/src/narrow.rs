@@ -135,6 +135,9 @@ pub fn path_of(
             root: PathRoot::Global(*global),
             fields: Vec::new(),
         }),
+        // A parent already narrowed to its present type is still that path, so a
+        // field below it extends the same path (section 4.8).
+        crate::hir::ExprKind::NarrowedPath(path) => Some(path.clone()),
         crate::hir::ExprKind::Field { target, index } => {
             let mut path = path_of(target, types, module)?;
             let crate::types::TypeView::Record(fields) = types.view(target.ty) else {

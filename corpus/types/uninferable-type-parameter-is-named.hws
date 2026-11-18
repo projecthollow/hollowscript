@@ -1,0 +1,7 @@
+fn first<T>(items: [T]): T? {
+    return items.first()
+}
+
+constant e = first([])
+
+return e

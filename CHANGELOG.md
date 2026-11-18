@@ -11,6 +11,179 @@ The language specification has its own version, stated in
 `docs/spec/README.md`, and moves independently of this implementation's own
 release history.
 
+## [Unreleased]
+
+## [0.1.2] - 2026-11-17 (preview)
+
+This preview fixes the checker and runtime defects found while writing the
+first HollowScript courses, and implements version 1.2.0 of the
+specification. The supported platforms are unchanged from v0.1.1.
+
+### Language
+
+- Fix `match` over an optional value with variant, record or list arms and an
+  `else`: a missing value now reaches the `else` arm instead of failing at run
+  time with an internal error.
+- Fix `match` exhaustiveness for a `none` arm plus an arm for every variant,
+  and for a variant nested in another pattern whose variants are all listed:
+  both are exhaustive and no longer need an `else`.
+- Fix narrowing of a field path whose parent is an optional that is itself
+  narrowed, so `a.b != none` narrows `a.b.c` after `a != none`, in nested
+  `if` statements and in `and` and `or` conditions.
+- Accept a list, map, record or closure literal where the expected type is
+  optional (`constant a: Address? = { ... }`, `[Float]? = [1, 2]`, a closure
+  under an optional function type), including nested in another literal. The
+  literal is checked against the type inside the optional.
+- Type a top-level binding in a `match` arm after the `none` arm as the present
+  type when the scrutinee is any optional expression, such as a call, not only
+  a path. This also lets a generic function return such a binding as `T`.
+- Fix a generic function that uses its own type parameters in a call. Calling a
+  function-typed parameter such as `f: fn(A): B`, passing it to `filter`,
+  `sort` or `map`, using `append`, `concat`, `contains` or `find` on `[T]`,
+  calling another generic function, building a generic enum variant, and
+  recursion all failed with HS0308. Each call to a generic function now gets
+  its own type variables, and the enclosing function's type parameters stay
+  opaque (section 2.10).
+- Name the declared type parameter in type text and in HS0308. A message now
+  says `T` and the real function, for example "The type parameter 'T' of
+  'first' cannot be inferred", instead of `<param>`, `T0` or an empty
+  function name. HS0301 at a generic call writes the parameter type with the
+  type variables bound so far filled in.
+- Hold every call argument to assignability (section 2.7, invariant below
+  the top level): a function whose parameter type is narrower than the
+  declared one, such as `fn(Int): Bool` for `fn(Int?): Bool`, and a list,
+  map, set or record whose element or field type is narrower, such as
+  `[Int]` for `[Int?]` or a `{ x: Int }` value for a record `{ x: Int? }`,
+  are HS0301 at every call. 0.1.1 accepted them; at a generic call such a
+  program could then fail at run time with an internal error. Write the
+  type on such a value (`constant a: A = { x: 1 }`); a literal written in
+  the argument itself is still checked against the parameter type and
+  accepted.
+- Infer the return type of an unannotated closure passed to a user generic
+  function, so `mapAll([1, 2], fn(n) { return n * 2 })` binds `U` from the
+  closure's `return` (section 2.10 step 4). A closure that returns `X` where
+  the function type returns `U?` or `[U]?` binds `U` to `X` and is accepted.
+- Accept a list, map or record literal argument for a generic parameter with
+  an optional inside, such as `compact([1, 2])` for `xs: [T?]`, as the call
+  with its type arguments written out accepts it. An empty list or map
+  argument whose type parameter a later closure argument binds, as in
+  `pair([], fn() { return [1] })`, is checked against that type.
+- Report one mistake at a generic call once: an empty list argument that
+  leaves a type parameter unbound is one HS0308 (also for a bare `T`, as in
+  `id([])`, which was HS0304), a closure parameter whose type is still an
+  unbound type parameter is HS0309 alone, and a wrong or undefined argument
+  no longer adds an HS0308.
+- A call to a function that returns nothing is now an error (HS0345) anywhere
+  a value is needed: as an argument, an initialiser, an interpolated
+  expression, an operand, the operand of `return` or `?`, and so on. It was
+  accepted by `check` and failed at run time. Returning such a call where
+  `return` cannot carry a value at all stays HS0340 only. A callback that
+  returns nothing where `map`, `flatMap`, `mapValues`, `Result.map`,
+  `Result.mapError`, `Result.andThen` or `reduce` needs a value is HS0301.
+- A closure whose expected function type has no return type, such as the
+  callback of `each`, now returns nothing as section 5.3 says: `return e` in
+  it is HS0340, where it was HS0301 or HS0345.
+- A closure whose return type is inferred, with no expected function type or
+  as a callback of `map` or a generic function, must now return a value on
+  every path (HS0342), and one that mixes `return e` and a bare `return` is
+  HS0341, as section 5.3 says. Both were accepted before. The two messages
+  now say the function "returns a value" rather than "declares a return
+  type", since an inferred closure declares none.
+- `effect` on a call of a prelude function or of a `json` or `time` function
+  is now HS0402, as for any other pure callee. It was accepted.
+- Add the warning HS0804, for an expression statement that discards the value
+  of a standard library call that is not a `Result`, such as `xs.append(1)` on
+  a line of its own. Calls of your own functions, `effect` calls and
+  capabilities never warn HS0804. A parenthesised call on a line of its own is
+  HS0109 only, without HS0803 or HS0804 on top.
+- The specification is version 1.2.0. It names HS0345 and HS0804 in 3.7, 4.9,
+  5.1, 8.4, 14 and 17, adds two entries to the decisions, and the corpus gains
+  cases for both codes and its first case for HS0803.
+- Section 1.5 of the specification now documents the interpolation bracket
+  rules the lexer has always applied: `(`, `[` and `{` opened inside `${` are
+  counted, the first `}` at count zero ends it, an interpolation with a
+  bracket open continues across line terminators, and a line terminator at
+  count zero is HS0007. Chapter 18 and the decisions log agree, and new
+  `lexical` corpus cases pin multi-line interpolations, a line break with
+  nothing open, stray closing brackets and nested braces.
+
+### Fixed
+
+- A lone CR inside a `//` comment is HS0005 and the comment goes on to the next
+  line terminator, as section 1.2 says, instead of ending at the CR.
+- The lexer reports HS0005 once for each non-ASCII letter or digit in an
+  identifier, as section 1.9 says, instead of once for the whole word. The
+  word is still one malformed identifier token, so `café` still declares
+  nothing, and `aéè` now gives two diagnostics.
+- A program that asks for more memory than the WebAssembly build can give no
+  longer traps the instance. `range(0, 8000000)` and
+  `range(0, 2000000).map(...)` at the default limits trapped the `tooling`
+  build with no HollowScript code. Allocations that grow with something a
+  program chooses (lists, copies of them, the text string functions build,
+  `json.stringify`, the heap's slot table, in-place `append`, the upload and
+  result buffers) now fault with HS1015, a limit of the implementation, and
+  the same instance carries on. `docs/design/bytecode.md` lists the sites and
+  the few left.
+- `map`, `filter`, `flatMap` and the other callback functions read a list
+  receiver through the heap instead of copying it, which takes a third off
+  the memory of `map` over a list (123 MiB for two million elements, from 252
+  MiB). A map or set receiver is still copied, so bytecode that rewrites the
+  map in place cannot change what the walk sees.
+- A result whose size is known before it is built (`sort`, `slice`,
+  `reverse`, `join`, `merge`, `entries`, the set operations, `toUpper`,
+  `toLower`, `substring`, `trim`, the answer of `map`, `sortBy` and
+  `mapValues`, and the rest) is charged steps first, then memory, then built.
+  A `sort` of 8 million elements is HS1002 on every host, where the
+  WebAssembly build used to run out of memory copying it first (HS1015).
+  `toUpper` and `toLower` build into one buffer of exactly the size charged.
+- The collector, and `chars`, `split` and `lines` for each piece, ask for
+  memory before taking it: `chars` of 2.5 million code points used to trap
+  the WebAssembly build at its next collection. The collector marks a wide
+  list a chunk at a time, and after a collection it had no memory for it
+  waits for more allocation instead of retrying before every instruction.
+- `sortBy` asks for its merge plan and merge buffer when it starts, and
+  `mapFrom` and `set` sort once instead of inserting each element into a
+  sorted list (O(n log n), was O(n^2) for keys in descending order).
+- `hollowscript.js` frees every buffer it uploaded for a call when a later
+  upload is refused with a `RangeError`, instead of keeping them in the
+  module's memory.
+- The WebAssembly build's default memory maximum is 512 MiB (it was 256 MiB), so
+  the default 64 MiB memory limit (HS1002) is reached before the real memory
+  runs out for a list of scalars and for `map` over one. Hosts still lower it
+  with `maxMemoryBytes`, and builds with `HOLLOWSCRIPT_WASM_MAX_MEMORY_MIB`.
+- `hollowscript.js` reports the trap that ended a run as itself. It used to
+  throw "trapped earlier" for the first trap, because restoring the result
+  format on the module that had just trapped replaced the error.
+- `random.int(min, upTo)` faults with HS1011 when `min >= upTo` on every host.
+  The VM now checks the arguments before it calls the host, so a JavaScript or C
+  host, which can only fail with HS1012, gives the same fault as the command
+  line, and the host function is not called. Section 16.4 says so.
+- Corrected the stale size of a `Value` (32 bytes, not 24) in comments and
+  design notes.
+
+### Editor tooling
+
+- Add an `invalid` class to `highlight()` for a character the language
+  rejects (HS0005) outside strings, comments and filters, so
+  `constant café = 1` gives `caf` as an identifier and `é` as `invalid`,
+  matching `check()`. The string pieces after an interpolation now start at
+  the closing `}` instead of swallowing the whitespace and rejected
+  characters before it, and an interpolation abandoned at a line terminator
+  or the end of the file leaves its code to the tokens and ranges it holds.
+  Hosts that switch on the class should treat an unknown class as plain text.
+- Add checked member completion for fields, methods, namespaces and enum
+  variants, including unfinished names and imported and generic record types.
+- Correct LSP positions and incremental edits to use UTF-16, including
+  identifiers following non-BMP string text. The extension adapts released
+  v0.1.1 servers that still count code points.
+- Retain receiver types discarded by an invalid enclosing expression and
+  expose exact entry-module diagnostic spans through the WebAssembly analysis
+  API for editor quick fixes.
+- Prepare the VS Code 0.1.1 preview candidate against the released 0.1.1 CLI,
+  with bundled worker-based tooling, dependency fixes and expanded acceptance
+  checks. The extension remains unpublished; this does not change the
+  previously released 0.1.1 archives.
+
 ## [0.1.1] - 2026-10-30 (preview)
 
 This preview adds signed command line and C SDK archives for Linux on x86_64

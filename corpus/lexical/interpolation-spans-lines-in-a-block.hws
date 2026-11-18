@@ -1,0 +1,9 @@
+uses print
+
+fn app(f: fn(): Int): Int {
+    return f()
+}
+
+effect print("v ${app(fn(): Int {
+    return 7
+})}")

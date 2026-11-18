@@ -1,0 +1,60 @@
+{
+  "title": "Each non-ASCII letter in an identifier is its own HS0005",
+  "spec": "1.9",
+  "parse": [
+    {
+      "severity": "error",
+      "code": "HS0005",
+      "line": 1
+    },
+    {
+      "severity": "error",
+      "code": "HS0005",
+      "line": 1
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0005",
+      "line": 1
+    },
+    {
+      "severity": "error",
+      "code": "HS0005",
+      "line": 1
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0005",
+        "line": 1
+      },
+      {
+        "severity": "error",
+        "code": "HS0005",
+        "line": 1
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0005",
+        "line": 1
+      },
+      {
+        "severity": "error",
+        "code": "HS0005",
+        "line": 1
+      }
+    ]
+  }
+}

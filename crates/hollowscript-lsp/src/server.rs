@@ -138,6 +138,7 @@ impl Server {
         obj([(
             "capabilities",
             obj([
+                ("positionEncoding", s("utf-16")),
                 (
                     "textDocumentSync",
                     obj([("openClose", Value::Bool(true)), ("change", n(2))]),
@@ -181,10 +182,7 @@ impl Server {
                 ),
                 (
                     "completionProvider",
-                    // No trigger characters: a client asks for completions
-                    // when the user asks, and every name in scope is
-                    // offered whatever was typed, which the client filters.
-                    obj([("triggerCharacters", Value::Array(Vec::new()))]),
+                    obj([("triggerCharacters", Value::Array(vec![s(".")]))]),
                 ),
             ]),
         )])
@@ -351,6 +349,8 @@ fn completion_item(completion: &hollowscript_ide::complete::Completion) -> Value
     use hollowscript_ide::complete::CompletionKind;
     let kind = match completion.kind {
         CompletionKind::Function => 3,
+        CompletionKind::Method => 2,
+        CompletionKind::Field => 5,
         CompletionKind::Variable | CompletionKind::Parameter => 6,
         CompletionKind::Capability | CompletionKind::Namespace => 9,
         CompletionKind::Keyword => 14,
@@ -366,21 +366,24 @@ fn completion_item(completion: &hollowscript_ide::complete::Completion) -> Value
     obj(fields)
 }
 
-/// The byte offset of a zero-based line and character. The character is
-/// counted in code points, which is what this server does everywhere: the
-/// protocol's default is UTF-16 code units, and the two agree for every
-/// program, since section 1.2 makes identifiers ASCII and a position inside
-/// a string literal is not one this server resolves anything at.
+/// The byte offset of a zero-based line and UTF-16 character.
 pub(crate) fn offset_of(text: &str, line: i64, character: i64) -> Option<u32> {
     let line = usize::try_from(line).ok()?;
     let character = usize::try_from(character).ok()?;
     let mut offset = 0usize;
     for (index, content) in text.split_inclusive('\n').enumerate() {
         if index == line {
-            let within: usize = content
+            let mut units = 0;
+            let within = content
                 .char_indices()
-                .nth(character)
-                .map_or(content.len(), |(i, _)| i);
+                .find_map(|(byte, ch)| {
+                    if character < units + ch.len_utf16() {
+                        return Some(byte);
+                    }
+                    units += ch.len_utf16();
+                    None
+                })
+                .unwrap_or(content.len());
             return u32::try_from(offset + within).ok();
         }
         offset += content.len();
@@ -398,10 +401,10 @@ pub(crate) fn span_range(text: &str, span: hollowscript_core::Span) -> Value {
         let mut start = 0usize;
         for content in text.split_inclusive('\n') {
             let end = start + content.len();
-            if (offset as usize) < end {
+            if (offset as usize) < end || (offset as usize == end && !content.ends_with('\n')) {
                 let character = text
                     .get(start..offset as usize)
-                    .map_or(0, |s| i64::try_from(s.chars().count()).unwrap_or(0));
+                    .map_or(0, |s| i64::try_from(s.encode_utf16().count()).unwrap_or(0));
                 return obj([("line", n(line)), ("character", n(character))]);
             }
             start = end;
@@ -416,8 +419,8 @@ pub(crate) fn span_range(text: &str, span: hollowscript_core::Span) -> Value {
 /// character, for a `TextEdit` that replaces the whole thing. The end line
 /// is the real line count (so an edit never misses trailing lines); the end
 /// character is a large, deliberately oversized column, the same
-/// whole-line approximation [`lsp_diagnostic`] already uses, since neither
-/// this server nor the checker tracks UTF-16 column positions yet.
+/// whole-line approximation [`lsp_diagnostic`] uses. Clients clamp this
+/// oversized column to the actual end of the final line.
 fn full_document_range(text: &str) -> Value {
     let end_line = i64::try_from(text.matches('\n').count()).unwrap_or(i64::MAX);
     let position =
@@ -503,6 +506,33 @@ mod tests {
             .into_iter()
             .map(|o| o.body)
             .collect()
+    }
+
+    #[test]
+    fn utf16_positions_round_trip_after_a_non_bmp_character_and_at_eof() {
+        let text = "😀x";
+        assert_eq!(super::offset_of(text, 0, 0), Some(0));
+        assert_eq!(super::offset_of(text, 0, 1), Some(0));
+        assert_eq!(super::offset_of(text, 0, 2), Some(4));
+        assert_eq!(super::offset_of(text, 0, 3), Some(5));
+        let range = super::span_range(text, hollowscript_core::Span::new(4, 5));
+        assert_eq!(
+            range
+                .get("start")
+                .unwrap()
+                .get("character")
+                .unwrap()
+                .as_i64(),
+            Some(2)
+        );
+        assert_eq!(
+            range.get("end").unwrap().get("line").unwrap().as_i64(),
+            Some(0)
+        );
+        assert_eq!(
+            range.get("end").unwrap().get("character").unwrap().as_i64(),
+            Some(3)
+        );
     }
 
     #[test]

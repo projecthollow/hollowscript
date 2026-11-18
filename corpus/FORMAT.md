@@ -338,6 +338,13 @@ Where a case and the chapter it tests disagreed, the chapter governed and the ca
   `parse` is now `[]` and `format` is now `{"output": "same", "diagnostics":
   []}`; `check` and `run`, which already expected the HS0701 and the
   unused-constant warning, are unchanged.
+- **`types/param-type-required` ended with `return f(1)` where `f` returns
+  nothing.** [Section 3.7](../docs/spec/03-expressions.md#37-calls-fields-methods-and-indexing)
+  and [section 4.9](../docs/spec/04-statements.md#49-expression-statements)
+  say that a call to a function with no return type can be used only as a
+  statement, and specification 1.2.0 names the violation HS0345. The case now
+  also expects HS0345 at line 5, next to the HS0340 at line 2 that it is
+  about.
 
 ## Disagreements this repository has not resolved
 

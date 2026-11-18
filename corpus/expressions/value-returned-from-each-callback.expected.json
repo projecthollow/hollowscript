@@ -1,0 +1,24 @@
+{
+  "title": "A closure passed to each returns nothing, so return with a value in it is HS0340",
+  "spec": "5.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0340"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0340"
+      }
+    ]
+  }
+}

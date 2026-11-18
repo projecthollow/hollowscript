@@ -1,0 +1,17 @@
+{
+  "title": "A match with variant arms and else over json.field reaches else for a missing key",
+  "spec": "7.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "No email"
+    ],
+    "result": null
+  }
+}

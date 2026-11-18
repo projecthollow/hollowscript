@@ -1,0 +1,37 @@
+fn compact<T>(xs: [T?]): [T] {
+    variable out: [T] = []
+    for x in xs {
+        if x != none {
+            out = out.append(x)
+        }
+    }
+    return out
+}
+
+fn presentCount<V>(m: Map<String, V?>): Int {
+    variable n = 0
+    for v in m.values() {
+        if v != none {
+            n = n + 1
+        }
+    }
+    return n
+}
+
+fn orElse<T>(r: { value: T? }, fallback: T): T {
+    constant v = r.value
+    if v == none {
+        return fallback
+    }
+    return v
+}
+
+constant ints = compact([1, 2])
+
+constant nested = compact([[1], [2, 3]])
+
+constant count = presentCount(["a": 1, "b": 2])
+
+constant kept = orElse({ value: 5 }, 0)
+
+return [ints == [1, 2], nested.length() == 2, count == 2, kept == 5]

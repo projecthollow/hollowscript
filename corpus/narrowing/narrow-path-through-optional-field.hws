@@ -1,0 +1,34 @@
+record Address = { street: String, flat: String? }
+
+record Customer = { name: String, address: Address? }
+
+fn nested(customer: Customer): String {
+    if customer.address != none {
+        if customer.address.flat != none {
+            return "flat ${customer.address.flat}"
+        }
+    }
+    return "no flat"
+}
+
+fn both(customer: Customer): String {
+    if customer.address != none and customer.address.flat != none {
+        return "flat ${customer.address.flat}"
+    }
+    return "no flat"
+}
+
+fn guard(customer: Customer): String {
+    if customer.address == none or customer.address.flat == none {
+        return "no flat"
+    }
+    return customer.address.flat
+}
+
+constant millLane: Address = { street: "4 Mill Lane", flat: "2B" }
+
+constant home: Customer = { name: "Priya", address: millLane }
+
+constant lodger: Customer = { name: "Sam", address: none }
+
+return [nested(home), both(home), guard(home), nested(lodger), both(lodger), guard(lodger)]

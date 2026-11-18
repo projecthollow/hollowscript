@@ -1061,6 +1061,7 @@ fn push_expr_children<'a>(expr: &'a Expr, depth: u32, stack: &mut Vec<DepthItem<
 
 fn push_pattern_children<'a>(pattern: &'a Pattern, depth: u32, stack: &mut Vec<DepthItem<'a>>) {
     match &pattern.kind {
+        PatternKind::Present(inner) => stack.push(DepthItem::Pattern(inner, depth)),
         PatternKind::Variant { args, .. } => {
             stack.extend(args.iter().map(|p| DepthItem::Pattern(p, depth)));
         }
@@ -1897,6 +1898,7 @@ fn max_local_id(block: &Block) -> Option<u32> {
     fn walk_pattern(pattern: &Pattern, max: &mut Option<u32>) {
         match &pattern.kind {
             PatternKind::Binding(Some(local)) => bump(max, local.0),
+            PatternKind::Present(inner) => walk_pattern(inner, max),
             PatternKind::Variant { args, .. } => {
                 for arg in args {
                     walk_pattern(arg, max);
@@ -2334,6 +2336,10 @@ fn compile_pattern(
         PatternKind::None => {
             fail.push(fb.jump(Op::JumpIfSome, value));
             Ok(())
+        }
+        PatternKind::Present(inner) => {
+            fail.push(fb.jump(Op::JumpIfNone, value));
+            compile_pattern(fb, inner, value, how, fail)
         }
         PatternKind::Literal(constant) => {
             let expected = compile_constant(fb, constant)?;

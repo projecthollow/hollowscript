@@ -1,0 +1,12 @@
+fn pair<T>(a: T, f: fn(): T): [T] {
+    return [a, f()]
+}
+
+constant numbers = pair(
+    [],
+    fn() {
+        return 1
+    }
+)
+
+return numbers

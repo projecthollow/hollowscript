@@ -1,0 +1,8 @@
+uses print
+
+fn f(s: String): String {
+    return s
+}
+
+effect print("${f("${1
+)}")

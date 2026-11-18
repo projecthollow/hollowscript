@@ -49,6 +49,21 @@ pub struct DeclId {
 /// [`hollowscript_core::limits::structural::MAX_MODULES`].
 pub const PRELUDE_MODULE: u32 = u32::MAX;
 
+/// The pseudo-module index of the synthetic declarations that own the fresh
+/// type variables of one generic call (section 2.10 step 1), minted by
+/// [`TypeInterner::fresh_param_decl`]. Out of range of any real module, as
+/// [`PRELUDE_MODULE`] is.
+const FRESH_MODULE: u32 = u32::MAX - 1;
+
+impl DeclId {
+    /// Whether this is the synthetic owner of one call's fresh type
+    /// variables rather than a declaration of the program or the prelude.
+    #[must_use]
+    pub fn is_fresh(self) -> bool {
+        self.module == FRESH_MODULE
+    }
+}
+
 /// One field of a record type, structural and sorted by name when a record
 /// type is built ([`TypeInterner::record`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -114,12 +129,11 @@ pub enum TypeView<'a> {
         /// The return type, absent for a function that returns nothing.
         ret: Option<TypeId>,
     },
-    /// The type parameter at `index` of `decl`, opaque within it, or the
-    /// unification variable of that same position when `parameter` is the
-    /// callee's own declared type of the call currently being checked
-    /// (section 2.10): which of the two it is depends on who is asking, not
-    /// on the type itself, so [`crate::infer::unify`] is the only caller that
-    /// treats it as a variable.
+    /// The type parameter at `index` of `decl`, opaque within it. A generic
+    /// call renames its callee's parameters to those of a fresh synthetic
+    /// declaration ([`DeclId::is_fresh`]), and only a substitution scoped to
+    /// that declaration ([`crate::infer::Substitution`]) treats them as
+    /// unification variables (section 2.10).
     Param {
         /// The declaration that introduces the parameter.
         decl: DeclId,
@@ -132,7 +146,9 @@ pub enum TypeView<'a> {
 
 /// The shape of a type, before interning. Two shapes that are `==` intern to
 /// the same id, except for [`Shape::Error`], each occurrence of which is
-/// distinct, so that one mistake never silently unifies with another.
+/// distinct, so that one mistake never silently unifies with another. The
+/// one exception is [`TypeInterner::no_value`], a single shared error id
+/// that the checker replaces with a fresh error before any comparison.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum Shape {
     Int,
@@ -196,7 +212,7 @@ pub enum DeclShape {
 
 /// A program's types, interned. One interner belongs to one program; ids from
 /// different interners must not be mixed.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TypeInterner {
     shapes: Vec<Shape>,
     // Only looked up, never iterated: the map from shape to id is not part of
@@ -205,9 +221,12 @@ pub struct TypeInterner {
     by_shape: std::collections::HashMap<Shape, TypeId>,
     decls: BTreeMap<DeclId, DeclShape>,
     decl_names: BTreeMap<DeclId, Symbol>,
+    param_names: BTreeMap<(DeclId, u32), Symbol>,
     result_declared: bool,
     json_declared: bool,
     next_error: u32,
+    no_value: TypeId,
+    next_fresh_decl: u32,
     // The built-in types, interned once and returned by their accessor.
     int: TypeId,
     float: TypeId,
@@ -254,9 +273,12 @@ impl TypeInterner {
             by_shape: std::collections::HashMap::new(),
             decls: BTreeMap::new(),
             decl_names: BTreeMap::new(),
+            param_names: BTreeMap::new(),
             result_declared: false,
             json_declared: false,
             next_error: 0,
+            no_value: TypeId(0),
+            next_fresh_decl: 0,
             int: TypeId(0),
             float: TypeId(0),
             bool_: TypeId(0),
@@ -268,6 +290,7 @@ impl TypeInterner {
         t.bool_ = t.intern(Shape::Bool);
         t.string = t.intern(Shape::String);
         t.filter = t.intern(Shape::Filter);
+        t.no_value = t.intern(Shape::Error(u32::MAX));
         t
     }
 
@@ -363,6 +386,47 @@ impl TypeInterner {
     pub fn param(&mut self, decl: DeclId, index: u32) -> TypeId {
         self.intern(Shape::Param { decl, index })
     }
+    /// Records the name a type parameter was declared with, so a message can
+    /// say `T` instead of an index. A record's or enum's parameters are named
+    /// by its declared shape and need no registration.
+    pub fn name_param(&mut self, decl: DeclId, index: u32, name: Symbol) {
+        self.param_names.insert((decl, index), name);
+    }
+    /// The declared name of the type parameter at `index` of `decl`, if known.
+    #[must_use]
+    pub fn param_name(&self, decl: DeclId, index: u32) -> Option<Symbol> {
+        if let Some(&n) = self.param_names.get(&(decl, index)) {
+            return Some(n);
+        }
+        match self.decls.get(&decl) {
+            Some(DeclShape::Record { params, .. } | DeclShape::Enum { params, .. }) => {
+                params.get(index as usize).copied()
+            }
+            None => None,
+        }
+    }
+    /// The written name of the type parameter at `index` of `decl`: its
+    /// declared name, or `T` and its index when none is known.
+    pub fn param_text(
+        &self,
+        decl: DeclId,
+        index: u32,
+        symbol: impl Fn(Symbol) -> String,
+    ) -> String {
+        self.param_name(decl, index)
+            .map_or_else(|| format!("T{index}"), symbol)
+    }
+    /// A new synthetic declaration to own one generic call's fresh type
+    /// variables (section 2.10 step 1), distinct from every other one this
+    /// interner, and so every module of the program, has minted.
+    pub fn fresh_param_decl(&mut self) -> DeclId {
+        let index = self.next_fresh_decl;
+        self.next_fresh_decl += 1;
+        DeclId {
+            module: FRESH_MODULE,
+            index,
+        }
+    }
     /// A fresh error type. Every call returns a distinct id, so an error type
     /// is never mistaken for another (section 2.11).
     pub fn error(&mut self) -> TypeId {
@@ -371,10 +435,46 @@ impl TypeInterner {
         self.intern(Shape::Error(id))
     }
 
+    /// The type of a call to a function that returns nothing. It is an error type
+    /// (so nothing cascades from it) that [`Self::is_no_value`] can tell apart.
+    #[must_use]
+    pub fn no_value(&self) -> TypeId {
+        self.no_value
+    }
+
+    /// Whether `id` is the type of a call that returns nothing.
+    #[must_use]
+    pub fn is_no_value(&self, id: TypeId) -> bool {
+        id == self.no_value
+    }
+
     /// Whether `id` is the error type.
     #[must_use]
     pub fn is_error(&self, id: TypeId) -> bool {
         matches!(self.shapes.get(id.0 as usize), Some(Shape::Error(_)))
+    }
+
+    /// Whether `id` is the error type or contains it anywhere in its
+    /// structure.
+    #[must_use]
+    pub fn contains_error(&self, id: TypeId) -> bool {
+        match self.view(id) {
+            TypeView::Error => true,
+            TypeView::List(t) | TypeView::Set(t) | TypeView::Optional(t) => self.contains_error(t),
+            TypeView::Map(k, v) => self.contains_error(k) || self.contains_error(v),
+            TypeView::Record(fields) => fields.iter().any(|&(_, t)| self.contains_error(t)),
+            TypeView::Named { args, .. } => args.iter().any(|&t| self.contains_error(t)),
+            TypeView::Function { params, ret, .. } => {
+                params.iter().any(|&t| self.contains_error(t))
+                    || ret.is_some_and(|t| self.contains_error(t))
+            }
+            TypeView::Int
+            | TypeView::Float
+            | TypeView::Bool
+            | TypeView::String
+            | TypeView::Filter
+            | TypeView::Param { .. } => false,
+        }
     }
 
     /// Whether `id` is `T?` for some `T`, and if so, `T`.
@@ -935,7 +1035,9 @@ impl TypeInterner {
                     self.write(*r, symbol, out);
                 }
             }
-            Some(Shape::Param { .. }) => out.push_str("<param>"),
+            Some(&Shape::Param { decl, index }) => {
+                out.push_str(&self.param_text(decl, index, symbol));
+            }
         }
     }
 }

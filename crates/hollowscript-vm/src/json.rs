@@ -13,6 +13,7 @@
 //! which charges and safepoints as it goes rather than in one lump before
 //! parsing starts.
 
+use crate::alloc::OutOfMemory;
 use crate::interp::charge_steps_sliced;
 use crate::limits::RunCounters;
 use hollowscript_core::Limits;
@@ -574,21 +575,60 @@ impl Reader<'_, '_, '_> {
 }
 
 /// `json.stringify` (section 15.1): compact text, no white space.
+///
+/// Aborts, as any allocation does, if the host has no memory for the text;
+/// [`try_stringify`] is the one that says so instead.
 #[must_use]
 pub fn stringify(value: &Json) -> String {
-    let mut out = String::new();
-    write(value, None, 0, &mut out);
-    out
+    try_stringify(value).unwrap_or_else(|_| out_of_memory())
+}
+
+/// [`stringify()`], answering [`OutOfMemory`] when the host cannot give the
+/// memory for the text or for the walk that writes it.
+///
+/// # Errors
+///
+/// [`OutOfMemory`] as described.
+pub fn try_stringify(value: &Json) -> Result<String, OutOfMemory> {
+    let mut out = crate::alloc::string_with_capacity(len_hint(value, None))?;
+    write(value, None, 0, &mut out)?;
+    Ok(out)
 }
 
 /// `json.pretty` (section 15.1): the same text with a line feed and
 /// `indent` spaces per level before each element and member and before the
 /// closing bracket.
+///
+/// Aborts if the host has no memory for the text; [`try_pretty`] says so
+/// instead.
 #[must_use]
 pub fn pretty(value: &Json, indent: usize) -> String {
-    let mut out = String::new();
-    write(value, Some(indent), 0, &mut out);
-    out
+    try_pretty(value, indent).unwrap_or_else(|_| out_of_memory())
+}
+
+/// [`pretty`], answering [`OutOfMemory`] when the host cannot give the memory
+/// for the text or for the walk that writes it.
+///
+/// # Errors
+///
+/// [`OutOfMemory`] as described.
+pub fn try_pretty(value: &Json, indent: usize) -> Result<String, OutOfMemory> {
+    let mut out = crate::alloc::string_with_capacity(len_hint(value, Some(indent)))?;
+    write(value, Some(indent), 0, &mut out)?;
+    Ok(out)
+}
+
+/// What an infallible entry point does when its fallible twin was refused: the
+/// same as any other allocation that fails.
+fn out_of_memory() -> ! {
+    std::alloc::handle_alloc_error(std::alloc::Layout::new::<u8>())
+}
+
+/// The size of the text, for reserving it once. [`write_len`] is exact; a
+/// value too large to count in a `usize` asks for `usize::MAX`, which the
+/// allocator refuses at once.
+fn len_hint(value: &Json, indent: Option<usize>) -> usize {
+    usize::try_from(write_len(value, indent)).unwrap_or(usize::MAX)
 }
 
 /// The exact number of UTF-8 bytes [`stringify()`] or [`pretty`] would produce
@@ -703,18 +743,38 @@ pub fn depth(value: &Json) -> u32 {
 }
 
 /// Writes `value`, with `indent` spaces per level when pretty-printing.
-fn write(value: &Json, indent: Option<usize>, level: usize, out: &mut String) {
-    /// What the writer has still to do.
+fn write(
+    value: &Json,
+    indent: Option<usize>,
+    level: usize,
+    out: &mut String,
+) -> Result<(), OutOfMemory> {
+    /// What the writer has still to do. Every step writes straight into
+    /// `out`, whose exact size the caller reserved, so nothing per element is
+    /// allocated beside the stack itself.
     enum Step<'a> {
         Value(&'a Json, usize),
         Text(&'static str),
-        Owned(String),
+        /// A line break and the indentation of a level.
+        Newline(usize, usize),
+        /// An object's key, its colon, and in pretty output a space.
+        Key(&'a str),
     }
     let mut stack = vec![Step::Value(value, level)];
     while let Some(step) = stack.pop() {
         match step {
             Step::Text(text) => out.push_str(text),
-            Step::Owned(text) => out.push_str(&text),
+            Step::Newline(width, level) => {
+                out.push('\n');
+                out.extend(std::iter::repeat_n(' ', width * level));
+            }
+            Step::Key(key) => {
+                push_json_string(key, out);
+                out.push(':');
+                if indent.is_some() {
+                    out.push(' ');
+                }
+            }
             Step::Value(value, level) => match value {
                 Json::Null => out.push_str("null"),
                 Json::Bool(true) => out.push_str("true"),
@@ -728,20 +788,21 @@ fn write(value: &Json, indent: Option<usize>, level: usize, out: &mut String) {
                         continue;
                     }
                     out.push('[');
-                    let mut steps = Vec::with_capacity(items.len() * 3 + 2);
+                    let mut steps = crate::alloc::vec_with_capacity(items.len() * 3 + 2)?;
                     for (index, item) in items.iter().enumerate() {
                         if index > 0 {
                             steps.push(Step::Text(","));
                         }
                         if let Some(width) = indent {
-                            steps.push(Step::Owned(newline(width, level + 1)));
+                            steps.push(Step::Newline(width, level + 1));
                         }
                         steps.push(Step::Value(item, level + 1));
                     }
                     if let Some(width) = indent {
-                        steps.push(Step::Owned(newline(width, level)));
+                        steps.push(Step::Newline(width, level));
                     }
                     steps.push(Step::Text("]"));
+                    crate::alloc::reserve(&mut stack, steps.len())?;
                     stack.extend(steps.into_iter().rev());
                 }
                 Json::Object(members) => {
@@ -750,41 +811,28 @@ fn write(value: &Json, indent: Option<usize>, level: usize, out: &mut String) {
                         continue;
                     }
                     out.push('{');
-                    let mut steps = Vec::with_capacity(members.len() * 4 + 2);
+                    let mut steps = crate::alloc::vec_with_capacity(members.len() * 4 + 2)?;
                     for (index, (key, item)) in members.iter().enumerate() {
                         if index > 0 {
                             steps.push(Step::Text(","));
                         }
                         if let Some(width) = indent {
-                            steps.push(Step::Owned(newline(width, level + 1)));
+                            steps.push(Step::Newline(width, level + 1));
                         }
-                        let mut written = String::new();
-                        push_json_string(key, &mut written);
-                        written.push(':');
-                        if indent.is_some() {
-                            written.push(' ');
-                        }
-                        steps.push(Step::Owned(written));
+                        steps.push(Step::Key(key));
                         steps.push(Step::Value(item, level + 1));
                     }
                     if let Some(width) = indent {
-                        steps.push(Step::Owned(newline(width, level)));
+                        steps.push(Step::Newline(width, level));
                     }
                     steps.push(Step::Text("}"));
+                    crate::alloc::reserve(&mut stack, steps.len())?;
                     stack.extend(steps.into_iter().rev());
                 }
             },
         }
     }
-}
-
-fn newline(width: usize, level: usize) -> String {
-    let mut out = String::with_capacity(1 + width * level);
-    out.push('\n');
-    for _ in 0..(width * level) {
-        out.push(' ');
-    }
-    out
+    Ok(())
 }
 
 /// A JSON string literal, quotes included, escaped as section 15.1 states.

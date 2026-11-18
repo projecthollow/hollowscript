@@ -1,5 +1,7 @@
 //! The HollowScript virtual machine.
 //!
+//! - `alloc`: fallible allocation for sizes a program controls (HS1015 instead
+//!   of an abort);
 //! - [`arena`]: the index-based, generational arena the heap is built on;
 //! - [`value`]: the value representation;
 //! - [`heap`]: the mark and sweep collector and the byte accounting of chapter 11;
@@ -22,6 +24,9 @@
 #![forbid(unsafe_code)]
 
 mod accept;
+mod alloc;
+#[cfg(test)]
+mod alloc_tests;
 pub mod arena;
 pub mod capability;
 pub mod data;
@@ -35,6 +40,7 @@ pub mod render;
 pub mod time;
 pub mod value;
 
+pub use alloc::OutOfMemory;
 pub use arena::{Arena, Handle};
 pub use capability::{CapabilityTable, Command, CommandBuffer, CommandResult, HostFn};
 pub use heap::Heap;

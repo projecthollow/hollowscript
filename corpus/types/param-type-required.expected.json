@@ -4,7 +4,13 @@
   "check": [
     {
       "severity": "error",
-      "line": 2
+      "line": 2,
+      "code": "HS0340"
+    },
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0345"
     }
   ],
   "format": {
@@ -18,7 +24,13 @@
     "diagnostics": [
       {
         "severity": "error",
-        "line": 2
+        "line": 2,
+        "code": "HS0340"
+      },
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0345"
       }
     ]
   }

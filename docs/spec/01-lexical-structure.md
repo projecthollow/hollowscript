@@ -41,7 +41,7 @@ letter     = "A" .. "Z" | "a" .. "z" ;
 digit      = "0" .. "9" ;
 ```
 
-Identifiers are ASCII only and case-sensitive. There is no maximum length other than the source size limit. A character outside ASCII that appears outside a string, a filter literal or a comment is an unrecognised character (HS0005); in particular `café` and `名前` are not identifiers.
+Identifiers are ASCII only and case-sensitive. There is no maximum length other than the source size limit. A character outside ASCII that appears outside a string, a filter literal or a comment is an unrecognised character (HS0005); in particular `café` and `名前` are not identifiers. A non-ASCII letter or digit glued to an ASCII name is reported once for each code point, and the word is one malformed identifier (section 1.9).
 
 The identifier `_` on its own is the *discard name*. It may be declared (as a parameter, a loop variable or a binding) any number of times in the same scope, it never conflicts with any other declaration, and it can never be read ([section 7.3](07-patterns.md#73-bindings-and-the-discard-name)).
 
@@ -147,12 +147,12 @@ interpolation  = "${" expression "}" ;
 
 Any other backslash sequence is HS0008. A `\u{...}` escape whose value is a surrogate (U+D800 to U+DFFF) or above U+10FFFF, or which has zero or more than six digits, or is not closed by `}`, is HS0009. A `$` not followed by `{` is an ordinary character. A raw line terminator inside a string, or the end of the file before the closing quote, is HS0006.
 
-**Interpolation.** `${` begins an interpolation. It contains one expression ([Chapter 3](03-expressions.md)) and ends at the matching `}`. The lexer tracks a stack of contexts: while inside an interpolation it lexes ordinary tokens, counting `{` and `}` so that record literals inside an interpolation do not end it, and a `"` inside an interpolation begins a nested string with the same rules, so interpolations nest. The interpolation ends at the first `}` that returns the brace count to zero.
+**Interpolation.** `${` begins an interpolation. It contains one expression ([Chapter 3](03-expressions.md)) and ends at its matching `}`. The lexer tracks a stack of contexts. While inside an interpolation it lexes ordinary tokens and keeps a *bracket count* for that interpolation. The count starts at zero. Each `(`, `[` or `{` lexed inside the interpolation, outside any string nested in it, adds one; each `)`, `]` or `}` subtracts one, but never below zero. The kind of closer does not matter to the count: whether a closer matches its opener is for the parser. A `}` ends the interpolation exactly when the count is zero. When the count is above zero it is an ordinary `}` that closes an open bracket, so record literals, blocks and calls inside an interpolation do not end it. A `)` or `]` seen when the count is zero is an ordinary token, does not end the interpolation, and is refused by the parser (HS0101). A `"` inside an interpolation begins a nested string with the same rules and a bracket count of its own, so interpolations nest.
 
 Inside an interpolation:
 
-- A line terminator or the end of the file ends the string abnormally. The lexer reports HS0007 at the `${`, emits the string as one malformed string token that covers the text up to the line terminator, and resumes lexing on the next line.
-- Everything is lexed as code, so `//` starts a comment that runs to the end of the line, which then makes the interpolation unterminated (HS0007).
+- A line terminator ends the string abnormally only while the count is zero. The lexer then reports HS0007 at the `${`, ends the string with a malformed string piece that reaches the line terminator, and leaves the line terminator to the enclosing context: an enclosing interpolation whose count is zero is abandoned in turn, with its own HS0007, and otherwise lexing resumes on the next line. While the count is above zero a line terminator is an ordinary one: the rule of [section 1.8](#18-statement-terminators) applies as anywhere else, so a `TERM` is discarded or kept exactly as it would be outside a string, and an interpolation may span several lines when its expression does. Text outside the interpolations of a string still cannot contain a line terminator (HS0006). The end of the file inside an interpolation is always HS0007.
+- Everything is lexed as code, so `//` starts a comment that runs to the end of the line. At count zero that makes the interpolation unterminated (HS0007). Inside open brackets the comment ends at the line terminator and the interpolation continues.
 - The value is rendered as specified in [section 3.9](03-expressions.md#39-string-interpolation).
 
 Interpolations may be nested at most 100 deep; beyond that the lexer reports HS0115.
@@ -164,6 +164,21 @@ return "hello ${name}, ${"nested ${n + 1}"} \u{1F600} \${literal}"
 ```
 
 The program returns the string `hello world, nested 4 😀 ${literal}`.
+
+An interpolation whose expression is written over several lines, because a call is open, is one string. The program prints `sum 3`:
+
+```hollow
+uses print
+
+fn add(a: Int, b: Int): Int {
+    return a + b
+}
+
+effect print("sum ${add(
+    1,
+    2
+)}")
+```
 
 ## 1.6 Filter literals
 
@@ -223,9 +238,9 @@ A line that ends after an operator, a comma or an opening bracket continues onto
 
 The lexer never stops at the first error. The recovery rules are:
 
-- An unrecognised character (HS0005) is reported once for each code point and produces no token; lexing continues after it. A code point outside the Basic Multilingual Plane is one code point and one diagnostic.
+- An unrecognised character (HS0005) is reported once for each code point and produces no token of its own; lexing continues after it. The one exception to "no token" is a non-ASCII letter or digit that follows the first ASCII character of a name: each such code point is reported, and the whole word is one malformed identifier token, so that `café` does not declare `caf`. A code point outside the Basic Multilingual Plane is one code point and one diagnostic.
 - A malformed number, string or filter literal produces one token of its kind, flagged *malformed*, with the diagnostic already reported. The parser accepts a malformed token wherever a token of its kind is allowed. The checker gives a malformed literal the type its kind would have and reports nothing further about it.
-- After a malformed string caused by a line terminator, lexing resumes at the start of the next line.
+- After a malformed string caused by a line terminator, the line terminator is lexed as it would be after any other token ([section 1.5](#15-string-literals)).
 
 Consequently one lexical mistake produces exactly one diagnostic in the common cases:
 

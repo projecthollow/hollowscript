@@ -10,13 +10,8 @@
 //! as it is read only after its declaration, but in every function body
 //! wherever it is declared.
 //!
-//! Nothing is offered where a name cannot be written: inside a comment, in
-//! the text of a string or a filter literal (but inside a `${ }`
-//! interpolation, yes), or after a `.`, where a field or method name goes.
-//! **Known gap:** names after a `.` are not completed at all. That needs the
-//! type of the receiver and the members of that type, which this does not
-//! look up, so the list is empty there rather than a list of names that
-//! would be wrong.
+//! Member completion uses the same checked receiver types as hover, including
+//! while the member is incomplete. No names are offered in literal text or comments.
 
 use crate::symbols::{Kind, visible_in_order};
 use crate::vocabulary::{PRELUDE_NAMES, usable_keywords};
@@ -38,9 +33,12 @@ pub enum CompletionKind {
     Type,
     /// An `enum`.
     Enum,
-    /// A variant of an enum. Not offered yet: a variant is written through
-    /// its enum, which is the member completion this does not do.
+    /// A variant of an enum.
     EnumMember,
+    /// A record field.
+    Field,
+    /// A standard library method.
+    Method,
     /// A capability named by a `uses` line.
     Capability,
     /// A namespace of the prelude, `json` or `time`.
@@ -63,6 +61,8 @@ impl CompletionKind {
             CompletionKind::Type => "type",
             CompletionKind::Enum => "enum",
             CompletionKind::EnumMember => "enumMember",
+            CompletionKind::Field => "field",
+            CompletionKind::Method => "method",
             CompletionKind::Capability => "capability",
             CompletionKind::Namespace => "namespace",
             CompletionKind::Keyword => "keyword",
@@ -133,6 +133,16 @@ impl Workspace {
     /// Empty where a name cannot be written (see the module documentation).
     #[must_use]
     pub fn completions(&self, offset: u32) -> Vec<Completion> {
+        if self
+            .tokens
+            .iter()
+            .any(|t| t.malformed && t.span.start < offset && offset <= t.span.end)
+        {
+            return Vec::new();
+        }
+        if self.place_at(offset) == Place::Member {
+            return self.member_completions(offset);
+        }
         if self.place_at(offset) != Place::Code {
             return Vec::new();
         }
@@ -425,12 +435,12 @@ mod tests {
     }
 
     #[test]
-    fn nothing_is_offered_after_a_dot() {
+    fn methods_are_offered_after_a_dot() {
         let text = concat!("constant list = [1]\n", "return list.length()\n");
         let w = workspace(text);
-        assert!(w.completions(offset(text, "length")).is_empty());
-        assert!(w.completions(offset(text, "length") + 3).is_empty());
-        assert!(w.completions(offset(text, "length()")).is_empty());
+        assert!(labels(&w.completions(offset(text, "length"))).contains(&"length"));
+        assert!(labels(&w.completions(offset(text, "length") + 3)).contains(&"length"));
+        assert!(labels(&w.completions(offset(text, "length()"))).contains(&"length"));
     }
 
     #[test]

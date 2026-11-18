@@ -1,0 +1,17 @@
+{
+  "title": "Discarding the value of map warns even when the callback has side effects",
+  "spec": "17.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 3,
+      "code": "HS0804"
+    }
+  ],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

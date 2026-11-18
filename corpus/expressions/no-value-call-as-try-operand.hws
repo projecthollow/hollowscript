@@ -1,0 +1,10 @@
+fn f() {
+    return
+}
+
+fn h(): Result<Int, String> {
+    f()?
+    return success(1)
+}
+
+return h()

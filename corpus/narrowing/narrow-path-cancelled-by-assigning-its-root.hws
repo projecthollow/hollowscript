@@ -1,0 +1,14 @@
+record Address = { street: String, flat: String? }
+
+record Customer = { name: String, address: Address? }
+
+fn flat(customer: Customer, other: Customer): String {
+    variable c: Customer = customer
+    if c.address != none and c.address.flat != none {
+        c = other
+        return c.address.flat
+    }
+    return "-"
+}
+
+return flat({ name: "A", address: none }, { name: "B", address: none })

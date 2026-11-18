@@ -1,0 +1,17 @@
+{
+  "title": "A library call that returns nothing, such as each, does not warn",
+  "spec": "17.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 3,
+      "code": "HS0801"
+    }
+  ],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(0)"
+  }
+}

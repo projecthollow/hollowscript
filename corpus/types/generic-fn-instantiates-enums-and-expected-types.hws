@@ -1,0 +1,36 @@
+enum Box<T> { Empty, Full(T) }
+
+// A generic enum constructor whose payload is the enclosing T.
+fn wrap<T>(x: T): Box<T> {
+    return Box.Full(x)
+}
+
+// A payload-free variant bound only from the expected type Box<T>.
+fn nothing<T>(x: T): Box<T> {
+    return Box.Empty
+}
+
+// A recursive call whose variable only the expected type [T] binds.
+fn emptyOf<T>(n: Int): [T] {
+    if n == 0 {
+        return []
+    }
+    return emptyOf(n - 1)
+}
+
+fn findIt<T>(items: [T], ok: fn(T): Bool): T? {
+    return items.find(ok)
+}
+
+constant ints: [Int] = emptyOf(2)
+
+constant found = findIt(
+    [1, 2],
+    fn(n) {
+        return n > 1
+    }
+)
+
+constant noString: Box<String> = Box.Empty
+
+return [ints.length() == 0, found == 2, wrap(3) == Box.Full(3), nothing("a") == noString]

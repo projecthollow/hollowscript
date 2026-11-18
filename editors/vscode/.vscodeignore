@@ -9,8 +9,12 @@
 !LICENSE.md
 !LICENSE-APACHE
 !LICENSE-MIT
+!NOTICE
+!LICENSE-CC-BY-4.0.txt
 !THIRD-PARTY-NOTICES.md
 !dist/extension.js
+!dist/member-worker.js
+!dist/members.wasm
 !images/icon.png
 !language-configuration.json
 !syntaxes/hollowscript.tmLanguage.json

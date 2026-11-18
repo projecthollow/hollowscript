@@ -1,0 +1,28 @@
+{
+  "title": "A block opened inside an interpolation keeps its own statement terminators and the interpolation continues",
+  "spec": "1.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "fn app(f: fn(): Int): Int {",
+      "    return f()",
+      "}",
+      "",
+      "effect print(\"v ${app(fn(): Int {",
+      "    return 7",
+      "})}\")",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "v 7"
+    ],
+    "result": null
+  }
+}

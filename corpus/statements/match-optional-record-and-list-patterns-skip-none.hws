@@ -1,0 +1,21 @@
+record Point = { x: Int }
+
+fn point(p: Point?): String {
+    match p {
+        { x: 1 } { return "one" }
+        else { return "other" }
+    }
+}
+
+fn items(list: [Int]?): String {
+    match list {
+        [] { return "empty" }
+        else { return "other" }
+    }
+}
+
+constant none_list: [Int]? = none
+
+constant empty: [Int] = []
+
+return [point(none), point({ x: 1 }), items(none_list), items(empty)]

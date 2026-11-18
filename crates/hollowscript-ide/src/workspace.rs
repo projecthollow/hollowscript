@@ -114,9 +114,11 @@ pub struct Workspace {
     /// Every binder of the entry module, in declaration order.
     binders: Vec<Binder>,
     /// The type of every expression of the entry module, by position.
-    types: TypeIndex,
+    pub(crate) types: TypeIndex,
     /// The tokens of the entry module, for what the cursor is in.
-    tokens: Vec<Token>,
+    pub(crate) tokens: Vec<Token>,
+    pub(crate) capabilities: CapabilityInterface,
+    pub(crate) loaded_modules: BTreeMap<String, String>,
 }
 
 impl Workspace {
@@ -231,7 +233,7 @@ impl Workspace {
                 }
             }
         }
-        let types = TypeIndex::build(&checked.hir);
+        let types = TypeIndex::build(&checked.hir, &checked.expression_types);
         let tokens = hollowscript_syntax::lex(&src, &mut Control::none()).tokens;
 
         Some(Workspace {
@@ -246,6 +248,11 @@ impl Workspace {
             binders,
             types,
             tokens,
+            capabilities: capabilities.clone(),
+            loaded_modules: loaded
+                .into_iter()
+                .filter_map(|(k, v)| v.ok().map(|v| (k, v)))
+                .collect(),
         })
     }
 
@@ -387,7 +394,7 @@ impl Workspace {
         self.tokens
             .iter()
             .rev()
-            .find(|t| t.span.end <= start && t.kind != TokenKind::Term)
+            .find(|t| t.span.end <= start && !matches!(t.kind, TokenKind::Term | TokenKind::Eof))
             .is_some_and(|t| t.kind == TokenKind::Dot)
     }
 }

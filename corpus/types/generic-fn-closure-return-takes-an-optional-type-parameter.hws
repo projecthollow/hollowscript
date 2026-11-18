@@ -1,0 +1,23 @@
+fn applyOpt<T, U>(x: T, f: fn(T): U?): U? {
+    return f(x)
+}
+
+fn applyNested<T, U>(x: T, f: fn(T): [U]?): [U]? {
+    return f(x)
+}
+
+constant doubled = applyOpt(
+    2,
+    fn(n) {
+        return n * 2
+    }
+)
+
+constant listed = applyNested(
+    3,
+    fn(n) {
+        return [n]
+    }
+)
+
+return [doubled == 4, listed == [3]]

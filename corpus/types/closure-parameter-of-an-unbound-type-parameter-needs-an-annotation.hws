@@ -1,0 +1,9 @@
+fn app<A>(f: fn(A): Int): Int {
+    return 0
+}
+
+constant n = app(fn(x) {
+    return 1
+})
+
+return n

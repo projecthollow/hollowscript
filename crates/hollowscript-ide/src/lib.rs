@@ -31,7 +31,10 @@
 #![forbid(unsafe_code)]
 
 pub mod complete;
+#[rustfmt::skip]
+mod member_catalog;
 pub mod highlight;
+mod members;
 pub mod outline;
 pub mod semantic;
 pub mod symbols;

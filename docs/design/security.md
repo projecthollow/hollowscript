@@ -342,27 +342,38 @@ Everything below is in service of those two.
   that programs behave identically everywhere, not to bound the process.
   **In the WebAssembly build this is bounded by something that is not the
   counter.** The module imports its linear memory with a declared maximum of
-  256 MiB (`crates/hollowscript-wasm/build.rs`, a linker argument for the
+  512 MiB (`crates/hollowscript-wasm/build.rs`, a linker argument for the
   `cdylib`; `HOLLOWSCRIPT_WASM_MAX_MEMORY_MIB` changes it for one build). A
   host cannot supply a memory with a larger maximum, and the wrapper makes
   one with a lower maximum when its `maxMemoryBytes` option asks for it, so a
   program that allocates for real stops there whatever the logical limit
-  says: a loop that doubles a list under a logical limit of 2^40 bytes ended at
-  130 MiB of a 256 MiB ceiling (the allocation that would pass it failed) and at
-  34 MiB of a 64 MiB one, in 20 ms and 5 ms. A failed allocation aborts Rust and
-  an abort is a trap, so the module is gone afterwards, which is defined and
-  enforced (`HollowScriptTrap`, `web/README.md` "Memory"), not a fault of
-  the program. The same build script links the `tooling` build with its 16 MiB
+  says. It stops with a fault, not a trap, wherever the allocation is one
+  of the sites that ask the allocator first (`docs/design/bytecode.md`,
+  "Memory the host can give a run"): a loop that doubles a list under a
+  logical limit of 2^40 bytes faults with HS1015 once the copy it needs no
+  longer fits, and the same instance runs the next call. (Before those sites
+  were converted the same loop ended in a trap at 130 MiB of a 256 MiB ceiling
+  and 34 MiB of a 64 MiB one, and the logical limit's own default, 64 MiB, was
+  past what 256 MiB could hold: `range(0, 8000000).map(...)` of 2,000,000
+  elements trapped the `tooling` build.) A failed allocation at any other
+  site aborts Rust, an abort is a trap, and the module is gone afterwards,
+  which is defined and enforced (`HollowScriptTrap`, `web/README.md`
+  "Memory"), not a fault of the program. The same build script links the `tooling` build with its 16 MiB
   stack (above), and that stack is in this memory, so that module declares a
   minimum of 258 pages (16.1 MiB) beside the same maximum: a lower
   `maxMemoryBytes` than it needs to start is refused by the wrapper with a
   `RangeError` that says what the module needs, and a ceiling with no
   headroom above that ends the first call that allocates in the same trap.
-  The ceiling is not a substitute for the limits: at the default
-  logical limit of 64 MiB the best case (a list of scalars) is 245 MiB of the
-  256, so a program can reach the ceiling without reaching a limit, and a host
-  that sizes for untrusted programs sets a logical limit near a quarter of its
-  ceiling (the figures are in `web/README.md`). The writers that hand a value
+  The ceiling is not a substitute for the limits, but the default now sits
+  above them for the programs a short script writes: at the default logical
+  limit of 64 MiB a list of scalars is at most 245 MiB of the 512, and `map`
+  over one (the source and the answer together stay under the limit) at most
+  about 245 MiB, so the language's own HS1002 is what stops them, and HS1015
+  is the backstop for a shape the limit under-counts (a `filter` or `sort` of
+  millions of elements, whose buffers are charged only when the call ends). A
+  host that sizes for untrusted programs still sets a logical limit near a
+  quarter of its ceiling, or a lower `maxMemoryBytes`, which gives the same
+  faults sooner (the figures are in `web/README.md`). The writers that hand a value
   to a host were also making a step for every element of a container before
   writing any of them, which put 600,000 pairs at 360 MiB as JSON and 296 MiB
   as text against 199 MiB for the value itself; they now keep a position in each
@@ -382,7 +393,8 @@ Everything below is in service of those two.
   - **A list of scalars, built by one native call.** `range(0, 8000000)`,
     an 8,000,000-element list of `Int`s, measured at 257 MB of real resident
     memory against a 64.0 MB charge: 4.0x. This is close to a best case:
-    `Value` is 24 bytes on a 64-bit host against the 8 bytes per list, map,
+    `Value` is 32 bytes on a 64-bit host (a tag beside the 24-byte `Handle`)
+    against the 8 bytes per list, map,
     set or record element section 11.4's own formula charges, and building
     the list with a single call leaves nothing else to account for.
   - **A list of strings, built by a loop of appends.** A function that

@@ -1,0 +1,8 @@
+fn f() {
+    return
+}
+
+constant ys = [1, 2].map(fn(n) {
+    f()
+})
+return ys

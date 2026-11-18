@@ -24,10 +24,14 @@ const EXPECTED = [
   "extension.vsixmanifest",
   "extension/changelog.md",
   "extension/dist/extension.js",
+  "extension/dist/member-worker.js",
+  "extension/dist/members.wasm",
   "extension/images/icon.png",
   "extension/language-configuration.json",
   "extension/license-apache",
   "extension/license-mit",
+  "extension/notice",
+  "extension/license-cc-by-4.0.txt",
   "extension/license.md",
   "extension/package.json",
   "extension/readme.md",
@@ -65,7 +69,7 @@ const preview = /** @type {{ preview?: boolean }} */ (manifest).preview;
 check("preview flag", preview === true, String(preview));
 
 const size = statSync(vsix).size;
-check("size", size < 1024 * 1024, `${(size / 1024).toFixed(1)} KiB`);
+check("size", size < 3 * 1024 * 1024, `${(size / 1024).toFixed(1)} KiB`);
 
 console.log(failures === 0 ? `${vsix}: all checks passed` : `${vsix}: ${failures} check(s) failed`);
 process.exit(failures === 0 ? 0 : 1);

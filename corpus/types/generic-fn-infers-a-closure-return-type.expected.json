@@ -1,0 +1,15 @@
+{
+  "title": "A closure argument of a user generic fn binds a type parameter from its return",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(true), Bool(true)]"
+  }
+}

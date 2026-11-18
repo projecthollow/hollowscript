@@ -1,0 +1,10 @@
+record Address = { street: String, flat: String? }
+
+fn flat(a: Address?): String {
+    if a != none and a.flat != none {
+        return a.flat
+    }
+    return "-"
+}
+
+return [flat({ street: "1 Park", flat: "2" }), flat(none)]

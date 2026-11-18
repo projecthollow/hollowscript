@@ -93,9 +93,9 @@ test("Windows: Path in any case, PATHEXT, and %LOCALAPPDATA%\\hollowscript\\bin"
 });
 
 test("the install command matches the platform", () => {
-  assert.equal(discovery.installCommand("darwin"), "curl -fsSL https://get.hollowscript.org/install.sh | sh");
-  assert.equal(discovery.installCommand("linux"), "curl -fsSL https://get.hollowscript.org/install.sh | sh");
-  assert.equal(discovery.installCommand("win32"), "irm https://get.hollowscript.org/install.ps1 | iex");
+  assert.equal(discovery.installCommand("darwin"), "curl -fsSL https://get.hollowscript.org/install.sh | sh -s -- --version v0.1.1");
+  assert.equal(discovery.installCommand("linux"), "curl -fsSL https://get.hollowscript.org/install.sh | sh -s -- --version v0.1.1");
+  assert.equal(discovery.installCommand("win32"), "& ([scriptblock]::Create((irm https://get.hollowscript.org/install.ps1))) -Version v0.1.1");
 });
 
 test("the hollowscript-lsp hint mirrors the CLI's own search", () => {
@@ -107,4 +107,14 @@ test("the hollowscript-lsp hint mirrors the CLI's own search", () => {
 
   const none = host({ env: { PATH: "/x" } }, []);
   assert.equal(discovery.findLanguageServerBinary("/b/hollowscript", none), undefined);
+});
+
+
+test("Windows skips shell wrappers and keeps looking for a runnable native CLI", () => {
+  const h = host({ platform: "win32", env: { Path: "C:\\wrappers;D:\\native", PATHEXT: ".CMD;.EXE;.BAT;.JS;.PS1" } },
+    ["C:\\wrappers\\hollowscript.cmd", "C:\\wrappers\\hollowscript.js", "D:\\native\\hollowscript.exe"]);
+  const r = discovery.findServer(undefined, h);
+  assert.equal(r.found && r.command, "D:\\native\\hollowscript.exe");
+  assert.equal(discovery.findServer("C:\\wrappers\\hollowscript.cmd", h).found, false);
+  assert.equal(discovery.findServer("C:\\wrappers\\hollowscript.js", h).found, false);
 });

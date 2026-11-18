@@ -1,0 +1,15 @@
+{
+  "title": "A generic fn can call another generic fn with values of its own type parameters",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"hi 1 2\")"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "title": "A closure whose return type is inferred cannot also use a bare return",
+  "spec": "5.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0341"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0341"
+      }
+    ]
+  }
+}

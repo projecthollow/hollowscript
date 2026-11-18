@@ -1,0 +1,13 @@
+enum Shape { Circle(Int), Square(Int) }
+
+enum Wrap { Box(Shape), Empty }
+
+fn describe(wrap: Wrap): String {
+    match wrap {
+        Box(Circle(r)) { return "circle ${r}" }
+        Box(Square(s)) { return "square ${s}" }
+        Empty { return "empty" }
+    }
+}
+
+return [describe(Wrap.Box(Shape.Circle(1))), describe(Wrap.Empty)]

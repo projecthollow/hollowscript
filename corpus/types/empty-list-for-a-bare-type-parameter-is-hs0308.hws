@@ -1,0 +1,7 @@
+fn id<T>(x: T): T {
+    return x
+}
+
+constant e = id([])
+
+return e

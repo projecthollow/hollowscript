@@ -1,0 +1,8 @@
+uses print
+
+constant doc = Json.Object(["name": Json.String("Ada")])
+
+match json.field(doc, "email") {
+    String(address) { effect print("Email: ${address}") }
+    else { effect print("No email") }
+}

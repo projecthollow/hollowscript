@@ -1,0 +1,8 @@
+fn rec<T>(x: T, n: Int): T {
+    if n == 0 {
+        return x
+    }
+    return rec(x, n - 1)
+}
+
+return "${rec(4, 3)} ${rec("s", 2)}"

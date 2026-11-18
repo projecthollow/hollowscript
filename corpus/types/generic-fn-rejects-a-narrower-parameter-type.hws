@@ -1,0 +1,20 @@
+fn callWithNone<T>(f: fn(Int?): Bool, t: T): Bool {
+    return f(none)
+}
+
+fn firstOrNone<T>(items: [Int?], t: T): Int? {
+    return items[0]
+}
+
+constant ints: [Int] = [1]
+
+constant a = callWithNone(
+    fn(n: Int): Bool {
+        return n > 0
+    },
+    1
+)
+
+constant b = firstOrNone(ints, 1)
+
+return [a, b == none]

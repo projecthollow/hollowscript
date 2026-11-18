@@ -1,0 +1,24 @@
+{
+  "title": "An effect-marked library call is HS0402, and its discarded value does not warn on top of that",
+  "spec": "17.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 2,
+      "code": "HS0402"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 2,
+        "code": "HS0402"
+      }
+    ]
+  }
+}

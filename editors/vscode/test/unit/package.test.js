@@ -7,14 +7,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { execFileSync, spawnSync } = require("node:child_process");
+const { spawnSync } = require("node:child_process");
 
 const ROOT = path.join(__dirname, "..", "..");
 const REPO = path.join(ROOT, "..", "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
 
 test("the licence texts are the repository's own, unchanged", () => {
-  for (const name of ["LICENSE-APACHE", "LICENSE-MIT"]) {
+  for (const name of ["LICENSE-APACHE", "LICENSE-MIT", "NOTICE"]) {
     assert.equal(
       fs.readFileSync(path.join(ROOT, name), "utf8"),
       fs.readFileSync(path.join(REPO, name), "utf8"),
@@ -30,7 +30,7 @@ test("THIRD-PARTY-NOTICES.md lists exactly what the bundle contains", () => {
 
 test("the manifest is a preview, dual licensed, and claims only .hws", () => {
   assert.equal(manifest.preview, true);
-  assert.equal(manifest.publisher, "hollowscript");
+  assert.equal(manifest.publisher, "soulstack");
   assert.equal(manifest.name, "hollowscript");
   assert.equal(manifest.license, "Apache-2.0 OR MIT");
   assert.match(manifest.description, /^Preview/);
@@ -89,7 +89,6 @@ test("every snippet, with its default text, is syntactically valid", (t) => {
 });
 
 test("the production bundle has no source map", () => {
-  execFileSync(process.execPath, ["scripts/build.mjs"], { cwd: ROOT });
-  assert.deepEqual(fs.readdirSync(path.join(ROOT, "dist")), ["extension.js"]);
+  assert.deepEqual(fs.readdirSync(path.join(ROOT, "dist")), ["extension.js", "member-worker.js", "members.wasm"]);
   assert.ok(!fs.readFileSync(path.join(ROOT, "dist", "extension.js"), "utf8").includes("sourceMappingURL"));
 });

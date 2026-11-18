@@ -1,0 +1,15 @@
+{
+  "title": "A match on a call narrows a top-level binding in the arms that are not none",
+  "spec": "7.6",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"clinic Elm Vets\"), String(\"no clinic\")]"
+  }
+}

@@ -96,6 +96,28 @@ if (process.argv[3]) {
   expectTrap("setLimits after the trap", () => vm.setLimits({ steps: 10 }));
   if (calls.length !== before) fail("a call after the trap reached the module");
   console.log("vm: the first trap threw a HollowScriptTrap, every later call was refused before the module");
+
+  // A trap inside a run (a call here) is reported as itself. The run puts the
+  // result format back in a `finally`, on the module it has just trapped, and
+  // that used to throw "trapped earlier" over the trap that mattered. Needs a
+  // program to call, the optional third file.
+  if (process.argv[4]) {
+    const hsb = new Uint8Array(await readFile(process.argv[4]));
+    const fresh = (await instantiate(bytes, imports)).exports;
+    const callTrapping = { ...fresh };
+    // A name pointer outside the module's memory: a real trap, inside `call`.
+    callTrapping.hs_wasm_call = (handle, _name, _nameLength, args, argsLength) =>
+      fresh.hs_wasm_call(handle, 0xfffffff0, 64, args, argsLength);
+    const runVm = new HollowScript(callTrapping, null);
+    const instance = runVm.loadProgram(hsb);
+    const firstRun = expectTrap("a trap inside a call", () => instance.call("anything"));
+    if (/earlier/.test(firstRun.message)) fail(`the first trap of a run is reported as an earlier one: ${firstRun.message}`);
+    if (!/module trapped/.test(firstRun.message)) fail(`the first trap of a run lost its message: ${firstRun.message}`);
+    if (!(firstRun.cause instanceof WebAssembly.RuntimeError)) fail("the first trap of a run does not carry the RuntimeError");
+    const laterRun = expectTrap("a call after the trap", () => instance.call("anything"));
+    if (!/earlier/.test(laterRun.message)) fail(`a later call does not say the module trapped earlier: ${laterRun.message}`);
+    console.log("vm: a trap inside a run is reported as that trap, not as an earlier one");
+  }
 }
 
 // ---- the guard does not mistake a host's own error for a trap ----

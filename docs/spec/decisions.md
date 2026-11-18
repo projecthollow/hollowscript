@@ -100,6 +100,14 @@ The guiding aim is a language that stays small, is safe to run when the program 
 
 **Reason.** Without a code point escape there is no way to write a non-printing character or a bidirectional control in a literal, which the previous decision forbids writing raw. `\u{0}` covers `\0`.
 
+## Interpolation counts brackets
+
+**Decision.** A string interpolation counts the `(`, `[` and `{` it opens and ends at the first `}` seen when that count is zero. A line terminator ends it abnormally (HS0007) only at count zero. ([section 1.5](01-lexical-structure.md#15-string-literals))
+
+**Alternatives.** Counting only braces and ending the interpolation at any line terminator, which is what the first text of section 1.5 said; forbidding line terminators inside an interpolation altogether.
+
+**Reason.** The arguments of a call, the elements of a list and the body of a closure written over several lines are ordinary code everywhere else in the language, and an interpolation holds ordinary code. Counting every bracket kind agrees with the brace-only rule on every program whose brackets balance. Abandoning an interpolation only at a line terminator with nothing open is what accepts more programs than before: a multi-line call inside `${ }` is no longer HS0007. The counting rule was already the behaviour of every release of the reference implementation, so the text was brought to the behaviour rather than the reverse. The kind of closer is ignored by the count because matching is the parser's job and one counter keeps the lexer small.
+
 ## Equality
 
 **Decision.** Equality is structural for lists, maps, sets, records, enums and optionals; `Filter` and function values, and anything containing them, cannot be compared. Strings are equal when their code points are. ([section 3.5](03-expressions.md#35-comparison-and-equality))
@@ -288,6 +296,14 @@ The guiding aim is a language that stays small, is safe to run when the program 
 
 **Reason.** A method value would need a rule for what it captures and what its type is. A closure is the explicit way to get a function value.
 
+## A call that returns nothing is not a value
+
+**Decision.** A function without a return type has no value to give. Its call is an expression statement and nothing else; used anywhere a value is needed it is HS0345. There is no unit type. ([section 3.7](03-expressions.md#37-calls-fields-methods-and-indexing))
+
+**Alternatives.** A unit type that every such call returns; letting the call have an error type that matches everything; a fault at run time.
+
+**Reason.** Section 2.1 keeps the type system free of a unit type. Without a code, the mistake would be found only at run time. Reporting it where the call is written needs one rule, and the diagnostic is on the call the author wrote.
+
 ## Trailing commas and terminators
 
 **Decision.** Trailing commas are allowed in every bracketed list. They are not allowed in the unbracketed lists (`uses`, `import` and the alternatives of a match arm) because a comma at the end of a line continues onto the next line. There are no leading-dot method chains, and `else` must follow the `}` on the same line. ([section 1.8](01-lexical-structure.md#18-statement-terminators))
@@ -304,11 +320,11 @@ The guiding aim is a language that stays small, is safe to run when the program 
 
 ## Diagnostics: codes, order, cap and comparison
 
-**Decision.** Every diagnostic has a stable code, a severity, a file and a span. Diagnostics are reported in a canonical order, at most 100 per file followed by one notice that more were found. Conformance compares codes, severities, files and lines, not message text. Only three warnings exist. ([Chapter 17](17-diagnostics.md))
+**Decision.** Every diagnostic has a stable code, a severity, a file and a span. Diagnostics are reported in a canonical order, at most 100 per file followed by one notice that more were found. Conformance compares codes, severities, files and lines, not message text. Only four warnings exist. ([Chapter 17](17-diagnostics.md))
 
 **Alternatives.** Comparing message text; more warnings.
 
-**Reason.** Message text is for people and should be free to improve. A cap keeps hostile input from producing output larger than the input. Warnings that a program can safely ignore are not worth a place in the contract beyond the three that catch real mistakes.
+**Reason.** Message text is for people and should be free to improve. A cap keeps hostile input from producing output larger than the input. Warnings that a program can safely ignore are not worth a place in the contract beyond the four that catch real mistakes.
 
 ## Filter literals as an embedded language
 
@@ -446,6 +462,14 @@ The guiding aim is a language that stays small, is safe to run when the program 
 
 **Reason.** A parameter is part of a signature, and a loop variable or an arm binding names part of a value that the construct has to bind. A name that the program chose to declare is the one worth a warning.
 
+## Which discarded values warn
+
+**Decision.** An expression statement that is a call of a standard library function or method and discards a value that is not a `Result` warns (HS0804). A discarded `Result` keeps its own warning (HS0803). Calls of user functions and `effect` calls never warn HS0804, whatever they return. ([section 17.3](17-diagnostics.md#173-warnings))
+
+**Alternatives.** Warning for every discarded value; no warning.
+
+**Reason.** The library is pure: a library call, unlike a user function that assigns a top-level `variable` or a capability call, has no effect of its own, and collections are immutable, so `xs.append(2)` on its own line is a mistake that looks like mutation. A discarded `map` whose callback assigns a variable is better written with `each`. For a user function the type does not say whether the value is the point, so a warning would reject a valid idiom.
+
 ## Checking is bounded too
 
 **Decision.** The syntax tree has a bounded weight, the number of modules and their total source are bounded, the exhaustiveness check has a work budget, and the size of a type is bounded. Checking and loading take a cancellation token. ([section 1.10](01-lexical-structure.md#110-structural-limits))
@@ -473,6 +497,22 @@ The guiding aim is a language that stays small, is safe to run when the program 
 **Alternatives.** No implementation limits at all, so that every width up to the source size limit must run; reporting such a limit as an internal error (HS1099); fixing one number for every implementation.
 
 **Reason.** Section 1.10 bounds the widths of a program only by the size of its source, so a 4 MiB source can hold a call of two million arguments or a function of hundreds of thousands of locals. Every real implementation has some machine limit below that, and a register machine meets one first. HS1099 says the implementation is broken, which is wrong for a documented limit and gives the author nothing to act on. A single fixed number would bind every implementation to one design. Requiring the corpus to pass keeps a limit from reaching programs anyone writes, and the corpus has cases far wider and deeper than ordinary code for that purpose.
+
+## An expected optional type reaches the literal inside it
+
+**Decision.** When the expected type is `T?`, a list, map, record or closure literal is checked as if the expected type were `T`, and the result is assignable to `T?` because every `T` is. The rule applies at every expected-type position, so `constant a: Address? = { street: "1 Park", flat: "2" }`, a record field, a list element and a closure under `(fn(Int): Int)?` all take their shape from `T`. A record literal under `T?` still lists every field of `T`. ([section 2.9](02-types.md#29-inference))
+
+**Alternatives.** Reject the literal and require the author to write a separate declaration of type `T` first; treat only record literals this way; leave the rule to the arguments of calls, where it already worked by accident of unification.
+
+**Reason.** An optional annotation says the value may be absent, not that its shape is unknown, so reading it as an expected shape is what authors expect, and it makes `Int` to `Float` coercion and closure parameter inference behave the same under `T?` as under `T`. Treating one literal kind differently would be a rule to remember with no benefit. The change accepts programs that were rejected and changes none that were accepted.
+
+## A match binding is typed `U` for any scrutinee, narrowing stays on paths
+
+**Decision.** In a `match` whose scrutinee has type `U?` and where an arm has `none`, a top-level binding pattern in an arm without `none` has type `U`, whatever the scrutinee expression is. Narrowing the scrutinee itself still needs a path, so a call is never narrowed. ([section 7.6](07-patterns.md#76-narrowing-in-match))
+
+**Alternatives.** Keep the binding type tied to a path scrutinee, which forces `match f(x)` to be rewritten with a constant; narrow the result of a call the way a path is narrowed.
+
+**Reason.** The scrutinee is evaluated once, and an arm after `none` is reached only when the value is present, so the binding holds a `U` however the value was produced. Narrowing a path is a different matter: it rests on the path reading the same value later, which a call does not promise. The change accepts programs that were rejected and changes none that were accepted.
 
 ## Versioning and licence
 

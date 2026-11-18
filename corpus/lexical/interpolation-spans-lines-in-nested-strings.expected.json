@@ -1,0 +1,26 @@
+{
+  "title": "A nested string inside a multi-line interpolation has its own interpolation and bracket count",
+  "spec": "1.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "fn id(s: String): String {",
+      "    return s",
+      "}",
+      "",
+      "effect print(\"v ${id(\"in ${id(\"x\")}\")}\")",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "v in x"
+    ],
+    "result": null
+  }
+}

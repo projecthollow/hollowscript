@@ -1,0 +1,5 @@
+fn nothing(acc: Int, n: Int) {
+    return
+}
+
+return [1, 2].reduce(0, nothing)

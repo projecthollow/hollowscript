@@ -1,0 +1,24 @@
+{
+  "title": "effect on a call of a pure json or time function is HS0402, and nothing more",
+  "spec": "9.3",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 1,
+      "code": "HS0402"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 1,
+        "code": "HS0402"
+      }
+    ]
+  }
+}

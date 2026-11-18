@@ -153,6 +153,44 @@ while it runs, never as an internal error. These are this implementation's:
   256 registers reaches its call depth limit as it always did. One that
   recurses through very wide frames faults sooner, with HS1015 at the call
   that went over.
+- **Memory the host can give a run.** Section 11.4's counters are arithmetic,
+  and a `Value` is 32 bytes against the 8 the counters charge for each element
+  of a list, so a program can ask for more real memory than the machine has
+  while it is still inside its limits (and a WebAssembly build has a fixed
+  ceiling, `docs/design/security.md`). Every allocation whose size follows
+  something the program chooses is therefore made fallibly
+  (`hollowscript-vm`'s `alloc` module: `try_reserve`, never an abort), and a
+  refusal faults with HS1015, "the memory this host can give one run" (or "the
+  objects one run can hold in this host's memory" for the heap itself), at
+  the operation that asked, leaving the instance as it was and usable. The
+  sites are `range`; the copies of `list.append`, `concat`, `slice`, `take`,
+  `drop`, `reverse`, `sort`, `sortBy` (with its merge plan and merge
+  buffer), `set`, `mapFrom`, a list pattern's rest
+  and the map and set operations; the answers of `map`, `filter`, `flatMap`
+  and `mapValues` (a list is read through the heap, not copied; a map or a set
+  is snapshotted, because bytecode can rewrite one in place); the text built
+  by `repeat`, `padStart`, `padEnd`, `replace`, `split`, `chars`, `lines`
+  (each piece too), `substring`, `trim`, `toUpper`, `toLower`, `join`,
+  interpolation and `json.stringify` and `json.pretty`; the heap's own slot
+  table; the collector's mark bitmap and work list (the mark reads an object
+  4,096 elements at a time, so the work list is bounded by depth times that,
+  not by the widest object; a collection the host has no memory for is
+  skipped, freeing nothing, and the next waits for another threshold of
+  allocation rather than retrying at every safepoint); in-place `append`;
+  and the
+  WebAssembly build's upload and result buffers. Every result whose size is
+  known before it is built is charged first (steps, then memory, then the
+  fallible build), so HS1015 never stands in for an HS1001 or HS1002 the
+  program should see. What this limit is depends on the machine, so which
+  program reaches it differs between hosts, and the conformance corpus cannot
+  pin it (section 1.10). It is a backstop: with the WebAssembly build's
+  default ceiling (512 MiB), the language's own default memory limit (HS1002)
+  is reached first for a list of scalars, for `map` over one and for `sort`.
+  Allocations of a fixed or program-text-bound size (a list literal, a call's
+  arguments), the walks that convert a value to `Json` or to a host's JSON
+  (charged node by node, so their real size is close to the charge), and the
+  collector's list of roots still abort when the machine is out of memory,
+  which in the WebAssembly build is the trap that `web/README.md` describes.
 
 ## Values that do not fit in an operand
 

@@ -1,0 +1,17 @@
+{
+  "title": "A discarded Result warns as HS0803 only, never as HS0804 too",
+  "spec": "8.5",
+  "parse": [],
+  "check": [
+    {
+      "severity": "warning",
+      "line": 1,
+      "code": "HS0803"
+    }
+  ],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(0)"
+  }
+}

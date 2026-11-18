@@ -1,0 +1,13 @@
+fn id<T>(x: T): T {
+    return x
+}
+
+fn twice<T>(items: [[T]]): [[T]] {
+    return items.map(fn(row: [T]): [T] {
+        return row.map(fn(x: T): T {
+            return id(x)
+        })
+    })
+}
+
+return twice([[1, 2], [3]])

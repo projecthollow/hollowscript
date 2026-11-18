@@ -46,7 +46,17 @@ export async function render() {
     const text = readFileSync(path.join(dir, licenceFile), "utf8").replace(/\r\n/g, "\n").trim();
     texts.push(`## ${name} ${manifest.version}`, "", "```", text, "```", "");
   }
-  return [...lines, "", ...texts].join("\n");
+  return [...lines, "", ...texts,
+    "## HollowScript tooling and method signatures", "",
+    "The member worker and WebAssembly tooling are built from this repository",
+    "under Apache-2.0 OR MIT; see NOTICE and the licence texts in this package.",
+    "The method signatures are extracted from the HollowScript specification:",
+    "https://github.com/projecthollow/hollowscript",
+    "Source snapshot: v0.1.1, docs/spec, chapters 8 and 13 to 15.",
+    "The specification is licensed under CC BY 4.0; its attribution is in NOTICE.",
+    "The catalogue adapts its signatures into completion entries; see",
+    "LICENSE-CC-BY-4.0.txt for that licence.", "",
+  ].join("\n");
 }
 
 const text = await render();

@@ -80,7 +80,7 @@ random: {
 }
 ```
 
-- `random.int(min, upTo)` is an integer `n` with `min <= n < upTo`, each value equally likely. It faults with HS1011 if `min >= upTo`.
+- `random.int(min, upTo)` is an integer `n` with `min <= n < upTo`, each value equally likely. It faults with HS1011 if `min >= upTo`. The language checks this before it calls the host function, so the fault is the same whichever host answers and the host function is not called.
 - `random.float()` is a `Float` `x` with `0.0 <= x < 1.0`, uniformly distributed.
 
 The generator is the host's. The specification does not define the algorithm, does not promise cryptographic strength, and does not promise the same sequence on different hosts; a host may seed a generator explicitly so that a program is repeatable. Granted by default; not scoped.

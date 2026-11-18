@@ -1,0 +1,6 @@
+constant xs = [1]
+xs.each(fn(n) {
+    constant m = n
+    return
+})
+return 0

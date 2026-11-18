@@ -1,0 +1,15 @@
+fn id<T>(x: T): T {
+    return x
+}
+
+fn viaId<T>(x: T): T {
+    return id(x)
+}
+
+fn countBoth<A, B>(a: A, b: B): Int {
+    constant xs = [viaId(a)]
+    constant ys = [viaId(b)]
+    return xs.length() + ys.length()
+}
+
+return "${viaId("hi")} ${viaId(1)} ${countBoth(2, "x")}"

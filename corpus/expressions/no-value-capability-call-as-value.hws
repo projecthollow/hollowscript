@@ -1,0 +1,4 @@
+uses print
+
+constant x = effect print("a")
+return x

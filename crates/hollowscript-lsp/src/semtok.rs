@@ -59,8 +59,7 @@ fn encode(text: &str, tokens: &[(Span, i64)]) -> Vec<i64> {
     out
 }
 
-/// The zero-based line and UTF-16-ish character (code points, see
-/// `crate::server::offset_of`'s own note) of a byte offset.
+/// The zero-based line and UTF-16 character of a byte offset.
 fn position(text: &str, offset: u32) -> (i64, i64) {
     let mut line = 0i64;
     let mut start = 0usize;
@@ -69,7 +68,7 @@ fn position(text: &str, offset: u32) -> (i64, i64) {
         if (offset as usize) < end || end == text.len() {
             let character = text
                 .get(start..(offset as usize).min(text.len()))
-                .map_or(0, |s| i64::try_from(s.chars().count()).unwrap_or(0));
+                .map_or(0, |s| i64::try_from(s.encode_utf16().count()).unwrap_or(0));
             return (line, character);
         }
         start = end;
@@ -82,6 +81,14 @@ fn position(text: &str, offset: u32) -> (i64, i64) {
 mod tests {
     use super::encode;
     use hollowscript_core::Span;
+
+    #[test]
+    fn a_token_after_an_emoji_has_a_utf16_column() {
+        assert_eq!(
+            encode("😀name", &[(Span::new(4, 8), 1)]),
+            vec![0, 2, 4, 1, 0]
+        );
+    }
 
     #[test]
     fn two_tokens_on_one_line_delta_encode_from_each_other() {

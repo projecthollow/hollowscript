@@ -1,0 +1,30 @@
+{
+  "title": "A function argument whose parameter type is narrower than the declared one is HS0301",
+  "spec": "2.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0301",
+      "contains": "Expected fn(Int?): Bool, found fn(Int): Bool"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0301",
+        "contains": "Expected fn(Int?): Bool, found fn(Int): Bool"
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "title": "Discarding the value of a user function does not warn, because it may have effects",
+  "spec": "17.3",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(2)"
+  }
+}

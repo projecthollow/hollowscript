@@ -1,0 +1,60 @@
+{
+  "title": "The end of the file inside an interpolation with a bracket open is HS0007",
+  "spec": "1.5",
+  "parse": [
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 4
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 3
+    },
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 4
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 4
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 3
+      },
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 4
+      }
+    ]
+  }
+}

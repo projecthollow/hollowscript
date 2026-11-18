@@ -1,0 +1,22 @@
+{
+  "title": "random.int faults with HS1011 when min is greater than upTo",
+  "spec": "16.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "run",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 7,
+        "code": "HS1011"
+      }
+    ]
+  }
+}

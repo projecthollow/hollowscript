@@ -1,0 +1,15 @@
+{
+  "title": "A recursive generic fn calls itself with fresh type variables and its own type parameters stay opaque",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"4 s\")"
+  }
+}

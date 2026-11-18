@@ -12,6 +12,15 @@ if (!diags.some((d) => d.code === "HS0205")) {
   process.exit(1);
 }
 
+// A non-ASCII letter is not part of an identifier: `caf\u{e9}` is HS0005, not
+// a declaration of `caf` (highlight() marks the same character invalid).
+const accented = t.check("constant caf\u{e9} = 1");
+console.log("check(non-ASCII identifier) ->", JSON.stringify(accented));
+if (!accented.some((d) => d.code === "HS0005")) {
+  console.error(`FAIL: expected HS0005, got ${JSON.stringify(accented)}`);
+  process.exit(1);
+}
+
 // Regression check: a program that only uses the standard always-granted
 // capabilities (print, clock, random) must check with no declaration at
 // all, the same as `hollowscript check` and a plain `hollowscript-capi`

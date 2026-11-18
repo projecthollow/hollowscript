@@ -316,14 +316,18 @@ overlapping. The classes are:
 | `operator` | `+ - * / = == != < > <= >= .. ?` |
 | `punctuation` | `( ) [ ] { } , : .` |
 | `comment` | a `//` comment, up to but not including the line end |
+| `invalid` | one character (one code point) the language rejects outside a string, a comment and a filter, the sites `check` reports as HS0005: for example a non-ASCII letter or digit, a stray `#`, a control character or an emoji. In a name the ASCII part stays an `identifier`: `constant café = 1` gives `caf` as `identifier` and `é` as `invalid` |
 
-Whitespace is not covered, and neither is a character the language has no
-token for, so highlighting never colours text the language does not
-recognise. A text longer than the source size limit of section 1.1 (4 MiB) is
-not lexed, and the answer is empty. The language has line comments only, so there is one `comment`
-class and no sub-kind. The tags `todo:`, `explain:` and `note:` the lexer
-knows are not reported. `highlight` is the lexical layer only: it cannot tell a function from a
-variable, which needs name resolution.
+Whitespace is not covered. A character the language has no token for is an
+`invalid` range, so every `invalid` range is a place `check` reports HS0005
+(subject to the per-file diagnostic cap of section 17.1) and an editor can
+flag it. A host that switches on the class should treat a class it does not
+know as plain text. A text longer than the source size limit of section 1.1
+(4 MiB) is not lexed, and the answer is empty. The language has line comments
+only, so there is one `comment` class and no sub-kind. The tags `todo:`,
+`explain:` and `note:` the lexer knows are not reported. `highlight` is the
+lexical layer only: it cannot tell a function from a variable, which needs
+name resolution.
 
 `keywords()` answers `[{ word, future }, ...]`, every reserved word in
 alphabetical order, from the lexer's own table. `future` is `true` for a
@@ -733,36 +737,37 @@ figure the specification fixes (it fixes only the standard shape).
 
 ## Memory
 
-**The module imports its linear memory, with a maximum of 256 MiB.** A
+**The module imports its linear memory, with a maximum of 512 MiB.** A
 WebAssembly memory cannot grow past the maximum its module declares, and an
 import is matched only by a memory whose own maximum is no larger, so a
-program cannot make this module's memory grow past 256 MiB and a host cannot
+program cannot make this module's memory grow past 512 MiB and a host cannot
 give it a bigger one. The module declares `env.memory` with a minimum of 17
-pages (1.1 MiB: the stack and the static data; 18 in the `min-size` build) and a maximum of 4,096 pages
-(256 MiB). The `tooling` build declares the same maximum and a minimum of 258
+pages (1.1 MiB: the stack and the static data; 18 in the `min-size` build) and a maximum of 8,192 pages
+(512 MiB). The `tooling` build declares the same maximum and a minimum of 258
 pages (16.1 MiB), because its 16 MiB stack ("Nesting depth and the stack") is in
 the linear memory and the module cannot start with less than it. `hollowscript.js` reads both from the
 module's import section (`readMemoryLimits(bytes)`), makes the memory, and
 passes it in; a host that does not use the wrapper does the same:
 
 ```js
-const memory = new WebAssembly.Memory({ initial: 17, maximum: 4096 }); // 64 KiB pages
+const memory = new WebAssembly.Memory({ initial: 17, maximum: 8192 }); // 64 KiB pages
 const { instance } = await WebAssembly.instantiate(bytes, { env: { memory, ...imports } });
 ```
 
-A memory with a maximum above 4,096 pages, or with none, does not link.
+A memory with a maximum above 8,192 pages, or with none, does not link.
 
 **A host that wants a lower ceiling asks for one.** `HollowScript.load`,
 `fromBytes` and (for `HollowScriptTooling`) the same take
 `{ maxMemoryBytes }`, rounded up to whole pages, between what the module needs
-to start and 256 MiB (otherwise a `RangeError` that says how much the module
+to start and 512 MiB (otherwise a `RangeError` that says how much the module
 needs to start, 1.1 MiB for the VM and 16.1 MiB for the `tooling` build, and
 never a trap); `vm.memoryCeilingBytes` says what is in force and `vm.memoryBytes`
 how much the module has taken so far (memory only grows). A ceiling at the least
 the module needs leaves it nothing to allocate with, so the first call that
-allocates ends in the trap of a failed allocation described below: give the
-module some headroom (the `tooling` build was measured to work with 1 MiB above
-its 16.1 MiB and to trap with 256 KiB; `web/node-e2e/memory-check.mjs` uses
+allocates cannot: the upload of its input is refused with a `RangeError` (or, at
+an allocation the VM does not make fallibly, it ends in the trap described below):
+give the module some headroom (the `tooling` build was measured to work with 1 MiB above
+its 16.1 MiB and to have no room for its first call with 256 KiB; `web/node-e2e/memory-check.mjs` uses
 4 MiB above either build's minimum). A build for a host that needs a different
 ceiling sets `HOLLOWSCRIPT_WASM_MAX_MEMORY_MIB` (2 to 4,096, and 17 to 4,096 for
 the `tooling` build, which cannot have a ceiling below its stack) when it
@@ -782,26 +787,55 @@ holds. Measured on this build (`web/node-e2e/memory-sample.hws`, the module's
 | What the program builds | Logical size | Module memory |
 |---|---|---|
 | `range(0, 4000000)`, 4 million `Int`s | 32 MiB | 123 MiB |
-| `range(0, 8000000)`, 8 million `Int`s | 64 MiB | 245 MiB |
+| `range(0, 8000000)`, 8 million `Int`s | 64 MiB | 246 MiB (261 in the `tooling` build) |
+| `range(0, 2000000).map(...)`, 2 million `Int`s | 32 MiB | 124 MiB (252 MiB before PRO-1697: the receiver was copied) |
+| `range(0, 4000000).map(...)` | 64 MiB | 245 MiB |
+| `range(0, 2000000)` joined with itself by `concat` | 32 MiB | 184 MiB |
 | 600,000 pairs, `range(0, 600000).map(fn(i) { return [i, i] })` | 24 MiB | 199 MiB |
 | the same, returned to the host as JSON or as text | 24 MiB | 199 MiB |
+| `"x".repeat(2500000).chars()`, 2.5 million one code point strings | 60 MiB | 467 MiB (482 in the `tooling` build) |
+| `range(0, 8000000).sort()`, stopped by HS1002 before the copy | 64 MiB (the answer would be 64 more) | 246 MiB |
 
 The last row used to be 360 MiB as JSON and 296 MiB as text: the writers made
 a vector of a step for every element before writing any of them, and now hold
 a position in each container instead. A loop of `append`s can reach much more
 (`docs/design/security.md` has the figures), and a host's own conversion of a
 large JSON result (`JSON.parse` of 15 MB of text) is outside the module and
-more again. So a host that runs scripts for others should size by the ceiling,
-not by the logical limit: a logical limit of 32 MiB or less keeps the ordinary
-shapes above under the default 256 MiB, and the default 64 MiB logical limit
-does not (the 8 million `Int`s above are at 245 MiB of 256, and a longer list
-or a loop of appends is past it).
+more again. A `Value` is 32 bytes against the 8 the limit counts for a list
+element, so at the default 64 MiB logical limit a list of scalars is at most
+245 MiB and `map` over one (its source and its answer together are under the
+limit) at most about 245 MiB. The default ceiling of 512 MiB is above both, so
+for those the language's own HS1002 is what stops a program, at the
+specification's sizes (`range(0, 9000000)` and `range(0, 5000000).map(...)`
+at the default limits are HS1002, on the VM-only and the `tooling` build alike),
+and the machine does not run out first. A host that runs scripts for others
+should still size by the ceiling and not by the logical limit: a lower
+`maxMemoryBytes` (or a logical limit a quarter of the ceiling) bounds the real
+footprint tighter, and a loop of appends is past the logical figures above.
 
-**What happens at the ceiling.** Rust aborts when an allocation fails, and on
-`wasm32-unknown-unknown` an abort is a `trap` (`unreachable`). So a program
-that allocates for real past the ceiling traps the module; it is not a fault of
-the program (there is no HS code for it: the module cannot report anything
-once it has trapped). The behaviour afterwards is defined:
+**What happens at the ceiling.** An allocation that grows with something a
+program chooses (the elements of a list, the copy of one, the text a string
+function builds, the heap's own table of objects) asks the allocator first, and
+a refusal is a fault: HS1015, "a limit of this implementation was reached"
+(section 1.10), at the operation that asked. `error.code === "HS1015"` on a
+`HollowScriptFault`, and the instance is untouched and answers the next call.
+Which program reaches it depends on the machine, which is why it is a limit of
+the implementation and not of the language: with the default ceiling it is a
+backstop behind HS1002 (`chars` of a string near the logical limit is the
+nearest shape: every piece is a string of its own, so 2.5 million of them,
+60 MiB by the limit, take 467 of the module's 512 MiB),
+and with a lowered `maxMemoryBytes` it is what a program too big for that
+ceiling meets (`range(0, 8000000)` under a 128 MiB ceiling). A result whose
+size is known before it is built (a `sort`, a `slice`, the answer of a `map`)
+is charged first, so it meets HS1002 before the module is asked for any of it,
+on every host. The sites that do this, and the few that do not, are listed in
+`docs/design/bytecode.md` ("Memory the host can give a run").
+
+Rust aborts when any other allocation fails, and on `wasm32-unknown-unknown`
+an abort is a `trap` (`unreachable`). So a program that reaches the ceiling at a
+site that does not ask first traps the module; it is not a fault of the program
+(there is no HS code for it: the module cannot report anything once it has
+trapped). The behaviour afterwards is defined:
 
 - the call that was running throws a `HollowScriptTrap`, an `Error` whose
   `cause` is the `WebAssembly.RuntimeError`;

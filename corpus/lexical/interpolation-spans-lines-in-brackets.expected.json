@@ -1,0 +1,26 @@
+{
+  "title": "An interpolation with a call bracket open continues across line terminators",
+  "spec": "1.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "fn add(a: Int, b: Int): Int {",
+      "    return a + b",
+      "}",
+      "",
+      "effect print(\"sum ${add(1, 2)} done\")",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "sum 3 done"
+    ],
+    "result": null
+  }
+}

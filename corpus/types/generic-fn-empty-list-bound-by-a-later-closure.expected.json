@@ -1,0 +1,15 @@
+{
+  "title": "An empty list argument takes the type a later closure argument binds",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Bool(true)"
+  }
+}

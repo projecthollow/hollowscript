@@ -1,0 +1,15 @@
+{
+  "title": "A list, map or record literal is accepted for a parameter with T? inside, as the instantiated call accepts it",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[Bool(true), Bool(true), Bool(true), Bool(true)]"
+  }
+}

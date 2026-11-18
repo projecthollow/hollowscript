@@ -1,0 +1,5 @@
+fn wrong<T>(x: T): T {
+    return 1
+}
+
+return wrong(2)

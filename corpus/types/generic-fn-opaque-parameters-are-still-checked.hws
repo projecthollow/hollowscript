@@ -1,0 +1,26 @@
+fn crossParams<A, B>(a: A): B {
+    return a
+}
+
+fn pair<X>(a: X, b: X): Int {
+    return 0
+}
+
+// X is bound to the opaque T by the first argument.
+fn freshBoundToOpaque<T>(t: T): Int {
+    return pair(t, 1)
+}
+
+fn takesInt(n: Int): Int {
+    return n
+}
+
+fn opaqueToConcrete<T>(t: T): Int {
+    return takesInt(t)
+}
+
+fn wrongParamOrder<A, B>(f: fn(A): B, b: B): B {
+    return f(b)
+}
+
+return 0

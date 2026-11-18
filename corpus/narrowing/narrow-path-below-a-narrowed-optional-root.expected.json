@@ -1,0 +1,15 @@
+{
+  "title": "A path below an optional local narrows once the local is narrowed",
+  "spec": "4.8",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"2\"), String(\"-\")]"
+  }
+}

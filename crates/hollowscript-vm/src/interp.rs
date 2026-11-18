@@ -48,6 +48,10 @@ use hollowscript_core::{Interner, Limits};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// What an HS1015 says when the heap cannot take another object: its index
+/// space is used up, or the host has no memory for one more slot.
+pub(crate) const HEAP_FULL: &str = "the objects one run can hold in this host's memory";
+
 /// The wording used when a part of a string interpolation is not one of the
 /// four types section 3.9 allows. The checker rejects anything else with
 /// HS0317, so reaching this means the bytecode did not come from the checker.
@@ -115,9 +119,9 @@ pub(crate) enum Frame {
     /// A script function or closure.
     Script(ScriptFrame),
     /// A library function that calls a closure (`list.map` and the rest),
-    /// which is driven one callback at a time. Boxed because a job carries
-    /// the whole collection it is walking, which is much larger than a
-    /// script frame and far rarer.
+    /// which is driven one callback at a time. Boxed because a job is much
+    /// larger than a script frame (it carries its answer so far, and a map
+    /// or set job a snapshot of what it walks) and far rarer.
     Native(Box<crate::natives::NativeJob>),
 }
 
@@ -273,6 +277,10 @@ pub struct Interpreter {
     /// Where this module keeps the prelude types of chapter 15.
     data_types: crate::data::DataTypes,
     capabilities: CapabilityTable,
+    /// Which of the module's `cap_calls` are the standard `random.int`, by
+    /// index. Worked out once when the interpreter is built, so a call
+    /// checks a flag and never builds a name (`accept.rs`).
+    random_int_calls: Vec<bool>,
     /// The current value of every global slot, indexed as the module's
     /// `globals` table is, filled in as initialisation runs.
     globals: Vec<Value>,
@@ -311,6 +319,10 @@ impl std::fmt::Debug for Interpreter {
             .field("functions", &self.module.module().functions.len())
             .field("heap_len", &self.heap.len())
             .field("capabilities", &self.capabilities)
+            .field(
+                "random_int_calls",
+                &self.random_int_calls.iter().filter(|&&is| is).count(),
+            )
             .field("globals", &self.globals.len())
             .field("natives", &self.natives.len())
             .field("native_error", &self.native_error)
@@ -707,10 +719,11 @@ impl Interpreter {
         // have is refused before it runs rather than part way through.
         let natives = crate::natives::resolve_imports(module.module());
         let data_types = crate::data::DataTypes::of(module.module());
-        Interpreter {
+        let mut interpreter = Interpreter {
             module,
             heap: Heap::new(),
             capabilities,
+            random_int_calls: Vec::new(),
             globals,
             data_types,
             natives: natives.as_ref().map_or_else(|_| Vec::new(), Clone::clone),
@@ -720,7 +733,9 @@ impl Interpreter {
             host_roots: Vec::new(),
             constant_strings: Vec::new(),
             constant_filters: Vec::new(),
-        }
+        };
+        interpreter.random_int_calls = interpreter.find_random_int_calls();
+        interpreter
     }
 
     /// Remembers `value` as one the host is holding, so a collection never
@@ -924,6 +939,12 @@ impl Interpreter {
     /// this heap, so a caller that wants one to survive but has not called
     /// [`Interpreter::remember_host_root`] for it must pass it here or see
     /// it freed underneath it.
+    ///
+    /// The answer is a count for logging, not a signal to loop on: 0 means
+    /// either that nothing was garbage or that the host had no memory for
+    /// the collection's own bookkeeping, in which case nothing was freed
+    /// and nothing changed (see [`Heap::collect`]). A host that wants to
+    /// know how much is live asks [`Heap::len`] instead.
     pub fn collect(&mut self, also: &[Value]) -> usize {
         let mut roots = self.live_roots();
         roots.extend_from_slice(also);
@@ -1469,7 +1490,7 @@ impl Interpreter {
     pub(crate) fn alloc_object(&mut self, object: Object) -> Result<Value, Fault> {
         self.heap
             .alloc(object)
-            .map_err(|_| Fault::internal("the heap's object count is exhausted"))
+            .map_err(|_| Fault::implementation_limit(HEAP_FULL))
     }
 
     /// Allocates `object` and charges its node cost against the allocation
@@ -1496,6 +1517,19 @@ impl Interpreter {
         limits: &Limits,
     ) -> Result<Value, Fault> {
         self.alloc_charged(Object::Str(text), counters, limits)
+    }
+
+    /// Allocates `object`, whose node cost `paid` the caller has already
+    /// charged, before building it, as section 11.4 asks of a result whose
+    /// size is known in advance: the steps first, then the memory, then the
+    /// work, so the fault a program sees does not depend on how much memory
+    /// the host has (HS1015 can never pre-empt HS1001 or HS1002).
+    pub(crate) fn alloc_paid(&mut self, object: Object, paid: u64) -> Result<Value, Fault> {
+        debug_assert!(
+            Heap::paid_for(paid, &object),
+            "a library function charged {paid} for {object:?}"
+        );
+        self.alloc_object(object)
     }
 
     // -- Structural comparison. --
@@ -2019,7 +2053,9 @@ impl Interpreter {
         }
         counters.charge_memory(bytes.saturating_add(16), limits)?;
 
-        let mut text = String::with_capacity(usize::try_from(bytes).unwrap_or(0));
+        let mut text = crate::alloc::string_with_capacity(
+            usize::try_from(bytes).map_err(|_| crate::alloc::OutOfMemory)?,
+        )?;
         for (part, own) in parts.iter().zip(rendered.iter()) {
             match own {
                 Some(own) => text.push_str(own),
@@ -2084,6 +2120,25 @@ impl Interpreter {
             .map(|&v| self.capability_size(v, budget))
             .fold(0u64, u64::saturating_add);
         charge_steps_sliced(counters, limits, control, 1 + arg_size / 64)?;
+        // Section 16.4: `random.int` faults with HS1011 when `min >= upTo`.
+        // The language checks it here, before any host is called, so the
+        // fault is the same whichever host answers: a host that is not Rust
+        // (a JavaScript handler, a C one) has no way to fail with HS1011.
+        if self
+            .random_int_calls
+            .get(index as usize)
+            .copied()
+            .unwrap_or(false)
+        {
+            if let [Value::Int(min), Value::Int(up_to)] = args {
+                if min >= up_to {
+                    return Err(Fault::invalid_argument(
+                        "random.int",
+                        "min must be less than upTo",
+                    ));
+                }
+            }
+        }
         // Section 11.6: the text's UTF-8 bytes and one LF, charged after the
         // step charge and before the host sees the call, because a call that
         // would pass the limit writes nothing at all.
@@ -2967,16 +3022,26 @@ impl Interpreter {
                         let Value::Heap(h) = reg(&registers, instr.b)? else {
                             return Err(Fault::internal("ListRest needs a list"));
                         };
-                        let rest = match self.heap.get(h) {
-                            Some(Object::List(items)) => items
-                                .get(instr.c as usize..)
-                                .map(<[Value]>::to_vec)
-                                .ok_or_else(|| {
+                        // Section 11.4: the rest's size is known, so it is
+                        // charged before it is copied.
+                        let count = match self.heap.get(h) {
+                            Some(Object::List(items)) => {
+                                items.len().checked_sub(instr.c as usize).ok_or_else(|| {
                                     Fault::internal("ListRest's count is greater than the list")
-                                })?,
+                                })?
+                            }
                             _ => return Err(Fault::internal("ListRest needs a list")),
                         };
-                        let value = self.alloc_charged(Object::List(rest), counters, limits)?;
+                        let paid = Heap::list_node_cost(count);
+                        counters.charge_memory(paid, limits)?;
+                        let rest = match self.heap.get(h) {
+                            Some(Object::List(items)) => crate::alloc::copy_of(
+                                items.get(instr.c as usize..).unwrap_or(&[]),
+                                0,
+                            )?,
+                            _ => return Err(Fault::internal("ListRest needs a list")),
+                        };
+                        let value = self.alloc_paid(Object::List(rest), paid)?;
                         set_reg(&mut registers, instr.a, value)?;
                     }
                     Op::ListCheck => {

@@ -1,0 +1,15 @@
+{
+  "title": "A column of variants nested in a pattern is complete when every variant is listed",
+  "spec": "7.7",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"circle 1\"), String(\"empty\")]"
+  }
+}

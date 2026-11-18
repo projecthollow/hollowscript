@@ -1,0 +1,9 @@
+fn f() {
+    return
+}
+
+fn g() {
+    return f()
+}
+
+g()

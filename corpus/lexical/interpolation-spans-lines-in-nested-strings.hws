@@ -1,0 +1,11 @@
+uses print
+
+fn id(s: String): String {
+    return s
+}
+
+effect print("v ${id(
+    "in ${id(
+        "x"
+    )}"
+)}")

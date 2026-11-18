@@ -1,0 +1,15 @@
+{
+  "title": "A generic fn can pass a function-typed parameter on to a generic callee and use it in a closure",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "String(\"n1 2\")"
+  }
+}

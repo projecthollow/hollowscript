@@ -1,0 +1,100 @@
+{
+  "title": "A line terminator in an interpolation with no bracket open is HS0007",
+  "spec": "1.5",
+  "parse": [
+    {
+      "severity": "error",
+      "code": "HS0006",
+      "line": 4
+    },
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 4
+    },
+    {
+      "severity": "error",
+      "code": "HS0109",
+      "line": 4
+    },
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 3
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "code": "HS0006",
+      "line": 4
+    },
+    {
+      "severity": "error",
+      "code": "HS0101",
+      "line": 4
+    },
+    {
+      "severity": "error",
+      "code": "HS0109",
+      "line": 4
+    },
+    {
+      "severity": "error",
+      "code": "HS0007",
+      "line": 3
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0006",
+        "line": 4
+      },
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 4
+      },
+      {
+        "severity": "error",
+        "code": "HS0109",
+        "line": 4
+      },
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 3
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "code": "HS0006",
+        "line": 4
+      },
+      {
+        "severity": "error",
+        "code": "HS0101",
+        "line": 4
+      },
+      {
+        "severity": "error",
+        "code": "HS0109",
+        "line": 4
+      },
+      {
+        "severity": "error",
+        "code": "HS0007",
+        "line": 3
+      }
+    ]
+  }
+}

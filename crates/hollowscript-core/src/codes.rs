@@ -464,10 +464,10 @@ registry! {
         "This function returns nothing, so 'return' cannot carry a value.",
         "the `return`";
     HS0341 = 341, Error, [Check],
-        "This function declares a return type, so 'return' must carry a value.",
+        "This function returns a value, so 'return' must carry one.",
         "the `return`";
     HS0342 = 342, Error, [Check],
-        "{what} declares a return type, so every path must return a value.",
+        "{what} returns a value, so every path must return one.",
         "the function name or `fn`";
     HS0343 = 343, Error, [Check],
         "Unreachable statement: nothing after return, break or continue in the same block ever runs.",
@@ -475,6 +475,9 @@ registry! {
     HS0344 = 344, Error, [Check],
         "'{word}' can only be used inside a loop in the same function.",
         "the `break` or `continue`";
+    HS0345 = 345, Error, [Check],
+        "This call returns nothing, so it has no value to use; a call to a function without a return type can only be a statement.",
+        "the call";
     HS0401 = 401, Error, [Check],
         "This call goes through a value of type {found}, which is effectful, so it must be marked 'effect'.",
         "the call";
@@ -594,6 +597,9 @@ registry! {
         "the name in the import";
     HS0803 = 803, Warning, [Check],
         "The Result of this call is ignored; handle it, or use '?'.",
+        "the call";
+    HS0804 = 804, Warning, [Check],
+        "The value of this call is discarded, and the library call itself has no effect; use the value or remove the call.",
         "the call";
     HS0901 = 901, Error, [Check],
         "This exceeds a limit of this implementation: {limit}.",

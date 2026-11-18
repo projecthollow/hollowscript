@@ -1,0 +1,9 @@
+fn f() {
+    return
+}
+
+fn same(): Bool {
+    return f() == 1
+}
+
+return same()

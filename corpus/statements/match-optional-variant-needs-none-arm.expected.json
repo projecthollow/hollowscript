@@ -1,0 +1,28 @@
+{
+  "title": "Variant arms on an optional enum are not exhaustive without a none arm or else",
+  "spec": "7.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 4,
+      "code": "HS0501"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 4,
+        "code": "HS0501"
+      }
+    ]
+  }
+}

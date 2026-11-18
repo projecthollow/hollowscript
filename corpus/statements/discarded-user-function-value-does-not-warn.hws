@@ -1,0 +1,10 @@
+variable counter = 0
+
+fn bump(): Int {
+    counter = counter + 1
+    return counter
+}
+
+bump()
+bump()
+return counter

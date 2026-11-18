@@ -1,0 +1,30 @@
+{
+  "title": "An empty list argument for a bare type parameter is HS0308, not HS0304",
+  "spec": "2.10",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0308",
+      "contains": "'T' of 'id'"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0308",
+        "contains": "'T' of 'id'"
+      }
+    ]
+  }
+}

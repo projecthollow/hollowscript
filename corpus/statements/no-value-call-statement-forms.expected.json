@@ -1,0 +1,16 @@
+{
+  "title": "A call that returns nothing is fine as a statement, with or without effect, and through a method",
+  "spec": "4.9",
+  "parse": [],
+  "check": [],
+  "run": {
+    "ok": true,
+    "output": [
+      "Hello Ada",
+      "!",
+      "1",
+      "2"
+    ],
+    "result": null
+  }
+}

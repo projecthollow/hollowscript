@@ -1,0 +1,7 @@
+uses print
+
+fn greet(name: String) {
+    effect print("Hello ${name}")
+}
+
+effect print(greet("Ada"))

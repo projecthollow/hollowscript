@@ -1,0 +1,24 @@
+{
+  "title": "A call that returns nothing cannot be returned from a function that declares a type",
+  "spec": "3.7",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 6,
+      "code": "HS0345"
+    }
+  ],
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 6,
+        "code": "HS0345"
+      }
+    ]
+  }
+}

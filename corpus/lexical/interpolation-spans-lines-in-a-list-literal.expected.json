@@ -1,0 +1,22 @@
+{
+  "title": "An interpolation with a list literal open continues across line terminators",
+  "spec": "1.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "effect print(\"n ${[1, 2].length()}\")",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "n 2"
+    ],
+    "result": null
+  }
+}

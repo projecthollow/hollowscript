@@ -1,0 +1,7 @@
+uses random
+
+constant low = 9
+
+constant high = 2
+
+return effect random.int(low, high)

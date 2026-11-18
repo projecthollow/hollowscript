@@ -58,6 +58,8 @@ pub struct CheckOutput {
     /// entry module last) and, within a module, in source order, each literal
     /// once.
     pub filter_literals: Vec<FilterLiteral>,
+    /// Checked expression types of the entry module, including invalid member receivers.
+    pub expression_types: BTreeMap<hollowscript_syntax::ast::NodeId, types::TypeId>,
 }
 
 /// A filter literal (Appendix A) the checker found in a program: what a host
@@ -372,6 +374,7 @@ pub fn check(
     let mut next_function_id = 0u32;
     let mut checked_by_path: CheckedExports = BTreeMap::new();
     let mut filter_literals = Vec::new();
+    let mut expression_types = BTreeMap::new();
 
     for (module_index, path) in dep_order.iter().enumerate() {
         let Some(loaded) = modules.get(path) else {
@@ -407,6 +410,9 @@ pub fn check(
             diagnostics.push(d);
         }
         filter_literals.extend(checked.filter_literals);
+        if *path == entry_path {
+            expression_types = checked.expression_types;
+        }
         checked_by_path.insert(path.clone(), (module_index, checked.module.exports.clone()));
         program.modules.push(checked.module);
     }
@@ -435,6 +441,7 @@ pub fn check(
         hir: program,
         diagnostics: diagnostics.finish(&file_order),
         filter_literals,
+        expression_types,
     }
 }
 
@@ -1166,6 +1173,117 @@ mod tests {
         assert_eq!(errors, [Code::HS0301], "{:?}", out.diagnostics);
     }
 
+    /// The diagnostics (code and message) one source reports.
+    fn messages_of(source: &str) -> Vec<(Code, String)> {
+        let (file, src, mut names) = parse(source);
+        let out = check(
+            &file,
+            &src,
+            &mut names,
+            &CapabilityInterface::default(),
+            None,
+            &mut |_| Err(LoadModuleError::NotFound),
+        );
+        out.diagnostics
+            .iter()
+            .map(|d| (d.code, d.message.clone()))
+            .collect()
+    }
+
+    /// Section 2.10: values of a type parameter are opaque and can be given
+    /// to other generic code, a function-typed parameter can be called, and
+    /// a call to a generic fn instantiates fresh variables, even inside a
+    /// generic body.
+    #[test]
+    fn generic_bodies_use_their_own_type_parameters() {
+        let sources = [
+            "fn apply<A, B>(f: fn(A): B, x: A): B { return f(x) }\nreturn apply(fn(n: Int): Int { return n + 1 }, 2)\n",
+            "fn keepIf<T>(items: [T], ok: fn(T): Bool): [T] { return items.filter(ok) }\nreturn keepIf([1], fn(n) { return true })\n",
+            "fn sortedBy<T>(items: [T], score: fn(T): Int): [T] { return items.sort(fn(a, b) { return score(a) - score(b) }) }\nreturn sortedBy([1], fn(n) { return n })\n",
+            "fn w<T>(items: [T], extra: T): [T] { return items.append(extra) }\nreturn w([1], 2)\n",
+            "fn c<T>(items: [T], more: [T]): [T] { return items.concat(more) }\nreturn c([1], [2])\n",
+            "fn has<T>(items: [T], x: T): Bool { return items.contains(x) }\nreturn has([1], 1)\n",
+            "fn id<T>(x: T): T { return x }\nfn viaId<T>(x: T): T { return id(x) }\nreturn viaId(1)\n",
+            "fn rec<T>(x: T, n: Int): T {\n    if n == 0 {\n        return x\n    }\n    return rec(x, n - 1)\n}\nreturn rec(1, 2)\n",
+            "fn sw<A, B>(f: fn(A): B, a: A): B { return f(a) }\nfn outer<B, A>(f: fn(B): A, b: B): A { return sw(f, b) }\nreturn outer(fn(n: Int): Int { return n }, 1)\n",
+        ];
+        for source in sources {
+            assert_eq!(messages_of(source), [], "{source}");
+        }
+    }
+
+    /// An opaque type parameter is still checked: a wrong argument is
+    /// HS0301, and the message names the declared parameter.
+    #[test]
+    fn generic_bodies_are_still_type_checked() {
+        let found =
+            messages_of("fn w<T>(items: [T]): [T] { return items.append(1) }\nreturn w([\"a\"])\n");
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].0, Code::HS0301);
+        assert!(found[0].1.contains("Expected T, found Int"), "{found:?}");
+        let found = messages_of("fn f<A, B>(g: fn(A): B, x: A): B { return g(1) }\nreturn 0\n");
+        assert_eq!(
+            found.iter().map(|d| d.0).collect::<Vec<_>>(),
+            [Code::HS0301]
+        );
+        assert!(found[0].1.contains("Expected A, found Int"), "{found:?}");
+    }
+
+    /// An unbound type parameter is HS0308, naming the declared parameter
+    /// and the function, never an index or an empty name.
+    #[test]
+    fn unbound_type_parameter_is_named() {
+        let found = messages_of(
+            "fn first<T>(items: [T]): T? { return items.first() }\nconstant e = first([])\nreturn e\n",
+        );
+        assert_eq!(found.len(), 1, "{found:?}");
+        for (code, message) in &found {
+            assert_eq!(*code, Code::HS0308);
+            assert!(message.contains("'T' of 'first'"), "{message}");
+        }
+    }
+
+    /// One mistake at a generic call's argument is one diagnostic: the
+    /// variables that argument would have bound are not then reported as
+    /// unbound (HS0308) as well (section 2.11).
+    #[test]
+    fn a_wrong_generic_argument_is_one_diagnostic() {
+        let takes_list = "fn takeList<T>(xs: [T]): Int {\n    return 0\n}\n";
+        let cases = [
+            ("return takeList(1)\n", Code::HS0301),
+            ("return takeList(nope)\n", Code::HS0205),
+            (
+                "fn g<T>(x: T): Int {\n    return takeList(x)\n}\nreturn 0\n",
+                Code::HS0301,
+            ),
+            // An error below the top level of an argument's type is not
+            // reported again as HS0301.
+            (
+                "fn h<T>(r: { a: T, b: T }): Int {\n    return 0\n}\nreturn h({ a: 1, b: nope })\n",
+                Code::HS0205,
+            ),
+        ];
+        for (body, code) in cases {
+            let source = format!("{takes_list}{body}");
+            let found = messages_of(&source);
+            assert_eq!(
+                found.iter().map(|d| d.0).collect::<Vec<_>>(),
+                [code],
+                "{source}"
+            );
+        }
+        // A closure parameter that would take a still unbound variable is
+        // HS0309 alone (section 2.10 step 4).
+        let found = messages_of(
+            "fn app<A>(f: fn(A): Int): Int {\n    return 0\n}\nreturn app(fn(x) {\n    return 1\n})\n",
+        );
+        assert_eq!(
+            found.iter().map(|d| d.0).collect::<Vec<_>>(),
+            [Code::HS0309],
+            "{found:?}"
+        );
+    }
+
     /// No diagnostics at all, for the unused-name tests below.
     const CLEAN: [Code; 0] = [];
 
@@ -1181,6 +1299,283 @@ mod tests {
             &mut |_| Err(LoadModuleError::NotFound),
         );
         out.diagnostics.iter().map(|d| d.code).collect()
+    }
+
+    /// Section 3.7 and 4.9: a call to a function with no return type is an
+    /// expression statement and nothing else (HS0345 anywhere a value is needed).
+    #[test]
+    fn a_call_that_returns_nothing_is_not_a_value() {
+        let head = "fn f() {\n    return\n}\nfn g(a: Int): Int {\n    return a\n}\n";
+        let positions = [
+            ("an initialiser", "constant x = f()\nreturn x\n"),
+            (
+                "an annotated initialiser",
+                "constant x: Int? = f()\nreturn x\n",
+            ),
+            ("a user argument", "return g(f())\n"),
+            ("a prelude argument", "return abs(f())\n"),
+            ("an interpolation", "return \"${f()}\"\n"),
+            ("an operand", "return f() == 1\n"),
+            ("a return operand", "return f()\n"),
+            ("a list element", "return [f()]\n"),
+            ("a map value", "return [\"a\": f()]\n"),
+            ("a record field", "return { a: f() }\n"),
+            ("a method receiver", "return f().length()\n"),
+            ("a callee", "return f()()\n"),
+            ("an index", "return [1][f()]\n"),
+            ("a condition", "if f() {\n    return 1\n}\nreturn 0\n"),
+            (
+                "a match scrutinee",
+                "match f() {\n    1 { return 1 }\n    else { return 0 }\n}\n",
+            ),
+            (
+                "a for collection",
+                "for n in f() {\n    return n\n}\nreturn 0\n",
+            ),
+            ("an assignment", "variable v = 1\nv = f()\nreturn v\n"),
+            (
+                "a try operand",
+                "fn h(): Result<Int, String> {\n    f()?\n    return success(1)\n}\nreturn 0\n",
+            ),
+            (
+                "an effect try operand",
+                "fn h(): Result<Int, String> {\n    effect f()?\n    return success(1)\n}\nreturn 0\n",
+            ),
+            (
+                "a parenthesised initialiser",
+                "constant x = (f())\nreturn x\n",
+            ),
+            (
+                "a closure return",
+                "constant c = fn(): Int {\n    return f()\n}\nreturn c()\n",
+            ),
+        ];
+        for (what, body) in positions {
+            let codes = codes_of(&format!("{head}{body}"));
+            assert!(
+                codes.contains(&Code::HS0345),
+                "{what} should be HS0345, got {codes:?}"
+            );
+            assert_eq!(
+                codes.iter().filter(|c| **c == Code::HS0345).count(),
+                1,
+                "{what} reports HS0345 once"
+            );
+        }
+        assert_eq!(
+            codes_of(&format!("{head}f()\nreturn 0\n")),
+            CLEAN,
+            "a statement"
+        );
+        // One mistake, one diagnostic: these already have their own code.
+        assert_eq!(
+            codes_of("fn k() {\n    return k()\n}\nreturn 0\n"),
+            [Code::HS0340],
+            "return of a no-value call in a function with no return type"
+        );
+        // Section 5.3 rule 3: a closure whose expected type has no return
+        // type (the parameter of `each`) returns nothing, so `return e` in
+        // it is HS0340, whatever `e` is.
+        assert_eq!(
+            codes_of(&format!(
+                "{head}[1].each(fn(n) {{\n    return f()\n}})\nreturn g(1)\n"
+            )),
+            [Code::HS0340],
+            "return of a no-value call in an each callback"
+        );
+        assert_eq!(
+            codes_of("[1].each(fn(n) {\n    return 1\n})\nreturn 0\n"),
+            [Code::HS0340],
+            "return of a value in an each callback"
+        );
+        assert_eq!(
+            codes_of(
+                "fn run(h: fn(Int)) {\n    h(1)\n}\nrun(fn(n) {\n    return 1\n})\nreturn 0\n"
+            ),
+            [Code::HS0340],
+            "return of a value in a callback whose parameter type returns nothing"
+        );
+        // The same rule through a generic function: `fn(T)` still has no
+        // return type once `T` is bound.
+        let visit = "fn visit<T>(x: T, h: fn(T)) {\n    h(x)\n}\n";
+        assert_eq!(
+            codes_of(&format!(
+                "{visit}visit(1, fn(n) {{\n    return 1\n}})\nreturn 0\n"
+            )),
+            [Code::HS0340],
+            "return of a value in a generic callback that returns nothing"
+        );
+        assert_eq!(
+            codes_of(&format!(
+                "{head}{visit}visit(1, fn(n) {{\n    return f()\n}})\nreturn g(1)\n"
+            )),
+            [Code::HS0340],
+            "return of a no-value call in a generic callback that returns nothing"
+        );
+    }
+
+    /// Section 5.3: a closure whose return type is inferred has a return
+    /// type, so it must return on every path (HS0342), and one that mixes
+    /// `return e` and a bare `return` is HS0341.
+    #[test]
+    fn an_inferred_closure_return_must_return_on_every_path() {
+        let partial = "fn(n: Int) {\n    if n > 0 {\n        return 1\n    }\n}";
+        let mixed = "fn(n: Int) {\n    if n > 0 {\n        return 1\n    }\n    return\n}";
+        let all_paths = "fn(n: Int) {\n    if n > 0 {\n        return 1\n    }\n    return 0\n}";
+        let generic = "fn mapAll<T, U>(xs: [T], h: fn(T): U): [U] {\n    return xs.map(h)\n}\n";
+        for (what, wrap) in [
+            ("rule 4", "constant c = {c}\nreturn c(1)\n"),
+            ("map", "return [1].map({c})\n"),
+            ("a user generic", "return mapAll([1], {c})\n"),
+        ] {
+            let source = |c: &str| format!("{generic}{}", wrap.replace("{c}", c));
+            assert_eq!(
+                codes_of(&source(partial)),
+                [Code::HS0342],
+                "{what}: partial"
+            );
+            assert_eq!(codes_of(&source(mixed)), [Code::HS0341], "{what}: mixed");
+            assert_eq!(codes_of(&source(all_paths)), CLEAN, "{what}: every path");
+        }
+        assert_eq!(
+            codes_of("constant c = fn(n: Int) {\n    return\n}\nc(1)\nreturn 0\n"),
+            CLEAN,
+            "a bare return only: the closure returns nothing"
+        );
+    }
+
+    /// Section 3.7: an imported function with no return type is no more a
+    /// value than a local one.
+    #[test]
+    fn an_imported_call_that_returns_nothing_is_not_a_value() {
+        let (file, source, mut names) =
+            parse("import f from \"./m\"\nconstant x = f()\nreturn x\n");
+        let out = check(
+            &file,
+            &source,
+            &mut names,
+            &CapabilityInterface::default(),
+            None,
+            &mut |path| {
+                if path == "m.hws" {
+                    Ok("export fn f() {\n    return\n}\n".to_owned())
+                } else {
+                    Err(LoadModuleError::NotFound)
+                }
+            },
+        );
+        let codes: Vec<Code> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(codes, [Code::HS0345]);
+    }
+
+    /// Section 14: a callback that returns nothing where the library needs a
+    /// value is HS0301, not HS0345 (no call expression is involved).
+    #[test]
+    fn a_callback_that_returns_nothing_is_a_type_error() {
+        assert_eq!(
+            codes_of("return [1].map(fn(n: Int) {\n    constant z = n\n    return\n})\n"),
+            [Code::HS0301, Code::HS0801],
+            "map"
+        );
+        let nothing = "fn nothing(n: Int) {\n    return\n}\n";
+        let callbacks = [
+            ("mapValues", "return [\"a\": 1].mapValues(nothing)\n"),
+            ("Result.map", "return success(1).map(nothing)\n"),
+            ("Result.mapError", "return failure(1).mapError(nothing)\n"),
+            ("Result.andThen", "return success(1).andThen(nothing)\n"),
+            (
+                "reduce",
+                "fn combine(a: Int, b: Int) {\n    return\n}\nreturn [1].reduce(0, combine)\n",
+            ),
+        ];
+        for (what, body) in callbacks {
+            let codes = codes_of(&format!("{nothing}{body}"));
+            assert!(codes.contains(&Code::HS0301), "{what}: {codes:?}");
+        }
+        // Section 5.3 rule 2: a closure literal takes `reduce`'s accumulator
+        // type as its return type, so a body that returns nothing is HS0342.
+        assert_eq!(
+            codes_of("return [1].reduce(0, fn(a, b) {\n    constant z = a + b\n})\n"),
+            [Code::HS0342, Code::HS0801],
+            "reduce with a closure literal"
+        );
+    }
+
+    /// Section 17.3: HS0804 for a discarded value of a library call.
+    #[test]
+    fn a_discarded_library_value_warns() {
+        assert_eq!(
+            codes_of("constant xs = [1]\nxs.append(2)\nreturn xs.length()\n"),
+            [Code::HS0804],
+            "a method"
+        );
+        assert_eq!(
+            codes_of("abs(-3)\nreturn 0\n"),
+            [Code::HS0804],
+            "a prelude function"
+        );
+        assert_eq!(
+            codes_of("constant xs = [1]\nxs.map(fn(n: Int): Int {\n    return n\n})\nreturn 0\n"),
+            [Code::HS0804],
+            "a callback method is not exempt"
+        );
+        assert_eq!(
+            codes_of("parseInt(\"1\")\nreturn 0\n"),
+            [Code::HS0803],
+            "a Result keeps HS0803 only"
+        );
+        assert_eq!(
+            codes_of("parseInt(\"1\")?\nreturn 0\n"),
+            CLEAN,
+            "followed by ?"
+        );
+        assert_eq!(
+            codes_of(
+                "variable n = 0\nfn bump(): Int {\n    n = n + 1\n    return n\n}\nbump()\nreturn n\n"
+            ),
+            CLEAN,
+            "a user function"
+        );
+        assert_eq!(
+            codes_of("[1].each(fn(n: Int) {\n    return\n})\nreturn 0\n"),
+            CLEAN,
+            "a library call with no value"
+        );
+        assert_eq!(
+            codes_of("constant xs = [1]\neffect xs.append(2)\nreturn 0\n"),
+            [Code::HS0402],
+            "an effect-marked library call is HS0402 only"
+        );
+        assert_eq!(
+            codes_of("effect abs(1)\nreturn 0\n"),
+            [Code::HS0402],
+            "an effect-marked prelude call is HS0402 only"
+        );
+        assert_eq!(
+            codes_of("effect time.format(0)\nreturn 0\n"),
+            [Code::HS0402],
+            "an effect-marked namespace call is HS0402 only"
+        );
+        assert_eq!(
+            codes_of("time.format(0)\nreturn 0\n"),
+            [Code::HS0804],
+            "a namespace function"
+        );
+        assert_eq!(
+            codes_of("constant r: Result<Int, String> = success(1)\nr.isOk()\nreturn 0\n"),
+            [Code::HS0804],
+            "a Result method whose value is not a Result"
+        );
+        assert_eq!(
+            codes_of("fn k(): Int {\n    abs(-3)\n    return 0\n}\nreturn k()\n"),
+            [Code::HS0804],
+            "inside a function body"
+        );
+        assert_eq!(
+            codes_of("fn abs(n: Int): Int {\n    return n\n}\nabs(1)\nreturn 0\n"),
+            CLEAN,
+            "a user function that hides a prelude name"
+        );
     }
 
     /// Section 17.3's HS0801: "reported for every name that a `constant` or

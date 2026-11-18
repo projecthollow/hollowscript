@@ -1,0 +1,50 @@
+{
+  "title": "A field read on its own line is not a statement (HS0109), and its receiver, a call that returns nothing, is HS0345",
+  "spec": "4.9",
+  "parse": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0109"
+    }
+  ],
+  "check": [
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0109"
+    },
+    {
+      "severity": "error",
+      "line": 5,
+      "code": "HS0345"
+    }
+  ],
+  "format": {
+    "output": null,
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0109"
+      }
+    ]
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0109"
+      },
+      {
+        "severity": "error",
+        "line": 5,
+        "code": "HS0345"
+      }
+    ]
+  }
+}

@@ -161,7 +161,14 @@ fn call_capability(index: u32, args_json: &[u8]) -> Result<Vec<u8>, Vec<u8>> {
     #[cfg(not(target_arch = "wasm32"))]
     let len = host_stub::result_len();
 
-    let mut buffer = vec![0u8; len];
+    // The host chose `len`: a handler that answers with hundreds of MiB must
+    // not be able to abort this module (a trap) by asking for a buffer the
+    // memory does not have. Its answer is then a failed call, HS1012, saying so.
+    let Some(mut buffer) = zeroed(len) else {
+        // The pending answer stays with the host, which replaces it at its next
+        // call; taking it would need a destination of `len` bytes.
+        return Err(b"the host's answer is larger than the memory this module has left".to_vec());
+    };
     #[cfg(target_arch = "wasm32")]
     // SAFETY: `buffer` is exactly `len` bytes, matching what
     // `hs_capability_result_len` just answered, which is exactly what
@@ -173,6 +180,15 @@ fn call_capability(index: u32, args_json: &[u8]) -> Result<Vec<u8>, Vec<u8>> {
     host_stub::take_result(&mut buffer);
 
     if ok { Ok(buffer) } else { Err(buffer) }
+}
+
+/// `len` zero bytes, or `None` if the module's memory cannot hold them, in
+/// which case nothing has been allocated and nothing aborts.
+fn zeroed(len: usize) -> Option<Vec<u8>> {
+    let mut buffer: Vec<u8> = Vec::new();
+    buffer.try_reserve_exact(len).ok()?;
+    buffer.resize(len, 0);
+    Some(buffer)
 }
 
 /// Polls for cancellation through the host, as the `env.hs_wasm_poll_cancel`
@@ -717,7 +733,11 @@ pub extern "C" fn hs_wasm_version() -> i32 {
 }
 
 /// Reserves `len` bytes and answers the offset of the first one. The host
-/// writes into the instance's memory there. A length of 0 answers 0.
+/// writes into the instance's memory there. A length of 0 answers 0, and so
+/// does a length the module's memory cannot hold: the host sees 0 for a
+/// non-zero length and treats it as a refusal (`web/hollowscript.js` throws a
+/// `RangeError`), where an allocation that failed inside the module would trap
+/// it. Nothing is reserved in that case, so nothing is freed.
 #[unsafe(no_mangle)]
 pub extern "C" fn hs_wasm_alloc(len: usize) -> *mut u8 {
     if len == 0 {
@@ -725,7 +745,10 @@ pub extern "C" fn hs_wasm_alloc(len: usize) -> *mut u8 {
     }
     // Zeroed, because the host is about to overwrite it and a buffer that
     // starts as whatever was in memory is one a host could read by mistake.
-    release(vec![0u8; len].into_boxed_slice())
+    match zeroed(len) {
+        Some(buffer) => release(buffer.into_boxed_slice()),
+        None => std::ptr::null_mut(),
+    }
 }
 
 /// Releases a buffer [`hs_wasm_alloc`] or [`hs_wasm_take_text`] handed out.
@@ -4024,5 +4047,126 @@ mod tests {
         let (_, record) = call_export(handle, "one", "[]");
         assert_eq!(record, r#"{"record":{"a":3,"b":3.0,"c":2.0}}"#);
         assert_eq!(hs_wasm_dispose(handle), Status::Ok as i32);
+    }
+
+    // ---- random.int is checked before the host is called ------------------
+
+    /// Bytecode for a program that calls the standard `random.int` through its
+    /// export `roll(lo, hi)`.
+    fn random_bytes() -> Vec<u8> {
+        let mut types = hollowscript_core::transfer::TypeTable::new();
+        let int_ty = types.add(TransferType::Int);
+        let float_ty = types.add(TransferType::Float);
+        let options = hollowscript::Options {
+            capabilities: hollowscript::CapabilityInterface {
+                capabilities: vec![hollowscript::CapabilityDecl {
+                    name: "random".to_owned(),
+                    shape: hollowscript::CapabilityShape::Namespace(vec![
+                        ("int".to_owned(), vec![int_ty, int_ty], Some(int_ty)),
+                        ("float".to_owned(), vec![], Some(float_ty)),
+                    ]),
+                }],
+                types,
+            },
+            ..hollowscript::Options::default()
+        };
+        let source = "uses random\nexport fn roll(lo: Int, hi: Int): Int {\n    return effect random.int(lo, hi)\n}\n";
+        match hollowscript::build(
+            source,
+            "main.hws",
+            &options,
+            &mut hollowscript::NoLoader,
+            &mut hollowscript::Control::none(),
+        ) {
+            hollowscript::BuildOutcome::Bytecode(bytes) => bytes,
+            hollowscript::BuildOutcome::CheckFailed(diagnostics) => {
+                panic!("the fixture program should compile cleanly: {diagnostics:?}")
+            }
+        }
+    }
+
+    /// Spec 16.4: `random.int(min, upTo)` faults with HS1011 when `min >= upTo`.
+    /// A JavaScript handler can only fail with HS1012, so the language checks
+    /// the arguments itself, before the host is called: the handler is not
+    /// called for an empty range and is called once for a valid one.
+    #[test]
+    fn random_int_with_an_empty_range_faults_with_hs1011_and_never_calls_the_host() {
+        let bytes = random_bytes();
+        let (pointer, len) = upload(&bytes);
+        // SAFETY: the buffer is live and holds exactly these bytes.
+        let handle = unsafe { hs_wasm_load(pointer, len) };
+        // SAFETY: the same buffer, not yet freed.
+        unsafe { hs_wasm_free(pointer, len) };
+        assert_ne!(handle, 0, "{}", text());
+
+        let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+        let counted = calls.clone();
+        host_stub::set_capability(Some(Box::new(move |_index, _args_json| {
+            counted.set(counted.get() + 1);
+            (true, b"3".to_vec())
+        })));
+        for args in [
+            "[5,5]",
+            "[9,2]",
+            "[9223372036854775807,-9223372036854775808]",
+        ] {
+            let (status, _) = call_export(handle, "roll", args);
+            assert_eq!(status, Status::Faulted as i32, "{args}");
+            let fault = fault();
+            assert!(fault.contains(r#""code":"HS1011""#), "{args}: {fault}");
+            assert_eq!(calls.get(), 0, "{args}: the host was called");
+        }
+        let (status, result) = call_export(handle, "roll", "[1,7]");
+        assert_eq!(status, Status::Ok as i32, "{result}");
+        assert_eq!(result, "Int(3)");
+        assert_eq!(calls.get(), 1);
+        host_stub::set_capability(None);
+        assert_eq!(hs_wasm_dispose(handle), Status::Ok as i32);
+    }
+
+    /// The same on the batched path: the invalid call is a fault, not a
+    /// suspension, and no command is queued for it.
+    #[test]
+    fn a_batched_random_int_with_an_empty_range_faults_without_suspending() {
+        let bytes = random_bytes();
+        let (pointer, len) = upload(&bytes);
+        // SAFETY: the buffer is live and holds exactly these bytes.
+        let handle = unsafe { hs_wasm_load_batched(pointer, len) };
+        // SAFETY: the same buffer, not yet freed.
+        unsafe { hs_wasm_free(pointer, len) };
+        assert_ne!(handle, 0, "{}", text());
+        let (status, _) = call_export_batched(handle, "roll", "[5,5]");
+        assert_eq!(status, Status::Faulted as i32);
+        let fault = fault();
+        assert!(fault.contains(r#""code":"HS1011""#), "{fault}");
+        let (status, _) = call_export_batched(handle, "roll", "[1,7]");
+        assert_eq!(
+            status,
+            Status::Suspended as i32,
+            "a valid call still suspends"
+        );
+        assert_eq!(hs_wasm_dispose(handle), Status::Ok as i32);
+    }
+
+    /// A length the module's memory cannot hold is a null pointer for the host
+    /// to refuse, never an abort (which on `wasm32` is a trap that ends the
+    /// instance). Nothing is reserved, so nothing needs freeing.
+    #[test]
+    fn an_upload_too_large_for_memory_answers_null_and_aborts_nothing() {
+        assert!(hs_wasm_alloc(usize::MAX / 2).is_null());
+        assert!(hs_wasm_alloc(isize::MAX as usize).is_null());
+        let ok = hs_wasm_alloc(16);
+        assert!(!ok.is_null());
+        // SAFETY: the pointer and length are the ones just handed out.
+        unsafe { hs_wasm_free(ok, 16) };
+    }
+
+    /// The buffer for a capability answer, and for an upload, comes from one
+    /// helper that refuses a size the memory cannot hold instead of aborting.
+    #[test]
+    fn the_buffer_helper_refuses_an_impossible_size() {
+        assert!(super::zeroed(usize::MAX / 2).is_none());
+        assert_eq!(super::zeroed(3), Some(vec![0, 0, 0]));
+        assert_eq!(super::zeroed(0), Some(Vec::new()));
     }
 }

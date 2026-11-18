@@ -1,0 +1,15 @@
+{
+  "title": "Record and list patterns on an optional scrutinee match only present values",
+  "spec": "7.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"other\"), String(\"one\"), String(\"other\"), String(\"empty\")]"
+  }
+}

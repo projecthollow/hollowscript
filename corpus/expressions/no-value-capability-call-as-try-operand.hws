@@ -1,0 +1,8 @@
+uses print
+
+fn h(): Result<Int, String> {
+    effect print("a")?
+    return success(1)
+}
+
+return h()

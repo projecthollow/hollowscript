@@ -1,0 +1,15 @@
+fn findClinic(owner: String): String? {
+    if owner == "Ada" {
+        return "Elm Vets"
+    }
+    return none
+}
+
+fn describe(owner: String): String {
+    match findClinic(owner) {
+        none { return "no clinic" }
+        clinic { return "clinic ${clinic}" }
+    }
+}
+
+return [describe("Ada"), describe("Bo")]

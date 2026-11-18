@@ -1,0 +1,4 @@
+uses clock
+
+effect clock.now()
+return 0

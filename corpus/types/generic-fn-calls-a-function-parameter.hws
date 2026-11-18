@@ -1,0 +1,19 @@
+fn apply<A, B>(f: fn(A): B, x: A): B {
+    return f(x)
+}
+
+constant n = apply(
+    fn(n: Int): Int {
+        return n + 1
+    },
+    2
+)
+
+constant s = apply(
+    fn(s: String): String {
+        return "${s}!"
+    },
+    "hi"
+)
+
+return "${n} ${s}"

@@ -347,6 +347,10 @@ pub enum PatternKind {
     Literal(Constant),
     /// `none`.
     None,
+    /// A pattern checked against an optional scrutinee type `U?` that is not
+    /// `none`, `_` or a binding: it matches only a present value, then the
+    /// inner pattern (checked against `U`) is tried on that same value.
+    Present(Box<Pattern>),
     /// `_`, or a binding, with the local it binds (absent for `_`).
     Binding(Option<LocalId>),
     /// A variant pattern, naming which variant of the scrutinee's enum by position.

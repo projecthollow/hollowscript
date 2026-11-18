@@ -158,7 +158,8 @@ impl<T> Arena<T> {
     ///
     /// [`ArenaExhausted`] if this arena's historical slot count has already
     /// reached [`u32::MAX`] and no freed slot is available to reuse, rather
-    /// than silently aliasing a new object onto an old one's handle.
+    /// than silently aliasing a new object onto an old one's handle, or if
+    /// the host cannot give the memory for one more slot.
     pub fn alloc(&mut self, value: T) -> Result<Handle, ArenaExhausted> {
         if let Some(index) = self.free.pop() {
             if let Some(slot) = self.slots.get_mut(index as usize) {
@@ -171,6 +172,11 @@ impl<T> Arena<T> {
             }
         }
         let index = next_index(self.slots.len())?;
+        // The slot vector grows by doubling, and the doubling of a large heap
+        // is a real allocation of hundreds of MiB: ask for it fallibly, so a
+        // machine that cannot give it reports it (as exhaustion, which the
+        // interpreter turns into HS1015) instead of aborting.
+        crate::alloc::reserve(&mut self.slots, 1).map_err(|_| ArenaExhausted)?;
         self.slots.push(Slot {
             generation: 0,
             value: Some(value),

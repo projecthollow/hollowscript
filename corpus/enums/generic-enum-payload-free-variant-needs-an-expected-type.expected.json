@@ -6,7 +6,8 @@
     {
       "severity": "error",
       "line": 3,
-      "code": "HS0308"
+      "code": "HS0308",
+      "contains": "'T' of 'Empty'"
     }
   ],
   "format": {
@@ -21,7 +22,8 @@
       {
         "severity": "error",
         "line": 3,
-        "code": "HS0308"
+        "code": "HS0308",
+        "contains": "'T' of 'Empty'"
       }
     ]
   }

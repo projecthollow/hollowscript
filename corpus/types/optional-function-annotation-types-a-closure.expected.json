@@ -1,0 +1,15 @@
+{
+  "title": "A closure under an optional function type takes its parameter types from it",
+  "spec": "5.3",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(2)"
+  }
+}

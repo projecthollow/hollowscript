@@ -1,0 +1,14 @@
+fn pair<T>(a: T, f: fn(): T): [T] {
+    return [a, f()]
+}
+
+constant lists = pair(
+    [],
+    fn() {
+        return [1]
+    }
+)
+
+constant wanted: [[Int]] = [[], [1]]
+
+return lists == wanted

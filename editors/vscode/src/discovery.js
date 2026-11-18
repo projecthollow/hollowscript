@@ -5,6 +5,8 @@
 
 "use strict";
 
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 /** The command an installed release puts on disk. */
@@ -12,8 +14,8 @@ const COMMAND = "hollowscript";
 
 /** The install one-liners, as the project's own install scripts document them. */
 const INSTALL_COMMANDS = {
-  unix: "curl -fsSL https://get.hollowscript.org/install.sh | sh",
-  windows: "irm https://get.hollowscript.org/install.ps1 | iex",
+  unix: "curl -fsSL https://get.hollowscript.org/install.sh | sh -s -- --version v0.1.1",
+  windows: "& ([scriptblock]::Create((irm https://get.hollowscript.org/install.ps1))) -Version v0.1.1",
 };
 
 const INSTALL_GUIDE_URL = "https://hollowscript.org";
@@ -25,6 +27,38 @@ const INSTALL_GUIDE_URL = "https://hollowscript.org";
  * @property {string} homedir
  * @property {(file: string) => boolean} isExecutableFile
  */
+
+/**
+ * @returns {DiscoveryHost & { realpath: (file: string) => string }}
+ */
+function realHost() {
+  return {
+    platform: process.platform,
+    env: process.env,
+    homedir: os.homedir(),
+    isExecutableFile(file) {
+      try {
+        if (!fs.statSync(file).isFile()) return false;
+        if (process.platform !== "win32") fs.accessSync(file, fs.constants.X_OK);
+        return true;
+      } catch {
+        if (process.platform !== "win32" || !process.env.LOCALAPPDATA) return false;
+        // Windows denies stat on App Execution Alias targets in the protected
+        // Store package directory. Inspect the link without opening its target.
+        const aliases = path.join(process.env.LOCALAPPDATA, "Microsoft", "WindowsApps");
+        const name = path.basename(file).toLowerCase();
+        if (path.dirname(file).toLowerCase() !== aliases.toLowerCase() ||
+            name !== "hollowscript.exe") return false;
+        try {
+          return path.basename(fs.readlinkSync(file)).toLowerCase() === name;
+        } catch {
+          return false;
+        }
+      }
+    },
+    realpath: (file) => fs.realpathSync(file),
+  };
+}
 
 /**
  * @typedef {object} Found
@@ -48,20 +82,20 @@ function installCommand(platform) {
 }
 
 /**
- * The file names `name` may have on disk. On Windows that is every
- * extension in PATHEXT (as the shell would try them), `.exe` first.
+ * Native executable names. On Windows prefer .exe and allow .com from
+ * PATHEXT; scripts and batch wrappers need a shell this transport never uses.
  * @param {string} name
  * @param {DiscoveryHost} host
  */
 function candidateNames(name, host) {
-  if (host.platform !== "win32" || path.win32.extname(name) !== "") {
-    return [name];
-  }
+  if (host.platform !== "win32") return [name];
+  const extension = path.win32.extname(name).toLowerCase();
+  if (extension) return extension === ".exe" || extension === ".com" ? [name] : [];
   const pathext = (host.env.PATHEXT || ".COM;.EXE;.BAT;.CMD")
     .split(";")
     .map((ext) => ext.trim().toLowerCase())
-    .filter((ext) => ext !== "");
-  const ordered = [".exe", ...pathext.filter((ext) => ext !== ".exe")];
+    .filter((ext) => ext === ".com");
+  const ordered = [...new Set([".exe", ...pathext])];
   return ordered.map((ext) => name + ext);
 }
 
@@ -232,5 +266,6 @@ module.exports = {
   installCommand,
   installDirectories,
   findServer,
+  realHost,
   findLanguageServerBinary,
 };

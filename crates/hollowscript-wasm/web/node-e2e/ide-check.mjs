@@ -91,16 +91,112 @@ check(
 );
 
 // Text that does not parse still highlights, and a character the language
-// has no token for is simply not covered.
+// rejects is an `invalid` range.
 same(
   classes("fn ( # name"),
   [
     ["fn", "keyword"],
     ["(", "punctuation"],
+    ["#", "invalid"],
     ["name", "identifier"],
   ],
   "highlight(broken)",
 );
+
+// A non-ASCII letter is not part of an identifier (HS0005 in check()): the
+// ASCII part stays an identifier and each rejected code point is invalid.
+same(
+  classes("constant caf\u{e9} = 1"),
+  [
+    ["constant", "keyword"],
+    ["caf", "identifier"],
+    ["\u{e9}", "invalid"],
+    ["=", "operator"],
+    ["1", "number"],
+  ],
+  "highlight(non-ASCII identifier)",
+);
+same(
+  classes("constant \u{540d}\u{524d} = 1").slice(1, 3),
+  [
+    ["\u{540d}", "invalid"],
+    ["\u{524d}", "invalid"],
+  ],
+  "highlight(non-ASCII word)",
+);
+same(
+  classes('"\u{e9}" // \u{e9} `\u{e9}`'),
+  [
+    ['"\u{e9}"', "string"],
+    ["// \u{e9} `\u{e9}`", "comment"],
+  ],
+  "highlight(non-ASCII inside a string and a comment)",
+);
+same(
+  classes('"a ${ \u{e9} } b"'),
+  [
+    ['"a ${', "string"],
+    ["\u{e9}", "invalid"],
+    ['} b"', "string"],
+  ],
+  "highlight(rejected character in an interpolation)",
+);
+same(
+  classes('"${ x }"'),
+  [
+    ['"${', "string"],
+    ["x", "identifier"],
+    ['}"', "string"],
+  ],
+  "highlight(interpolation string pieces start at the brace)",
+);
+
+// check() and highlight() agree in both directions with equal counts: every
+// HS0005 outside a string, comment or filter is one `invalid` range, and every
+// `invalid` range holds one HS0005. The number of HS0005 inside a string or a
+// comment, which have no `invalid` range, is declared by hand for each sample
+// (not read back from highlight()), so a gap swallowed into a string range
+// makes the totals disagree.
+for (const [source, inText] of [
+  ["constant caf\u{e9} = 1", 0],
+  ["constant a\u{e9}\u{e8} = 1", 0],
+  ["constant \u{540d}\u{524d} = 1", 0],
+  ["return 1\u{e9}", 0],
+  ["x = a # b", 0],
+  ["a\rb", 0],
+  ["a\u{1}b", 0],
+  ['"a ${ \u{e9} } b"', 0],
+  ['"${ \u{e9} } abc', 0],
+  ['"${ x \u{e9}', 0],
+  ['"${ x // note\nreturn 1\u{e9}', 0],
+  ['"${ x // }\ny', 0],
+  ['"${ x // \r}\ny', 1],
+  ["x // a\rb\ny", 1],
+  ['"a\rb" // c\rd', 2],
+  ["a \u{1f600} b", 0],
+  ["\u{1f600}\u{1f600} + \u{e9}", 0],
+]) {
+  const invalid = t.highlight(source).filter((r) => r.class === "invalid");
+  const errors = t.check(source).filter((d) => d.code === "HS0005");
+  const label = JSON.stringify(source);
+  check(
+    errors.length === invalid.length + inText,
+    `${invalid.length} invalid ranges and ${inText} in text but ${errors.length} HS0005 in ${label}`,
+  );
+  for (const r of invalid) {
+    check(
+      errors.some((d) => r.start <= d.spanStartUtf16 && d.spanStartUtf16 < r.end),
+      `invalid range ${JSON.stringify(r)} has no HS0005 in ${label}`,
+    );
+  }
+  for (const d of errors) {
+    const inRange = invalid.some((r) => r.start <= d.spanStartUtf16 && d.spanStartUtf16 < r.end);
+    check(
+      inRange || inText > 0,
+      `HS0005 at ${d.spanStartUtf16} is not invalid in ${label}`,
+    );
+  }
+}
 same(t.highlight(""), [], "highlight(empty)");
 
 // ---- keywords -----------------------------------------------------------
@@ -446,5 +542,13 @@ t.analyse("return 1\n").dispose();
 for (const h of held) {
   h.dispose();
 }
+
+
+// Exact UTF-16 diagnostic spans are used by the v0.1.1 extension adapter.
+const diagnosticSource = 'constant face = "😀"\neffect print("hello")\n';
+const diagnosticAnalysis = t.analyse(diagnosticSource);
+const missingPrint = diagnosticAnalysis.diagnostics().find((d) => d.code === "HS0205");
+check(missingPrint && diagnosticSource.slice(missingPrint.start, missingPrint.end) === "print", "exact UTF-16 diagnostic span");
+diagnosticAnalysis.dispose();
 
 console.log("all checks passed");

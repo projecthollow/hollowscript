@@ -53,7 +53,10 @@ impl TypeIndex {
     /// the one every other is initialised before. Only the entry module's
     /// own functions are walked, since the nodes of another module are
     /// numbered from the start of its own file and would collide.
-    pub(crate) fn build(program: &hir::Program) -> TypeIndex {
+    pub(crate) fn build(
+        program: &hir::Program,
+        expression_types: &BTreeMap<NodeId, TypeId>,
+    ) -> TypeIndex {
         let Some(module) = program.modules.last() else {
             return TypeIndex::default();
         };
@@ -72,6 +75,11 @@ impl TypeIndex {
         for id in &module.function_ids {
             if let Some(function) = program.functions.get(id.0 as usize) {
                 walk_block(&function.body, &mut consider);
+            }
+        }
+        for (node, ty) in expression_types {
+            if let Some(span) = module.node_spans.get(node) {
+                entries.push((Span::new(span.start, span.end), *ty));
             }
         }
         TypeIndex { entries }

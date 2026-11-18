@@ -1,0 +1,9 @@
+constant bump: (fn(Int): Int)? = fn(n) {
+    return n + 1
+}
+
+if bump != none {
+    return bump(1)
+}
+
+return 0

@@ -1,0 +1,25 @@
+{
+  "title": "A brace opened inside an interpolation does not end it, on one line or several",
+  "spec": "1.5",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": [
+      "uses print",
+      "",
+      "effect print(\"v ${{ a: 1, b: 2 }.b}\")",
+      "",
+      "effect print(\"w ${{ a: 3 }.a}\")",
+      ""
+    ],
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "v 2",
+      "w 3"
+    ],
+    "result": null
+  }
+}

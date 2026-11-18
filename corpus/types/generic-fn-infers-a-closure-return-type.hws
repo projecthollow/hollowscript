@@ -1,0 +1,19 @@
+fn mapAll<T, U>(xs: [T], f: fn(T): U): [U] {
+    return xs.map(f)
+}
+
+constant doubled = mapAll(
+    [1, 2],
+    fn(n) {
+        return n * 2
+    }
+)
+
+constant named = mapAll(
+    [1, 2],
+    fn(n) {
+        return "n${n}"
+    }
+)
+
+return [doubled[1] == 4, named.join(",") == "n1,n2"]

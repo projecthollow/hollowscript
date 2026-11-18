@@ -1,0 +1,28 @@
+{
+  "title": "A record literal under an optional record type still has to list every field",
+  "spec": "2.9",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 3,
+      "code": "HS0326"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 3,
+        "code": "HS0326"
+      }
+    ]
+  }
+}

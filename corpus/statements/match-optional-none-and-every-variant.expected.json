@@ -1,0 +1,15 @@
+{
+  "title": "A none arm and an arm for every variant is exhaustive without else",
+  "spec": "7.7",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"nothing\"), String(\"circle 1\"), String(\"square 2\")]"
+  }
+}

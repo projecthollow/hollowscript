@@ -75,6 +75,18 @@ mod tests {
     }
 
     #[test]
+    fn an_incremental_edit_after_an_emoji_uses_utf16_columns() {
+        let previous = "😀old".to_owned();
+        let p = params(
+            r#"{"textDocument":{"uri":"file:///a.hws"},"contentChanges":[{"range":{"start":{"line":0,"character":2},"end":{"line":0,"character":5}},"text":"new"}]}"#,
+        );
+        assert_eq!(
+            apply_change(Some(&previous), Some(&p)),
+            Some("😀new".to_owned())
+        );
+    }
+
+    #[test]
     fn did_open_is_the_documents_whole_text() {
         let p = params(r#"{"textDocument":{"uri":"file:///a.hws","text":"return 1"}}"#);
         assert_eq!(apply_change(None, Some(&p)), Some("return 1".to_owned()));

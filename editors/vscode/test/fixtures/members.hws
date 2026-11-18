@@ -1,0 +1,2 @@
+constant greeting = "hello"
+return greeting

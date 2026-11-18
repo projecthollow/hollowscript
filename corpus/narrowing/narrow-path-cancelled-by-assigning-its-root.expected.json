@@ -1,0 +1,28 @@
+{
+  "title": "Assigning the root of a path through an optional field drops the facts on that path",
+  "spec": "4.8",
+  "parse": [],
+  "check": [
+    {
+      "severity": "error",
+      "line": 9,
+      "code": "HS0322"
+    }
+  ],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": false,
+    "stage": "check",
+    "output": [],
+    "diagnostics": [
+      {
+        "severity": "error",
+        "line": 9,
+        "code": "HS0322"
+      }
+    ]
+  }
+}

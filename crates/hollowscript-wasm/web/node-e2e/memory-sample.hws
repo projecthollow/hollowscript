@@ -15,3 +15,48 @@ export fn small(): Int {
 export fn pairs(): [[Int]] {
     return range(0, 600000).map(fn(i: Int): [Int] { return [i, i] })
 }
+
+// PRO-1697: at the default limits these used to trap the `tooling` build (the
+// first) and nearly the VM-only one (the second), with no HollowScript code.
+export fn rangeBig(): Int {
+    constant a = range(0, 8000000)
+    return a.length()
+}
+
+export fn mapBig(): Int {
+    constant b = range(0, 2000000).map(fn(n: Int): Int { return n * 2 })
+    return b.length()
+}
+
+// Over the default 64 MiB memory limit: the language's own HS1002 must be what
+// stops these, before the machine's memory can.
+export fn rangeOver(): Int {
+    constant a = range(0, 9000000)
+    return a.length()
+}
+
+export fn mapOver(): Int {
+    constant b = range(0, 5000000).map(fn(n: Int): Int { return n * 2 })
+    return b.length()
+}
+
+// `chars` cuts a string into one string per code point, each of which costs
+// the module far more than the language's 24 bytes. Under the limit at the
+// default ceiling, and over it once the result is charged.
+export fn charsBig(): Int {
+    constant s = "x".repeat(2500000)
+    return s.chars().length()
+}
+
+export fn charsOver(): Int {
+    constant s = "x".repeat(60000000)
+    return s.chars().length()
+}
+
+// A sort whose answer, charged before it is built, is over the limit: HS1002
+// on every host, never HS1015 (section 11.4). Copying first, as this once
+// did, ran the 512 MiB module out of memory at 8 million elements.
+export fn sortOver(): Int {
+    constant a = range(0, 8000000)
+    return a.sort().length()
+}

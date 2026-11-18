@@ -1,0 +1,15 @@
+{
+  "title": "A variant pattern inside an optional payload matches only a present value",
+  "spec": "7.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "[String(\"other\"), String(\"circle 1\"), String(\"other\")]"
+  }
+}

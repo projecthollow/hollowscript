@@ -3,9 +3,11 @@
 //!
 //! Checking an expression takes an optional *expected type* (section 2.9) and
 //! either propagates it into the expression or computes a type bottom-up.
-//! Generic calls (section 2.10) run their own inference: a call's type
-//! parameters are the callee's own declared `TypeView::Param`
-//! positions, and [`unify`] binds them one by one as arguments are checked.
+//! Generic calls (section 2.10) run their own inference: each call renames
+//! the callee's type parameters to fresh variables owned by a synthetic
+//! declaration ([`TypeInterner::fresh_param_decl`]), and [`unify`] binds them
+//! one by one as arguments are checked. Any other `TypeView::Param`, such as
+//! a type parameter of the enclosing generic function, is an opaque type.
 //!
 //! [`Checker`] is the driver: one instance checks one module, holding the
 //! shared type and symbol interners, the file's value and type scopes from
@@ -36,23 +38,107 @@ use std::collections::{BTreeMap, BTreeSet};
 pub type Expected = Option<TypeId>;
 
 /// The bindings of the type variables of one call, built up as
-/// [`unify`] runs (section 2.10, steps 1 to 4). A variable's identity is the
-/// position of the callee's own type parameter it stands for: every
-/// [`crate::types::TypeView::Param`] [`unify`] meets while walking a
-/// callee's own declared parameter type belongs to that one callee, by
-/// construction (a declaration's signature only ever mentions its own type
-/// parameters), so the position alone identifies it for the one call this
-/// substitution is scoped to.
-#[derive(Debug, Default)]
+/// [`unify`] runs (section 2.10, steps 1 to 4). The variables are the
+/// [`crate::types::TypeView::Param`] positions of one declaration, the
+/// substitution's own: for a call, the synthetic declaration that owns that
+/// call's fresh variables. A `Param` of any other declaration is an opaque
+/// type to this substitution, never a variable.
+#[derive(Clone, Debug)]
 pub struct Substitution {
     bound: BTreeMap<TypeVarId, TypeId>,
+    decl: DeclId,
 }
 
 impl Substitution {
-    /// An empty substitution, as at the start of checking a call.
+    /// An empty substitution whose variables are the parameters of `decl`.
     #[must_use]
-    pub fn new() -> Substitution {
-        Substitution::default()
+    pub fn for_decl(decl: DeclId) -> Substitution {
+        Substitution {
+            bound: BTreeMap::new(),
+            decl,
+        }
+    }
+
+    /// The declaration whose parameters are this substitution's variables.
+    #[must_use]
+    pub fn decl(&self) -> DeclId {
+        self.decl
+    }
+
+    /// The variable `view` stands for under this substitution, if any.
+    #[must_use]
+    pub fn var_of(&self, view: TypeView<'_>) -> Option<TypeVarId> {
+        match view {
+            TypeView::Param { decl, index } if decl == self.decl => Some(TypeVarId(index)),
+            _ => None,
+        }
+    }
+
+    /// Substitutes every bound variable into `ty`'s structure,
+    /// following a binding that mentions another variable of the same call
+    /// (linked variables, section 2.10), and leaving an unbound one as it is.
+    pub fn apply(&self, ty: TypeId, types: &mut TypeInterner, names: &Interner) -> TypeId {
+        match types.view(ty) {
+            v @ TypeView::Param { .. } => match self.var_of(v).and_then(|var| self.get(var)) {
+                Some(bound) => self.apply(bound, types, names),
+                None => ty,
+            },
+            TypeView::List(t) => {
+                let t = self.apply(t, types, names);
+                types.list(t)
+            }
+            TypeView::Set(t) => {
+                let t = self.apply(t, types, names);
+                types.set(t)
+            }
+            TypeView::Optional(t) => {
+                let t = self.apply(t, types, names);
+                types.optional(t)
+            }
+            TypeView::Map(k, v) => {
+                let k = self.apply(k, types, names);
+                let v = self.apply(v, types, names);
+                types.map(k, v)
+            }
+            TypeView::Record(fields) => {
+                let fields: Vec<(Symbol, TypeId)> = fields.to_vec();
+                let built = fields
+                    .into_iter()
+                    .map(|(name, t)| Field {
+                        name,
+                        ty: self.apply(t, types, names),
+                    })
+                    .collect();
+                types.record(names, built)
+            }
+            TypeView::Named { decl, args } => {
+                let args: Vec<TypeId> = args.to_vec();
+                let built: Vec<TypeId> = args
+                    .into_iter()
+                    .map(|a| self.apply(a, types, names))
+                    .collect();
+                types.named(decl, built)
+            }
+            TypeView::Function {
+                effect,
+                params,
+                ret,
+            } => {
+                let params: Vec<TypeId> = params.to_vec();
+                let built_params: Vec<TypeId> = params
+                    .into_iter()
+                    .map(|p| self.apply(p, types, names))
+                    .collect();
+                let built_ret = ret.map(|r| self.apply(r, types, names));
+                types.function(effect, built_params, built_ret)
+            }
+            TypeView::Int
+            | TypeView::Float
+            | TypeView::Bool
+            | TypeView::String
+            | TypeView::Filter
+            | TypeView::Error => ty,
+        }
     }
 
     /// The type bound to `var`, if any.
@@ -61,10 +147,21 @@ impl Substitution {
         self.bound.get(&var).copied()
     }
 
-    /// Binds `var` to `ty`. The caller has already checked that `var` was
-    /// unbound or, if bound, that `ty` is identical to what it holds
-    /// (section 2.10 step 2); this type does not check that itself, so that
-    /// unification can report its own diagnostic (HS0301) on a mismatch.
+    /// `ty`, or, when `ty` is a bound variable, the end of its chain of
+    /// bindings (linked variables, section 2.10).
+    #[must_use]
+    pub fn resolve(&self, ty: TypeId, types: &TypeInterner) -> TypeId {
+        let mut ty = ty;
+        while let Some(bound) = self.var_of(types.view(ty)).and_then(|v| self.get(v)) {
+            ty = bound;
+        }
+        ty
+    }
+
+    /// Binds `var` to `ty`. Only ever called on an unbound variable, by
+    /// unification once the occurs check has passed, or with the error type
+    /// once a diagnostic has been reported; this type does not check that
+    /// itself.
     pub fn bind(&mut self, var: TypeVarId, ty: TypeId) {
         self.bound.insert(var, ty);
     }
@@ -108,20 +205,22 @@ pub enum UnifyError {
     },
 }
 
-/// Whether `id` contains the type variable `var` anywhere in its structure
-/// (the occurs check, section 2.10), walking only through the interned
-/// structure: a variable never occurs inside a type that has no `Param` of
-/// the callee's own declaration anywhere in it, so this is always finite.
-fn occurs(types: &TypeInterner, id: TypeId, var: TypeVarId) -> bool {
+/// Whether `id` contains the type variable `var` anywhere in its structure,
+/// directly or through the binding of another variable (the occurs check,
+/// section 2.10). Every binding passed this check when it was made, so the
+/// bindings never form a cycle and the walk is always finite.
+fn occurs(types: &TypeInterner, id: TypeId, var: TypeVarId, sub: &Substitution) -> bool {
     match types.view(id) {
-        TypeView::Param { index, .. } => index == var.0,
-        TypeView::List(t) | TypeView::Set(t) | TypeView::Optional(t) => occurs(types, t, var),
-        TypeView::Map(k, v) => occurs(types, k, var) || occurs(types, v, var),
-        TypeView::Record(fields) => fields.iter().any(|&(_, t)| occurs(types, t, var)),
-        TypeView::Named { args, .. } => args.iter().any(|&t| occurs(types, t, var)),
+        v @ TypeView::Param { .. } => sub.var_of(v).is_some_and(|other| {
+            other == var || sub.get(other).is_some_and(|b| occurs(types, b, var, sub))
+        }),
+        TypeView::List(t) | TypeView::Set(t) | TypeView::Optional(t) => occurs(types, t, var, sub),
+        TypeView::Map(k, v) => occurs(types, k, var, sub) || occurs(types, v, var, sub),
+        TypeView::Record(fields) => fields.iter().any(|&(_, t)| occurs(types, t, var, sub)),
+        TypeView::Named { args, .. } => args.iter().any(|&t| occurs(types, t, var, sub)),
         TypeView::Function { params, ret, .. } => {
-            params.iter().any(|&t| occurs(types, t, var))
-                || ret.is_some_and(|t| occurs(types, t, var))
+            params.iter().any(|&t| occurs(types, t, var, sub))
+                || ret.is_some_and(|t| occurs(types, t, var, sub))
         }
         TypeView::Int
         | TypeView::Float
@@ -132,8 +231,16 @@ fn occurs(types: &TypeInterner, id: TypeId, var: TypeVarId) -> bool {
     }
 }
 
-/// Unifies a parameter type, which may contain the callee's own unbound type
-/// variables, with the type of an argument, which never does (section 2.10).
+/// Unifies a parameter type, which may contain the call's own type
+/// variables, with the type of an argument (section 2.10). The argument can
+/// contain them too: a deferred empty list or map literal, checked against
+/// the parameter type itself, has it as its type.
+///
+/// Unification only binds variables. Whether an argument is acceptable is
+/// decided afterwards by [`is_assignable`] against the fully substituted
+/// parameter type, so the structural walk here may be more lenient than
+/// assignability (an optional in a nested position, say) without letting a
+/// wrong argument through.
 ///
 /// # Errors
 ///
@@ -144,13 +251,35 @@ pub fn unify(
     types: &TypeInterner,
     substitution: &mut Substitution,
 ) -> Result<(), UnifyError> {
-    if types.is_error(parameter) || types.is_error(argument) {
+    // Identical types unify without binding anything, so a variable that
+    // only meets itself, directly or through a link, stays unbound and is
+    // reported once, by step 5.
+    let argument = substitution.resolve(argument, types);
+    if parameter == argument || types.is_error(parameter) {
         return Ok(());
     }
-    if let TypeView::Param { index, .. } = types.view(parameter) {
-        let var = TypeVarId(index);
+    if types.is_error(argument) {
+        // An argument in error binds what it meets to the error type, so
+        // the variable is not reported as unbound on top of the argument's
+        // own diagnostic (section 2.11, one mistake, one diagnostic).
+        if let Some(var) = substitution.var_of(types.view(parameter)) {
+            if substitution.get(var).is_none() {
+                substitution.bind(var, argument);
+            }
+        }
+        return Ok(());
+    }
+    if let Some(var) = substitution.var_of(types.view(parameter)) {
         if let Some(bound) = substitution.get(var) {
-            return if bound == argument || is_assignable(argument, bound, types) {
+            // A binding can itself contain variables (two unbound variables
+            // unify by linking), so it is unified on, not only compared. The
+            // attempt runs on a copy, so a failure leaves no partial bindings.
+            if is_assignable(argument, bound, types) {
+                return Ok(());
+            }
+            let mut attempt = substitution.clone();
+            return if unify(bound, argument, types, &mut attempt).is_ok() {
+                *substitution = attempt;
                 Ok(())
             } else {
                 Err(UnifyError::Rebound {
@@ -160,7 +289,7 @@ pub fn unify(
                 })
             };
         }
-        if occurs(types, argument, var) {
+        if occurs(types, argument, var, substitution) {
             return Err(UnifyError::Occurs { var });
         }
         substitution.bind(var, argument);
@@ -169,14 +298,13 @@ pub fn unify(
     // "Where P is V? and V is an unbound variable, A may be X or X?, and
     // binds V to X" (section 2.10 step 2).
     if let TypeView::Optional(inner) = types.view(parameter) {
-        if let TypeView::Param { index, .. } = types.view(inner) {
-            let var = TypeVarId(index);
+        if let Some(var) = substitution.var_of(types.view(inner)) {
             if substitution.get(var).is_none() {
                 let bind_to = match types.view(argument) {
                     TypeView::Optional(a) => a,
                     _ => argument,
                 };
-                if occurs(types, bind_to, var) {
+                if occurs(types, bind_to, var, substitution) {
                     return Err(UnifyError::Occurs { var });
                 }
                 substitution.bind(var, bind_to);
@@ -359,6 +487,10 @@ struct FnCtx {
     /// function's return type is being inferred (section 2.10): joined into
     /// the final return type once the body is fully checked.
     collected_returns: Vec<TypeId>,
+    /// The span of every bare `return` checked so far while this function's
+    /// return type is being inferred: if the body also has a `return e`,
+    /// each is HS0341 (section 5.3 rule 4).
+    bare_returns: Vec<Span>,
     /// The locals declared with `variable` rather than `constant`: only
     /// these may be the target of an assignment (HS0206 otherwise).
     mutable_locals: BTreeSet<LocalId>,
@@ -368,7 +500,7 @@ struct FnCtx {
     shared_locals: BTreeSet<LocalId>,
     /// Whether this frame's return type is being inferred from its `return`
     /// statements (only ever true for a closure with neither an annotation
-    /// nor an expected function type, section 2.10): distinguishes "no
+    /// nor a fixed expected return type, section 5.3): distinguishes "no
     /// return type at all" (`return e` here is HS0340) from "not decided
     /// yet" (collect `e`'s type instead).
     infer_return: bool,
@@ -395,6 +527,7 @@ impl FnCtx {
             in_loop: false,
             local_types: Vec::new(),
             collected_returns: Vec::new(),
+            bare_returns: Vec::new(),
             mutable_locals: BTreeSet::new(),
             shared_locals: BTreeSet::new(),
             infer_return: false,
@@ -595,6 +728,7 @@ pub struct Checker<'a> {
     /// checked to choose the overload, and again), so [`check_module`] puts
     /// these in source order and keeps one of each.
     filter_literals: Vec<crate::FilterLiteral>,
+    expression_types: BTreeMap<ast::NodeId, TypeId>,
     /// What [`Checker::every_argument_is_an_int`] answered for a call, by the
     /// node of its first argument, with the facts it was answered under. An
     /// overloaded numeric call checks its arguments to choose an overload and
@@ -654,6 +788,7 @@ impl<'a> Checker<'a> {
             diagnostics: scope.diagnostics,
             filter_schema,
             filter_literals: Vec::new(),
+            expression_types: BTreeMap::new(),
             int_argument_answers: BTreeMap::new(),
         }
     }
@@ -1648,13 +1783,20 @@ impl<'a> Checker<'a> {
             }
             (Some(v), None) => {
                 self.error_at(Code::HS0340, &[], stmt.span);
-                Some(self.check_expr(v, None, &facts))
+                Some(self.check_expr_allowing_no_value(v, None, &facts))
             }
             (None, Some(_)) => {
                 self.error_at(Code::HS0341, &[], stmt.span);
                 None
             }
-            (None, None) => None,
+            (None, None) => {
+                if infer_return {
+                    if let Some(frame) = self.frames.last_mut() {
+                        frame.bare_returns.push(stmt.span);
+                    }
+                }
+                None
+            }
         };
         (
             Stmt {
@@ -1672,9 +1814,20 @@ impl<'a> Checker<'a> {
         expr: &ast::Expr,
         facts: FactSet,
     ) -> (Stmt, FactSet, bool) {
-        let checked = self.check_expr(expr, None, &facts);
-        if self.types.as_result(checked.ty).is_some() {
-            self.error_at(Code::HS0803, &[], stmt.span);
+        let checked = self.check_expr_allowing_no_value(expr, None, &facts);
+        // A parenthesised statement is already HS0109 (section 4.9), so its
+        // discarded value warns of nothing more: one diagnostic per mistake.
+        if !matches!(expr.kind, ast::ExprKind::Paren(_)) {
+            if self.types.as_result(checked.ty).is_some() {
+                self.error_at(Code::HS0803, &[], stmt.span);
+            } else if matches!(checked.kind, ExprKind::NativeCall { .. })
+                && !self.types.is_error(checked.ty)
+                && !matches!(expr.kind, ast::ExprKind::Effect(_))
+            {
+                // Section 17.3: a discarded value of a standard library
+                // call. An `effect` call of one is HS0402 instead.
+                self.error_at(Code::HS0804, &[], stmt.span);
+            }
         }
         (
             Stmt {
@@ -1723,9 +1876,11 @@ impl<'a> Checker<'a> {
                 .iter()
                 .any(|p| matches!(p.kind, ast::PatternKind::None))
         });
-        let narrow_present = has_none_alt
-            && scrutinee_path.is_some()
-            && self.types.as_optional(checked_scrutinee.ty).is_some();
+        // Section 7.6: a top-level binding after the none arm is `U` whatever
+        // the scrutinee expression is; only narrowing the scrutinee itself
+        // needs a path.
+        let narrow_binding = has_none_alt && self.types.as_optional(checked_scrutinee.ty).is_some();
+        let narrow_present = narrow_binding && scrutinee_path.is_some();
         let narrowed_ty = self.types.as_optional(checked_scrutinee.ty);
 
         let mut rows: Vec<exhaustive::Row> = Vec::new();
@@ -1747,7 +1902,7 @@ impl<'a> Checker<'a> {
             for pat in &arm.patterns {
                 let mut columns = Vec::new();
                 let mut alt_bindings = Vec::new();
-                let top_narrowed = if narrow_present && !arm_has_none {
+                let top_narrowed = if narrow_binding && !arm_has_none {
                     narrowed_ty
                 } else {
                     None
@@ -1818,7 +1973,7 @@ impl<'a> Checker<'a> {
             checked_arms.push(hir::Arm {
                 patterns: vec![Pattern {
                     node: stmt.id,
-                    ty: if narrow_present {
+                    ty: if narrow_binding {
                         narrowed_ty.unwrap_or(checked_scrutinee.ty)
                     } else {
                         checked_scrutinee.ty
@@ -1901,6 +2056,7 @@ impl<'a> Checker<'a> {
                     .map(|(i, v)| exhaustive::Constructor::Variant {
                         index: u32::try_from(i).unwrap_or(0),
                         arity: u32::try_from(v.payload.len()).unwrap_or(0),
+                        of: u32::try_from(variants.len()).unwrap_or(0),
                     })
                     .collect(),
                 _ => Vec::new(),
@@ -2085,7 +2241,12 @@ impl<'a> Checker<'a> {
                 }
                 _ => {
                     columns.push(exhaustive::Constructor::Some);
-                    return self.check_match_pattern(pat, inner_ty, None, bindings, columns);
+                    let inner = self.check_match_pattern(pat, inner_ty, None, bindings, columns);
+                    return Pattern {
+                        node: pat.id,
+                        ty,
+                        kind: PatternKind::Present(Box::new(inner)),
+                    };
                 }
             }
         }
@@ -2219,6 +2380,7 @@ impl<'a> Checker<'a> {
                 columns.push(exhaustive::Constructor::Variant {
                     index: idx,
                     arity: u32::try_from(payload.len()).unwrap_or(0),
+                    of: u32::try_from(variants.len()).unwrap_or(0),
                 });
                 let mut sub_patterns = Vec::new();
                 for (i, p) in args.iter().enumerate() {
@@ -2463,10 +2625,27 @@ impl<'a> Checker<'a> {
         }
         let mut frame = self.frames.pop().unwrap_or_else(|| FnCtx::new(None, None));
         let final_ret = if infer_return {
-            frame
+            let inferred = frame
                 .collected_returns
                 .drain(..)
-                .reduce(|a, b| self.join_pair(a, b).unwrap_or(a))
+                .reduce(|a, b| self.join_pair(a, b).unwrap_or(a));
+            // Section 5.3: an inferred return type is a return type, so the
+            // body must return a value on every path (HS0342). A bare
+            // `return` beside a `return e` is its own mistake (HS0341), and
+            // already a path that does not return a value.
+            if inferred.is_some() {
+                if frame.bare_returns.is_empty() {
+                    if !always_returns {
+                        let text = self.text(name);
+                        self.error_at(Code::HS0342, &[("what", &text)], body.span);
+                    }
+                } else {
+                    for span in frame.bare_returns.drain(..) {
+                        self.error_at(Code::HS0341, &[], span);
+                    }
+                }
+            }
+            inferred
         } else {
             return_ty
         };
@@ -2797,14 +2976,59 @@ impl Checker<'_> {
     /// type of section 2.9, threaded downward; `facts` are the narrowing
     /// facts in force at this point (section 4.8).
     pub fn check_expr(&mut self, expr: &ast::Expr, expected: Expected, facts: &FactSet) -> Expr {
-        match &expr.kind {
+        let mut checked = self.check_expr_allowing_no_value(expr, expected, facts);
+        // The span is the call itself, without an `effect` marker, as for
+        // the operand of `?` in `check_effect`.
+        let span = match &expr.kind {
+            ast::ExprKind::Effect(inner) => inner.span,
+            _ => expr.span,
+        };
+        self.reject_no_value(&mut checked, expr.id, span);
+        checked
+    }
+
+    /// Section 3.7: a call to a function that returns nothing is not a value,
+    /// so where a value is needed it is HS0345 at `span`, and node `node` has
+    /// the error type from here on. Only an expression statement, the operand
+    /// of a `return` that is already HS0340 and the inside of parentheses
+    /// skip this, so the no-value type is never compared with another type.
+    fn reject_no_value(&mut self, checked: &mut Expr, node: ast::NodeId, span: Span) {
+        if self.types.is_no_value(checked.ty) {
+            self.error_at(Code::HS0345, &[], span);
+            checked.ty = self.types.error();
+            self.expression_types.insert(node, checked.ty);
+        }
+    }
+
+    /// As [`Self::check_expr`], except that a call that returns nothing is
+    /// left as it is: the one place that may use it is an expression
+    /// statement (section 4.9).
+    fn check_expr_allowing_no_value(
+        &mut self,
+        expr: &ast::Expr,
+        expected: Expected,
+        facts: &FactSet,
+    ) -> Expr {
+        // Section 2.9: a list, map, record or closure literal whose expected
+        // type is `T?` is checked as if the expected type were `T`; its type is
+        // then assignable to `T?` by rule 3 of section 2.7.
+        let expected = match &expr.kind {
+            ast::ExprKind::List(_)
+            | ast::ExprKind::Map(_)
+            | ast::ExprKind::Record(_)
+            | ast::ExprKind::Closure(_) => expected.map(|e| self.types.as_optional(e).unwrap_or(e)),
+            _ => expected,
+        };
+        let checked = match &expr.kind {
             ast::ExprKind::Literal(lit) => self.check_literal(expr, lit, expected, facts),
             ast::ExprKind::Name(ident) => self.check_name(expr, ident, facts),
-            ast::ExprKind::Paren(inner) => self.check_expr(inner, expected, facts),
+            ast::ExprKind::Paren(inner) => {
+                self.check_expr_allowing_no_value(inner, expected, facts)
+            }
             ast::ExprKind::List(items) => self.check_list(expr, items, expected, facts),
             ast::ExprKind::Map(entries) => self.check_map(expr, entries, expected, facts),
             ast::ExprKind::Record(fields) => self.check_record(expr, fields, expected, facts),
-            ast::ExprKind::Closure(closure) => self.check_closure(expr, closure, expected),
+            ast::ExprKind::Closure(closure) => self.check_closure(expr, closure, expected, false),
             ast::ExprKind::Unary { op, operand } => self.check_unary(expr, *op, operand, facts),
             ast::ExprKind::Binary { op, lhs, rhs } => self.check_binary(expr, *op, lhs, rhs, facts),
             ast::ExprKind::Effect(inner) => self.check_effect(expr, inner, facts),
@@ -2817,7 +3041,11 @@ impl Checker<'_> {
             }
             ast::ExprKind::Try(inner) => self.check_try(expr, inner, facts),
             ast::ExprKind::Error => self.error_expr_at(expr.id),
-        }
+        };
+        // Keep receiver types even when an incomplete parent is discarded
+        // from the HIR. Editor completion must work while a member is typed.
+        self.expression_types.insert(expr.id, checked.ty);
+        checked
     }
 
     fn check_literal(
@@ -3207,89 +3435,58 @@ impl Checker<'_> {
 }
 
 impl Checker<'_> {
-    /// Substitutes every bound variable of `sub` into `ty`'s structure,
-    /// leaving an unbound one (already reported as HS0308) as it is.
-    fn substitute(&mut self, ty: TypeId, sub: &Substitution) -> TypeId {
-        match self.types.view(ty) {
-            TypeView::Param { index, .. } => sub.get(TypeVarId(index)).unwrap_or(ty),
-            TypeView::List(t) => {
-                let t = self.substitute(t, sub);
-                self.types.list(t)
-            }
-            TypeView::Set(t) => {
-                let t = self.substitute(t, sub);
-                self.types.set(t)
-            }
-            TypeView::Optional(t) => {
-                let t = self.substitute(t, sub);
-                self.types.optional(t)
-            }
-            TypeView::Map(k, v) => {
-                let k = self.substitute(k, sub);
-                let v = self.substitute(v, sub);
-                self.types.map(k, v)
-            }
-            TypeView::Record(fields) => {
-                let fields: Vec<(Symbol, TypeId)> = fields.to_vec();
-                let built = fields
-                    .into_iter()
-                    .map(|(name, t)| Field {
-                        name,
-                        ty: self.substitute(t, sub),
-                    })
-                    .collect();
-                self.types.record(self.names, built)
-            }
-            TypeView::Named { decl, args } => {
-                let args: Vec<TypeId> = args.to_vec();
-                let built: Vec<TypeId> =
-                    args.into_iter().map(|a| self.substitute(a, sub)).collect();
-                self.types.named(decl, built)
-            }
-            TypeView::Function {
-                effect,
-                params,
-                ret,
-            } => {
-                let params: Vec<TypeId> = params.to_vec();
-                let built_params: Vec<TypeId> = params
-                    .into_iter()
-                    .map(|p| self.substitute(p, sub))
-                    .collect();
-                let built_ret = ret.map(|r| self.substitute(r, sub));
-                self.types.function(effect, built_params, built_ret)
-            }
-            TypeView::Int
-            | TypeView::Float
-            | TypeView::Bool
-            | TypeView::String
-            | TypeView::Filter
-            | TypeView::Error => ty,
+    /// `ty` under `sub`, or `ty` itself for a call with no type parameters.
+    fn resolved(&mut self, ty: TypeId, sub: Option<&Substitution>) -> TypeId {
+        match sub {
+            Some(sub) => sub.apply(ty, self.types, self.names),
+            None => ty,
         }
     }
 
-    fn report_unify_error(&mut self, err: UnifyError, span: Span, function_name: &str) {
+    /// The declared name of the type parameter `var` stands for under `sub`.
+    fn type_var_name(&self, sub: &Substitution, var: TypeVarId) -> String {
+        self.types
+            .param_text(sub.decl(), var.0, |n| self.names.resolve(n).to_owned())
+    }
+
+    /// HS0301 for an argument of type `found` where `expected` is required,
+    /// both written as they stand under `sub`, so that a call's variable
+    /// reads as the type it is bound to rather than as the callee's own
+    /// parameter name.
+    fn report_mismatch(
+        &mut self,
+        expected: TypeId,
+        found: TypeId,
+        span: Span,
+        sub: Option<&Substitution>,
+    ) {
+        let expected = self.resolved(expected, sub);
+        let found = self.resolved(found, sub);
+        let expected_text = self.type_text(expected);
+        let found_text = self.type_text(found);
+        self.error_at(
+            Code::HS0301,
+            &[("expected", &expected_text), ("found", &found_text)],
+            span,
+        );
+    }
+
+    fn report_unify_error(
+        &mut self,
+        err: UnifyError,
+        span: Span,
+        function_name: &str,
+        sub: &Substitution,
+    ) {
         match err {
-            UnifyError::NotAssignable { expected, found } => {
-                let expected_text = self.type_text(expected);
-                let found_text = self.type_text(found);
-                self.error_at(
-                    Code::HS0301,
-                    &[("expected", &expected_text), ("found", &found_text)],
-                    span,
-                );
-            }
-            UnifyError::Rebound { bound, found, .. } => {
-                let expected_text = self.type_text(bound);
-                let found_text = self.type_text(found);
-                self.error_at(
-                    Code::HS0301,
-                    &[("expected", &expected_text), ("found", &found_text)],
-                    span,
-                );
-            }
+            UnifyError::NotAssignable { expected, found }
+            | UnifyError::Rebound {
+                bound: expected,
+                found,
+                ..
+            } => self.report_mismatch(expected, found, span, Some(sub)),
             UnifyError::Occurs { var } => {
-                let name = format!("T{}", var.0);
+                let name = self.type_var_name(sub, var);
                 self.error_at(
                     Code::HS0308,
                     &[("name", &name), ("function", &function_name)],
@@ -3299,14 +3496,15 @@ impl Checker<'_> {
         }
     }
 
-    /// Whether `ty`'s structure still refers to an unbound callee type
-    /// parameter (section 2.10): true for a substituted parameter type that
-    /// unification has not yet pinned down, so an argument checked against
-    /// it should infer bottom-up instead of being held to a still-generic
-    /// expected type.
+    /// Whether `ty`'s structure still refers to a fresh variable of a call
+    /// (section 2.10) that is not bound: true for a substituted parameter
+    /// type that unification has not yet pinned down, so an argument checked
+    /// against it should infer bottom-up instead of being held to a
+    /// still-generic expected type. A type parameter of the enclosing
+    /// function is an ordinary opaque type and does not count.
     fn contains_unbound_param(&self, ty: TypeId) -> bool {
         match self.types.view(ty) {
-            TypeView::Param { .. } => true,
+            TypeView::Param { decl, .. } => decl.is_fresh(),
             TypeView::List(elem) | TypeView::Set(elem) | TypeView::Optional(elem) => {
                 self.contains_unbound_param(elem)
             }
@@ -3332,12 +3530,194 @@ impl Checker<'_> {
         }
     }
 
+    /// Binds every variable of `sub` that `param` mentions and that is still
+    /// unbound to the error type, once a diagnostic has been reported at the
+    /// argument for `param`, so that step 5 does not report the same mistake
+    /// again as HS0308 (section 2.11).
+    fn bind_to_error(&mut self, param: TypeId, sub: &mut Substitution, declared: &[TypeVarId]) {
+        let error = self.types.error();
+        let unbound: Vec<TypeVarId> = sub.unbound(declared).into_iter().copied().collect();
+        for var in unbound {
+            if occurs(self.types, param, var, sub) {
+                sub.bind(var, error);
+            }
+        }
+    }
+
+    /// Whether `arg` is an empty list or map literal whose resolved parameter
+    /// type `param` is, under any optional, a still unbound variable of the
+    /// call: the literal has no shape to take from it, and only the variable
+    /// could have given it one.
+    fn only_binds_by_shape(&self, arg: &ast::Expr, param: TypeId) -> bool {
+        let empty_literal = match &arg.kind {
+            ast::ExprKind::List(items) => items.is_empty(),
+            ast::ExprKind::Map(entries) => entries.is_empty(),
+            _ => false,
+        };
+        let shape = self.types.as_optional(param).unwrap_or(param);
+        empty_literal
+            && matches!(self.types.view(shape), TypeView::Param { decl, .. } if decl.is_fresh())
+    }
+
+    /// Whether the checked argument `expr` is acceptable where `required`
+    /// is, as it would have been had it been checked against `required`
+    /// (section 2.9): assignable, an `Int` coerced to `Float`, a list, map
+    /// or record literal whose parts are each acceptable at their position,
+    /// or a closure whose inferred return type is assignable to the
+    /// required one (section 5.3). An argument whose parameter type still
+    /// contained an unbound variable was checked without an expected type,
+    /// so this gives it the type the instantiated call would have: a
+    /// literal or closure accepted this way is retyped to `required`.
+    fn accept_as(&mut self, expr: &mut Expr, required: TypeId) -> bool {
+        if is_assignable(expr.ty, required, self.types) {
+            return true;
+        }
+        if coerces_to_float(expr.ty, required, self.types) {
+            let placeholder = error_expr(expr.node, self.types);
+            let taken = std::mem::replace(expr, placeholder);
+            *expr = apply_coercion(taken, Some(required), self.types);
+            return true;
+        }
+        let target = self.types.as_optional(required).unwrap_or(required);
+        let retyped = match &mut expr.kind {
+            ExprKind::List(items) => {
+                let elem = match self.types.view(target) {
+                    TypeView::List(elem) => Some(elem),
+                    _ => None,
+                };
+                elem.is_some_and(|elem| items.iter_mut().all(|e| self.accept_as(e, elem)))
+                    .then_some(target)
+            }
+            ExprKind::Map(entries) => {
+                let kv = match self.types.view(target) {
+                    TypeView::Map(k, v) => Some((k, v)),
+                    _ => None,
+                };
+                kv.is_some_and(|(k, v)| {
+                    entries
+                        .iter_mut()
+                        .all(|(key, value)| self.accept_as(key, k) && self.accept_as(value, v))
+                })
+                .then_some(target)
+            }
+            ExprKind::Record(fields) => {
+                let expanded = self
+                    .types
+                    .expand_record(self.names, target)
+                    .unwrap_or(target);
+                let wanted = match self.types.view(expanded) {
+                    TypeView::Record(wanted) => Some(wanted.to_vec()),
+                    _ => None,
+                };
+                wanted
+                    .is_some_and(|wanted| {
+                        wanted.len() == fields.len()
+                            && fields.iter_mut().all(|(name, value)| {
+                                wanted
+                                    .iter()
+                                    .find(|(n, _)| n == name)
+                                    .is_some_and(|&(_, t)| self.accept_as(value, t))
+                            })
+                    })
+                    .then_some(target)
+            }
+            ExprKind::Closure(id) => {
+                let id = *id;
+                let shapes = match (self.types.view(expr.ty), self.types.view(target)) {
+                    (
+                        TypeView::Function {
+                            effect,
+                            params,
+                            ret: Some(ret),
+                        },
+                        TypeView::Function {
+                            effect: wanted_effect,
+                            params: wanted_params,
+                            ret: Some(wanted_ret),
+                        },
+                    ) if params == wanted_params && (wanted_effect || !effect) => {
+                        Some((effect, params.to_vec(), ret, wanted_ret))
+                    }
+                    _ => None,
+                };
+                match shapes {
+                    Some((effect, params, ret, wanted_ret))
+                        if is_assignable(ret, wanted_ret, self.types) =>
+                    {
+                        // Section 5.3: the closure takes the expected
+                        // return type, as it would have been checked with.
+                        if let Some(function) = self.functions.get_mut(&id.0) {
+                            function.ret = Some(wanted_ret);
+                        }
+                        Some(self.types.function(effect, params, Some(wanted_ret)))
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        let Some(ty) = retyped else {
+            return false;
+        };
+        expr.ty = ty;
+        self.expression_types.insert(expr.node, ty);
+        true
+    }
+}
+
+/// The passes `check_call_args` makes over a call's arguments (section 2.10).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Pass {
+    /// Every argument that is not deferred: steps 1 and 2.
+    Bind,
+    /// Closure literals and empty list or map literals: step 4.
+    Deferred,
+    /// The empty literals the deferred pass set aside while their variable
+    /// was still unbound.
+    SetAside,
+}
+
+impl Checker<'_> {
+    /// Section 2.10 step 1: renames the type parameters of a callee's
+    /// signature, the `count` parameters of the declaration in `generics`,
+    /// to fresh variables of this one call, named as the callee names them.
+    /// Returns the renamed signature and the empty substitution of the fresh
+    /// variables, or, for a callee with no type parameters, the signature as
+    /// it is and no substitution.
+    fn instantiate(
+        &mut self,
+        params: &[TypeId],
+        ret: Option<TypeId>,
+        generics: Option<(DeclId, u32)>,
+    ) -> (Vec<TypeId>, Option<TypeId>, Option<Substitution>) {
+        let Some((owner, count)) = generics else {
+            return (params.to_vec(), ret, None);
+        };
+        let fresh = self.types.fresh_param_decl();
+        let mut rename = Substitution::for_decl(owner);
+        for i in 0..count {
+            let var = self.types.param(fresh, i);
+            if let Some(name) = self.types.param_name(owner, i) {
+                self.types.name_param(fresh, i, name);
+            }
+            rename.bind(TypeVarId(i), var);
+        }
+        let params = params
+            .iter()
+            .map(|&t| rename.apply(t, self.types, self.names))
+            .collect();
+        let ret = ret.map(|t| rename.apply(t, self.types, self.names));
+        (params, ret, Some(Substitution::for_decl(fresh)))
+    }
+
     /// Checks a call's arguments against a callee's signature (section 2.10),
-    /// running the generic-call algorithm; with `type_param_count` 0 this
-    /// degenerates to an ordinary assignability check at every parameter,
-    /// which is what makes this the one path both a plain and a generic call
-    /// share. Reports HS0319 for a wrong argument count, HS0301/HS0308 from
-    /// unification, and applies coercion (section 2.7) to each argument.
+    /// running the generic-call algorithm when `generics` names the callee's
+    /// declaration and its number of type parameters; with `None` there is
+    /// nothing to unify and only the assignability check at every parameter
+    /// is left, which is what makes this the one path both a plain and a
+    /// generic call share. Reports HS0319 for a wrong argument count,
+    /// HS0301/HS0308 from unification and assignability, and applies
+    /// coercion (section 2.7) to each argument.
     #[allow(
         clippy::too_many_arguments,
         reason = "one call site per kind of callee"
@@ -3346,7 +3726,7 @@ impl Checker<'_> {
         &mut self,
         param_tys: &[TypeId],
         ret_ty: Option<TypeId>,
-        type_param_count: u32,
+        generics: Option<(DeclId, u32)>,
         function_name: &str,
         args: &[ast::Expr],
         expected: Expected,
@@ -3365,8 +3745,14 @@ impl Checker<'_> {
                 .collect();
             return (checked, self.types.error());
         }
-        let mut sub = Substitution::new();
+        let (param_tys, ret_ty, mut sub) = self.instantiate(param_tys, ret_ty, generics);
+        let declared: Vec<TypeVarId> = (0..generics.map_or(0, |(_, count)| count))
+            .map(TypeVarId)
+            .collect();
         let mut checked: Vec<Option<Expr>> = args.iter().map(|_| None).collect();
+        // Whether unification already reported a diagnostic at an argument,
+        // which the assignability check below then does not repeat.
+        let mut reported = vec![false; args.len()];
         // Section 2.10 defers a closure-literal argument to step 4, after
         // every other argument has bound what it can, because a closure
         // with no annotation needs its parameter type known first. An
@@ -3386,50 +3772,84 @@ impl Checker<'_> {
             ast::ExprKind::Map(entries) => entries.is_empty(),
             _ => false,
         };
-        for (i, (&param, arg)) in param_tys.iter().zip(args.iter()).enumerate() {
-            if is_deferred(arg) {
-                continue;
+        // Three passes: the arguments that bind what they can (steps 1 and
+        // 2), then the deferred ones (step 4), then any empty literal the
+        // deferred pass set aside because its variable was still unbound:
+        // a closure after it may have bound that variable since, and then
+        // the literal is checked like any other argument.
+        for pass in [Pass::Bind, Pass::Deferred, Pass::SetAside] {
+            let deferred = pass != Pass::Bind;
+            if pass == Pass::Deferred {
+                // Step 3: the expected type binds what the arguments left.
+                if let (Some(s), Some(ret), Some(exp)) = (sub.as_mut(), ret_ty, expected) {
+                    if !s.unbound(&declared).is_empty() {
+                        let _ = unify(ret, exp, self.types, s);
+                    }
+                }
             }
-            let arg_expected = self.substitute(param, &sub);
-            let expected_for_check = if self.contains_unbound_param(arg_expected) {
-                None
-            } else {
-                Some(arg_expected)
-            };
-            let c = self.check_expr(arg, expected_for_check, facts);
-            let c = apply_coercion(c, expected_for_check, self.types);
-            if let Err(e) = unify(param, c.ty, self.types, &mut sub) {
-                self.report_unify_error(e, arg.span, function_name);
-            }
-            if let Some(slot) = checked.get_mut(i) {
-                *slot = Some(c);
-            }
-        }
-        if type_param_count > 0 {
-            if let (Some(ret), Some(exp)) = (ret_ty, expected) {
-                let declared: Vec<TypeVarId> = (0..type_param_count).map(TypeVarId).collect();
-                if !sub.unbound(&declared).is_empty() {
-                    let _ = unify(ret, exp, self.types, &mut sub);
+            for (i, (&param, arg)) in param_tys.iter().zip(args.iter()).enumerate() {
+                if is_deferred(arg) != deferred {
+                    continue;
+                }
+                if pass == Pass::SetAside && checked.get(i).is_some_and(Option::is_some) {
+                    continue;
+                }
+                let arg_expected = self.resolved(param, sub.as_ref());
+                if deferred && self.only_binds_by_shape(arg, arg_expected) {
+                    // Section 2.10: a variable that only an empty list or
+                    // map literal could have bound is HS0308 at step 5, not
+                    // the literal's own HS0304. It is set aside, and checked
+                    // in the last pass if something else bound it.
+                    continue;
+                }
+                let c = if deferred {
+                    self.check_expr(arg, Some(arg_expected), facts)
+                } else {
+                    let expected_for_check =
+                        (!self.contains_unbound_param(arg_expected)).then_some(arg_expected);
+                    let c = self.check_expr(arg, expected_for_check, facts);
+                    apply_coercion(c, expected_for_check, self.types)
+                };
+                if let Some(s) = sub.as_mut() {
+                    let failed = match unify(param, c.ty, self.types, s) {
+                        Ok(()) => self.types.is_error(c.ty),
+                        Err(e) => {
+                            self.report_unify_error(e, arg.span, function_name, s);
+                            if let Some(r) = reported.get_mut(i) {
+                                *r = true;
+                            }
+                            true
+                        }
+                    };
+                    if failed {
+                        self.bind_to_error(param, s, &declared);
+                    }
+                }
+                if let Some(slot) = checked.get_mut(i) {
+                    *slot = Some(c);
                 }
             }
         }
-        for (i, (&param, arg)) in param_tys.iter().zip(args.iter()).enumerate() {
-            if !is_deferred(arg) {
+        // Unification only binds variables. Every argument is then held to
+        // its fully substituted parameter type (section 2.7, invariant below
+        // the top level), the one authority for a plain call and a generic
+        // one alike: a function whose parameter is narrower than the
+        // declared one, or `[Int]` for `[Int?]`, is HS0301. An argument
+        // whose type contains an error already has its diagnostic.
+        for (i, ((&param, arg), c)) in param_tys.iter().zip(args).zip(&mut checked).enumerate() {
+            let Some(c) = c else { continue };
+            if reported.get(i).copied().unwrap_or(false) || self.types.contains_error(c.ty) {
                 continue;
             }
-            let resolved_param = self.substitute(param, &sub);
-            let c = self.check_expr(arg, Some(resolved_param), facts);
-            if let Err(e) = unify(param, c.ty, self.types, &mut sub) {
-                self.report_unify_error(e, arg.span, function_name);
-            }
-            if let Some(slot) = checked.get_mut(i) {
-                *slot = Some(c);
+            let required = self.resolved(param, sub.as_ref());
+            let found = c.ty;
+            if !self.accept_as(c, required) {
+                self.report_mismatch(required, found, arg.span, sub.as_ref());
             }
         }
-        if type_param_count > 0 {
-            let declared: Vec<TypeVarId> = (0..type_param_count).map(TypeVarId).collect();
-            for var in sub.unbound(&declared) {
-                let name = format!("T{}", var.0);
+        if let Some(s) = &sub {
+            for var in s.unbound(&declared) {
+                let name = self.type_var_name(s, *var);
                 self.error_at(
                     Code::HS0308,
                     &[("name", &name), ("function", &function_name)],
@@ -3442,8 +3862,8 @@ impl Checker<'_> {
             final_args.push(c.unwrap_or_else(|| error_expr(arg.id, self.types)));
         }
         let result_ty = match ret_ty {
-            Some(r) => self.substitute(r, &sub),
-            None => self.types.error(),
+            Some(r) => self.resolved(r, sub.as_ref()),
+            None => self.types.no_value(),
         };
         (final_args, result_ty)
     }
@@ -4343,11 +4763,18 @@ impl Checker<'_> {
         }
     }
 
+    /// `infer_return` is section 5.3's rule for a callback whose expected
+    /// return type is an unbound type variable (as `U` in `map`): the
+    /// closure's return type is inferred from its body, as it is when there
+    /// is no expected function type at all (rule 4). Otherwise an expected
+    /// function type with no return type means the closure returns nothing
+    /// (rule 3).
     fn check_closure(
         &mut self,
         expr: &ast::Expr,
         closure: &ast::Closure,
         expected: Expected,
+        infer_return: bool,
     ) -> Expr {
         let expected_fn = expected.and_then(|e| match self.types.view(e) {
             TypeView::Function { params, ret, .. } => Some((params.to_vec(), ret)),
@@ -4358,7 +4785,13 @@ impl Checker<'_> {
             let ty = match &param.ty {
                 Some(t) => self.resolve_type(t),
                 None => {
-                    if let Some(&t) = expected_fn.as_ref().and_then(|(p, _)| p.get(i)) {
+                    // A parameter type that still contains a call's unbound
+                    // variable is no type to take (section 2.10 step 4).
+                    if let Some(&t) = expected_fn
+                        .as_ref()
+                        .and_then(|(p, _)| p.get(i))
+                        .filter(|&&t| !self.contains_unbound_param(t))
+                    {
                         t
                     } else {
                         let text = self.text(param.name.name);
@@ -4370,13 +4803,25 @@ impl Checker<'_> {
             param_tys.push(ty);
         }
         let declared_ret = closure.ret.as_ref().map(|t| self.resolve_type(t));
-        let return_ty = declared_ret.or_else(|| expected_fn.as_ref().and_then(|(_, r)| *r));
+        // An expected return type that still contains a call's unbound
+        // variable is not fixed: the body's own return type is inferred and
+        // then unified with it, which binds the variable (section 2.10
+        // step 4).
+        let expected_ret = expected_fn
+            .as_ref()
+            .and_then(|(_, r)| *r)
+            .filter(|&r| !self.contains_unbound_param(r));
+        let return_ty = declared_ret.or(expected_ret);
         let node = expr.id;
         let closure_name = self.names.intern("<closure>");
         let param_names: Vec<Symbol> = closure.params.iter().map(|p| p.name.name).collect();
         let param_spans: Vec<Span> = closure.params.iter().map(|p| p.name.span).collect();
-        let infer_return =
-            declared_ret.is_none() && expected_fn.as_ref().and_then(|(_, r)| *r).is_none();
+        // Section 5.3: the return type is inferred from the body when there
+        // is no declared or fixed expected return type, unless the expected
+        // function type says the closure returns nothing (rule 3), which only
+        // a callback asking for inference (`infer_return`) overrides.
+        let expected_returns_nothing = matches!(expected_fn, Some((_, None)));
+        let infer_return = return_ty.is_none() && (infer_return || !expected_returns_nothing);
         let (id, fn_ty) = self.check_function_body_inner(
             node,
             closure_name,
@@ -4427,6 +4872,9 @@ impl Checker<'_> {
             return self.check_expr(inner, None, facts);
         };
         let mut checked = self.check_call(base, callee, args, None, facts, true);
+        if tries > 0 {
+            self.reject_no_value(&mut checked, base.id, base.span);
+        }
         for _ in 0..tries {
             checked = self.apply_try(checked, base.span);
         }
@@ -4458,7 +4906,14 @@ impl Checker<'_> {
                 {
                     let member = self.text(name.name);
                     return self.check_data_namespace_call(
-                        expr, &namespace, &member, name.span, args, expected, facts,
+                        expr,
+                        &namespace,
+                        &member,
+                        name.span,
+                        args,
+                        expected,
+                        facts,
+                        marked_effect,
                     );
                 }
                 if let Resolved::EnumNamespace(decl) = self.resolve_value(ident.name, Purpose::Read)
@@ -4509,7 +4964,14 @@ impl Checker<'_> {
                 }
                 Resolved::Prelude(_) => {
                     let name = self.text(ident.name);
-                    return self.check_prelude_call(expr, &name, args, expected, facts);
+                    return self.check_prelude_call(
+                        expr,
+                        &name,
+                        args,
+                        expected,
+                        facts,
+                        marked_effect,
+                    );
                 }
                 _ => {}
             }
@@ -4535,7 +4997,11 @@ impl Checker<'_> {
         args: &[ast::Expr],
         expected: Expected,
         facts: &FactSet,
+        marked_effect: bool,
     ) -> Expr {
+        if marked_effect {
+            self.error_at(Code::HS0402, &[("found", &"fn(...)")], expr.span);
+        }
         let int_ty = self.types.int();
         let float_ty = self.types.float();
         let string_ty = self.types.string();
@@ -4548,8 +5014,9 @@ impl Checker<'_> {
                 else {
                     return self.error_expr_at(expr.id);
                 };
-                let (checked_args, ty) = self
-                    .check_call_args(&$params, $ret, 0, $native, args, expected, facts, expr.span);
+                let (checked_args, ty) = self.check_call_args(
+                    &$params, $ret, None, $native, args, expected, facts, expr.span,
+                );
                 return Expr {
                     node: expr.id,
                     ty,
@@ -4747,7 +5214,11 @@ impl Checker<'_> {
         args: &[ast::Expr],
         expected: Expected,
         facts: &FactSet,
+        marked_effect: bool,
     ) -> Expr {
+        if marked_effect {
+            self.error_at(Code::HS0402, &[("found", &"fn(...)")], expr.span);
+        }
         let int_ty = self.types.int();
         let string_ty = self.types.string();
         let json_decl = self.types.json_decl(self.names);
@@ -4762,8 +5233,9 @@ impl Checker<'_> {
                 else {
                     return self.error_expr_at(expr.id);
                 };
-                let (checked_args, ty) = self
-                    .check_call_args(&$params, $ret, 0, &native, args, expected, facts, expr.span);
+                let (checked_args, ty) = self.check_call_args(
+                    &$params, $ret, None, &native, args, expected, facts, expr.span,
+                );
                 return Expr {
                     node: expr.id,
                     ty,
@@ -4931,10 +5403,10 @@ impl Checker<'_> {
             return self.error_expr_at(expr.id);
         };
         let function_name = self.text(sig.name);
-        let (checked_args, result_ty) = self.check_call_args(
+        let (checked_args, ty) = self.check_call_args(
             &sig.params,
             sig.ret,
-            sig.type_param_count,
+            (sig.type_param_count > 0).then_some((sig.type_param_decl, sig.type_param_count)),
             &function_name,
             args,
             expected,
@@ -4946,11 +5418,6 @@ impl Checker<'_> {
             node: callee.id,
             ty: callee_ty,
             kind: ExprKind::FunctionValue(id),
-        };
-        let ty = if sig.ret.is_some() {
-            result_ty
-        } else {
-            self.types.error()
         };
         Expr {
             node: expr.id,
@@ -4995,13 +5462,8 @@ impl Checker<'_> {
         if let Some(err) = effects::check_effect_marker(effect, marked_effect) {
             self.report_effect_marker_error(err, expr.span, checked_callee.ty);
         }
-        let (checked_args, result_ty) =
-            self.check_call_args(&params, ret, 0, "", args, expected, facts, expr.span);
-        let ty = if ret.is_some() {
-            result_ty
-        } else {
-            self.types.error()
-        };
+        let (checked_args, ty) =
+            self.check_call_args(&params, ret, None, "", args, expected, facts, expr.span);
         let kind = if marked_effect {
             ExprKind::EffectCall {
                 callee: Box::new(checked_callee),
@@ -5076,13 +5538,8 @@ impl Checker<'_> {
                             },
                         },
                     };
-                    let (checked_args, result_ty) =
-                        self.check_call_args(&params, ret, 0, "", args, expected, facts, expr.span);
-                    let ty = if ret.is_some() {
-                        result_ty
-                    } else {
-                        self.types.error()
-                    };
+                    let (checked_args, ty) = self
+                        .check_call_args(&params, ret, None, "", args, expected, facts, expr.span);
                     let kind = if marked_effect {
                         ExprKind::EffectCall {
                             callee: Box::new(field_expr),
@@ -5183,11 +5640,10 @@ impl Checker<'_> {
             return self.error_expr_at(expr.id);
         }
         let payload = variant.payload.clone();
-        // The enum's own type parameters, in terms of the same `TypeVarId`
-        // indices its payload types already use (section 2.10, the same
-        // instantiation-free scheme `resolve_function_signatures` gives a
-        // generic `fn`): a generic return type `check_call_args` can
-        // unify and substitute exactly as it does a function's.
+        // The enum's own type parameters, as its payload types already
+        // mention them: a generic return type that `check_call_args`
+        // instantiates with fresh variables, unifies and substitutes exactly
+        // as it does a generic function's (section 2.10).
         let type_param_count = u32::try_from(params.len()).unwrap_or(0);
         let generic_args: Vec<TypeId> = (0..type_param_count)
             .map(|i| self.types.param(decl, i))
@@ -5196,7 +5652,7 @@ impl Checker<'_> {
         let (checked_args, ty) = self.check_call_args(
             &payload,
             Some(ret_ty),
-            type_param_count,
+            (type_param_count > 0).then_some((decl, type_param_count)),
             &variant_name_text,
             args,
             expected,
@@ -5330,7 +5786,7 @@ impl Checker<'_> {
             let (_, ty) = self.check_call_args(
                 &[],
                 Some(ret_ty),
-                type_param_count,
+                (type_param_count > 0).then_some((decl, type_param_count)),
                 &variant_name_text,
                 &[],
                 expected,
@@ -5547,8 +6003,9 @@ impl Checker<'_> {
                     return self.method_not_found(expr, &receiver, name);
                 };
                 let native_index = u32::try_from(native_position).unwrap_or(0);
-                let (mut checked_args, ret_ty) = self
-                    .check_call_args(&$params, $ret, 0, $native, args, expected, facts, expr.span);
+                let (mut checked_args, ret_ty) = self.check_call_args(
+                    &$params, $ret, None, $native, args, expected, facts, expr.span,
+                );
                 checked_args.insert(0, receiver);
                 let ty = ret_ty;
                 return Expr {
@@ -5944,10 +6401,56 @@ impl Checker<'_> {
         self.error_expr_at(expr.id)
     }
 
+    /// The type a callback returns, for a method whose result type is built
+    /// from it (`map`, `flatMap`, `mapValues`, ...). A callback that returns
+    /// nothing gives the method no type to build from: HS0301.
+    fn callback_result_type(&mut self, callback_ty: TypeId, span: Span) -> TypeId {
+        match self.types.view(callback_ty) {
+            TypeView::Function { ret: Some(r), .. } => r,
+            TypeView::Function { ret: None, .. } => {
+                self.report_no_value_callback(callback_ty, span);
+                self.types.error()
+            }
+            _ => self.types.error(),
+        }
+    }
+
+    /// HS0301 for a callback of type `callback_ty` that returns nothing where
+    /// the library needs a value from it.
+    fn report_no_value_callback(&mut self, callback_ty: TypeId, span: Span) {
+        let found = self.type_text(callback_ty);
+        self.error_at(
+            Code::HS0301,
+            &[
+                ("expected", &"a function that returns a value"),
+                ("found", &found),
+            ],
+            span,
+        );
+    }
+
+    /// The callback argument of a method whose result type is built from what
+    /// the callback returns (`map`, `flatMap`, `mapValues`, `Result.map`,
+    /// ...). Its parameters are fixed to `params`; its return type is the
+    /// unbound `U` of section 5.3, so a closure literal, even a parenthesised
+    /// one, has its return type inferred from its body.
+    fn check_callback(&mut self, arg: &ast::Expr, params: &[TypeId], facts: &FactSet) -> Expr {
+        let expected = self.types.function(false, params.to_vec(), None);
+        let checked = match &arg.kind {
+            ast::ExprKind::Closure(closure) => {
+                self.check_closure(arg, closure, Some(expected), true)
+            }
+            ast::ExprKind::Paren(inner) => self.check_callback(inner, params, facts),
+            _ => return self.check_expr(arg, Some(expected), facts),
+        };
+        self.expression_types.insert(arg.id, checked.ty);
+        checked
+    }
+
     /// A method whose result type is decided by what its one callback
-    /// returns: the closure is checked with its parameters fixed and no
-    /// expected return type, and `build` turns the return type it turned out
-    /// to have into the method's own result type.
+    /// returns: the callback is checked with its parameters fixed and its
+    /// return type inferred ([`Self::check_callback`]), and `build` turns the
+    /// return type it turned out to have into the method's own result type.
     #[allow(clippy::too_many_arguments, reason = "one call site per method")]
     fn check_callback_result(
         &mut self,
@@ -5970,12 +6473,8 @@ impl Checker<'_> {
                 expr.span,
             );
         }
-        let param_ty = self.types.function(false, params.to_vec(), None);
-        let checked_closure = self.check_expr(argument, Some(param_ty), facts);
-        let ret = match self.types.view(checked_closure.ty) {
-            TypeView::Function { ret: Some(r), .. } => r,
-            _ => self.types.error(),
-        };
+        let checked_closure = self.check_callback(argument, params, facts);
+        let ret = self.callback_result_type(checked_closure.ty, argument.span);
         let ty = build(self, ret);
         let Some(native) = hollowscript_core::native::ROSTER
             .iter()
@@ -6027,16 +6526,23 @@ impl Checker<'_> {
             .types
             .function(false, vec![accumulator, elem], Some(accumulator));
         let checked_closure = self.check_expr(combine, Some(param_ty), facts);
-        if let TypeView::Function { ret: Some(ret), .. } = self.types.view(checked_closure.ty) {
-            if ret != accumulator && !self.types.is_error(ret) {
-                let found = self.type_text(ret);
-                let wanted = self.type_text(accumulator);
-                self.error_at(
-                    Code::HS0301,
-                    &[("expected", &wanted), ("found", &found)],
-                    combine.span,
-                );
+        match self.types.view(checked_closure.ty) {
+            TypeView::Function { ret: Some(ret), .. } => {
+                if ret != accumulator && !self.types.is_error(ret) {
+                    let found = self.type_text(ret);
+                    let wanted = self.type_text(accumulator);
+                    self.error_at(
+                        Code::HS0301,
+                        &[("expected", &wanted), ("found", &found)],
+                        combine.span,
+                    );
+                }
             }
+            TypeView::Function { ret: None, .. } => {
+                // A function that returns nothing cannot combine values.
+                self.report_no_value_callback(checked_closure.ty, combine.span);
+            }
+            _ => {}
         }
         let Some(native) = hollowscript_core::native::ROSTER
             .iter()
@@ -6058,7 +6564,8 @@ impl Checker<'_> {
     /// whose result type depends on what the callback itself returns, so it
     /// cannot be expressed as a fixed native signature the way the others
     /// are; the callback is checked with its parameter fixed to the element
-    /// type and no expected return, and the checked closure's own return
+    /// type and its return type inferred ([`Self::check_callback`]), and the
+    /// checked closure's own return
     /// type is read back to build the result (`[U]` for `map`, `U` folded
     /// flat one level for `flatMap`, where `U` must itself be a list).
     #[allow(clippy::too_many_arguments, reason = "one call site")]
@@ -6083,12 +6590,8 @@ impl Checker<'_> {
                 expr.span,
             );
         }
-        let param_ty = self.types.function(false, vec![elem], None);
-        let checked_closure = self.check_expr(arg, Some(param_ty), facts);
-        let ret = match self.types.view(checked_closure.ty) {
-            TypeView::Function { ret: Some(r), .. } => r,
-            _ => self.types.error(),
-        };
+        let checked_closure = self.check_callback(arg, &[elem], facts);
+        let ret = self.callback_result_type(checked_closure.ty, arg.span);
         let result_elem = if flatten {
             match self.types.view(ret) {
                 TypeView::List(inner) => inner,
@@ -6134,6 +6637,8 @@ pub struct CheckedModule {
     pub diagnostics: Vec<Diagnostic>,
     /// The filter literals in it, in source order, each once.
     pub filter_literals: Vec<crate::FilterLiteral>,
+    /// Types of all checked expressions, including discarded error receivers.
+    pub expression_types: BTreeMap<ast::NodeId, TypeId>,
 }
 
 /// Checks one already-parsed file as one module of the program (chapters 2,
@@ -6274,6 +6779,7 @@ pub fn check_module(
         module: module_hir,
         diagnostics: checker.diagnostics.into_vec(),
         filter_literals,
+        expression_types: checker.expression_types,
     }
 }
 
@@ -6505,6 +7011,8 @@ impl Checker<'_> {
             next_decl_index += 1;
             self.type_scope.push();
             for (i, tp) in decl.type_params.iter().enumerate() {
+                self.types
+                    .name_param(fn_decl, u32::try_from(i).unwrap_or(0), tp.name);
                 self.type_scope.declare(resolve::ScopeEntry {
                     name: tp.name,
                     binding: TypeBinding::Param {
@@ -7039,7 +7547,10 @@ mod unify_tests {
 
     #[test]
     fn unbound_reports_only_variables_never_bound() {
-        let mut s = Substitution::new();
+        let mut s = Substitution::for_decl(DeclId {
+            module: 0,
+            index: 0,
+        });
         let a = TypeVarId(0);
         let b = TypeVarId(1);
         s.bind(a, TypeInterner::new().int());
@@ -7056,7 +7567,7 @@ mod unify_tests {
             index: 0,
         };
         let var = types.param(decl, 0);
-        let mut sub = Substitution::new();
+        let mut sub = Substitution::for_decl(decl);
         assert_eq!(unify(var, types.int(), &types, &mut sub), Ok(()));
         assert_eq!(sub.get(TypeVarId(0)), Some(types.int()));
     }
@@ -7069,7 +7580,7 @@ mod unify_tests {
             index: 0,
         };
         let var = types.param(decl, 0);
-        let mut sub = Substitution::new();
+        let mut sub = Substitution::for_decl(decl);
         unify(var, types.int(), &types, &mut sub).unwrap();
         let err = unify(var, types.string(), &types, &mut sub).unwrap_err();
         assert!(matches!(err, UnifyError::Rebound { .. }));
@@ -7084,11 +7595,11 @@ mod unify_tests {
         };
         let var = types.param(decl, 0);
         let opt_var = types.optional(var);
-        let mut sub = Substitution::new();
+        let mut sub = Substitution::for_decl(decl);
         assert_eq!(unify(opt_var, types.int(), &types, &mut sub), Ok(()));
         assert_eq!(sub.get(TypeVarId(0)), Some(types.int()));
 
-        let mut sub = Substitution::new();
+        let mut sub = Substitution::for_decl(decl);
         let opt_int = types.optional(types.int());
         assert_eq!(unify(opt_var, opt_int, &types, &mut sub), Ok(()));
         assert_eq!(sub.get(TypeVarId(0)), Some(types.int()));
@@ -7127,7 +7638,7 @@ mod unify_tests {
         let expanded_param = types.expand_record(&names, pair_of_var).unwrap();
         let pair_of_int = types.named(decl, vec![types.int()]);
         let expanded_int = types.expand_record(&names, pair_of_int).unwrap();
-        let mut sub = Substitution::new();
+        let mut sub = Substitution::for_decl(decl);
         assert_eq!(
             unify(expanded_param, expanded_int, &types, &mut sub),
             Ok(())
@@ -7144,7 +7655,7 @@ mod unify_tests {
         };
         let var = types.param(decl, 0);
         let list_of_var = types.list(var);
-        let mut sub = Substitution::new();
+        let mut sub = Substitution::for_decl(decl);
         let err = unify(var, list_of_var, &types, &mut sub).unwrap_err();
         assert!(matches!(err, UnifyError::Occurs { .. }));
     }
@@ -7159,5 +7670,125 @@ mod unify_tests {
         let opt_int = types.optional(types.int());
         assert!(is_assignable(types.int(), opt_int, &types));
         assert!(!is_assignable(types.string(), types.int(), &types));
+    }
+
+    #[test]
+    fn only_the_substitution_decl_params_are_variables() {
+        let mut types = TypeInterner::new();
+        let callee = DeclId {
+            module: 0,
+            index: 0,
+        };
+        let other = DeclId {
+            module: 0,
+            index: 1,
+        };
+        let var = types.param(callee, 0);
+        let opaque = types.param(other, 0);
+        let mut sub = Substitution::for_decl(callee);
+        assert_eq!(unify(var, opaque, &types, &mut sub), Ok(()));
+        assert_eq!(sub.get(TypeVarId(0)), Some(opaque));
+        // The enclosing function's own parameter is not a variable.
+        let mut sub = Substitution::for_decl(callee);
+        let err = unify(opaque, types.int(), &types, &mut sub).unwrap_err();
+        assert!(matches!(err, UnifyError::NotAssignable { .. }));
+        // And it does not trip the occurs check against the callee's variable.
+        let list_of_opaque = types.list(opaque);
+        let mut sub = Substitution::for_decl(callee);
+        assert_eq!(unify(var, list_of_opaque, &types, &mut sub), Ok(()));
+    }
+
+    #[test]
+    fn declared_names_print_in_type_text() {
+        let mut types = TypeInterner::new();
+        let mut names = Interner::new();
+        let decl = DeclId {
+            module: 0,
+            index: 0,
+        };
+        let t = names.intern("T");
+        types.name_param(decl, 0, t);
+        let p = types.param(decl, 0);
+        let list = types.list(p);
+        assert_eq!(types.display(list, |s| names.resolve(s).to_owned()), "[T]");
+    }
+
+    #[test]
+    fn identical_types_unify_without_binding() {
+        let mut types = TypeInterner::new();
+        let decl = DeclId {
+            module: 0,
+            index: 0,
+        };
+        let var = types.param(decl, 0);
+        let list_of_var = types.list(var);
+        let mut sub = Substitution::for_decl(decl);
+        assert_eq!(unify(var, var, &types, &mut sub), Ok(()));
+        assert_eq!(unify(list_of_var, list_of_var, &types, &mut sub), Ok(()));
+        assert_eq!(sub.get(TypeVarId(0)), None);
+    }
+
+    #[test]
+    fn an_argument_in_error_binds_the_variable_it_meets() {
+        let mut types = TypeInterner::new();
+        let decl = DeclId {
+            module: 0,
+            index: 0,
+        };
+        let var = types.param(decl, 0);
+        let error = types.error();
+        let mut sub = Substitution::for_decl(decl);
+        assert_eq!(unify(var, error, &types, &mut sub), Ok(()));
+        assert_eq!(sub.get(TypeVarId(0)), Some(error));
+    }
+
+    #[test]
+    fn linked_variables_resolve_through_each_other() {
+        let mut types = TypeInterner::new();
+        let names = Interner::new();
+        let decl = DeclId {
+            module: 0,
+            index: 0,
+        };
+        let a = types.param(decl, 0);
+        let b = types.param(decl, 1);
+        let list_of_a = types.list(a);
+        let mut sub = Substitution::for_decl(decl);
+        // Two unbound variables unify by linking.
+        assert_eq!(unify(a, b, &types, &mut sub), Ok(()));
+        // Meeting the link from the other side is not an occurs failure:
+        // `a` resolves to `b` itself.
+        assert_eq!(unify(b, a, &types, &mut sub), Ok(()));
+        assert_eq!(sub.get(TypeVarId(1)), None);
+        // The occurs check sees through the link.
+        let err = unify(b, list_of_a, &types, &mut sub).unwrap_err();
+        assert!(matches!(err, UnifyError::Occurs { .. }));
+        assert_eq!(unify(b, types.int(), &types, &mut sub), Ok(()));
+        // A binding that mentions another variable is substituted on.
+        let expected = types.list(types.int());
+        assert_eq!(sub.apply(list_of_a, &mut types, &names), expected);
+        // And unifies on: `a` is now an `Int` through `b`.
+        let err = unify(a, types.string(), &types, &mut sub).unwrap_err();
+        assert!(matches!(err, UnifyError::Rebound { .. }));
+        assert_eq!(unify(a, types.int(), &types, &mut sub), Ok(()));
+    }
+
+    #[test]
+    fn a_failed_attempt_through_a_binding_leaves_no_bindings_behind() {
+        let mut types = TypeInterner::new();
+        let decl = DeclId {
+            module: 0,
+            index: 0,
+        };
+        let a = types.param(decl, 0);
+        let b = types.param(decl, 1);
+        let map_of_b_to_int = types.map(b, types.int());
+        let map_of_strings = types.map(types.string(), types.string());
+        let mut sub = Substitution::for_decl(decl);
+        assert_eq!(unify(a, map_of_b_to_int, &types, &mut sub), Ok(()));
+        // `b` would bind to `String` before `Int` meets `String`.
+        let err = unify(a, map_of_strings, &types, &mut sub).unwrap_err();
+        assert!(matches!(err, UnifyError::Rebound { .. }));
+        assert_eq!(sub.get(TypeVarId(1)), None);
     }
 }

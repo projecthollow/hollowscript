@@ -1,0 +1,6 @@
+uses print
+
+effect print("n ${[
+    1,
+    2
+].length()}")

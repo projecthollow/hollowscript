@@ -1,0 +1,21 @@
+{
+  "title": "A generic fn can use list methods whose arguments or callbacks mention the element type parameter",
+  "spec": "2.10",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [
+      "3",
+      "a,b,c",
+      "true",
+      "2",
+      "a,bb,ccc"
+    ],
+    "result": null
+  }
+}

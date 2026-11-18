@@ -1,0 +1,26 @@
+variable xs = range(0, 1000)
+constant doubled = xs.map(fn(n: Int): Int {
+    xs = []
+    return n * 2
+})
+
+variable m: Map<Int, Int> = [:]
+for k in range(0, 100) {
+    m = m.with(k, k)
+}
+variable seen = 0
+m.each(fn(k: Int, v: Int) {
+    m = [:]
+    seen = seen + v
+})
+
+variable s = set(range(0, 100))
+constant evens = s.filter(fn(x: Int): Bool {
+    s = set([0])
+    return remainder(x, 2) == 0
+})
+
+constant total = doubled.reduce(0, fn(a: Int, x: Int): Int {
+    return a + x
+})
+return [total, seen, evens.length(), xs.length(), m.length(), s.length()]

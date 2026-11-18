@@ -3,13 +3,24 @@
     "module": "node16",
     "moduleResolution": "node16",
     "target": "es2022",
-    "lib": ["es2022"],
-    "types": ["node", "vscode"],
+    "lib": [
+      "es2022"
+    ],
+    "types": [
+      "node",
+      "vscode"
+    ],
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.js", "scripts/**/*.mjs", "test/**/*.js", "test/**/*.mjs"]
+  "include": [
+    "src/**/*.js",
+    "scripts/**/*.mjs",
+    "test/**/*.js",
+    "test/**/*.mjs",
+    "src/**/*.d.ts"
+  ]
 }

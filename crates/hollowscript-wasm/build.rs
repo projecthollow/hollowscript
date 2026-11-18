@@ -11,7 +11,7 @@
 //! # Memory
 //!
 //! The module imports its linear memory (`env.memory`) instead of defining its
-//! own, and declares a maximum of 256 MiB (4,096 pages) for it. A WebAssembly
+//! own, and declares a maximum of 512 MiB (8,192 pages) for it. A WebAssembly
 //! memory cannot grow past the maximum its module declares, and a host cannot
 //! supply a memory with a larger one, so a program that allocates for real
 //! (not only in the language's own accounting, which is not a bound on the
@@ -54,7 +54,17 @@ use std::process::ExitCode;
 /// The module's default ceiling, in MiB. `web/README.md` and
 /// `docs/design/security.md` state the same figure, and
 /// `web/node-e2e/memory-check.mjs` checks the built module against it.
-const DEFAULT_MAX_MEMORY_MIB: u64 = 256;
+///
+/// 512 because the language's own default memory limit (64 MiB) must be
+/// reached before the machine's memory is, and a `Value` is 32 bytes against
+/// the 8 the limit counts for a list element. A list of scalars at the limit is
+/// 245 MiB, and `map` over one (the source and the answer together stay under
+/// the limit) about as much; the `tooling` build keeps 16 MiB of the memory for
+/// its stack. 256 MiB left the second no room, and a program the limit would
+/// have stopped trapped the instance (PRO-1697). A host lowers the ceiling at
+/// run time with `maxMemoryBytes`; a build that wants another figure sets the
+/// variable below.
+const DEFAULT_MAX_MEMORY_MIB: u64 = 512;
 
 /// The environment variable that changes it for one build.
 const OVERRIDE: &str = "HOLLOWSCRIPT_WASM_MAX_MEMORY_MIB";

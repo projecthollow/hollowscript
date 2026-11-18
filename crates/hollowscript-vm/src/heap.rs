@@ -97,6 +97,10 @@ const MIN_COLLECT_THRESHOLD_BYTES: u64 = 4 * 1024 * 1024;
 /// fraction of total allocation rather than a fixed per-byte cost.
 const COLLECT_GROWTH_FACTOR: u64 = 2;
 
+/// How many elements of one object the collector's mark reads before it
+/// returns to the work list (see `Heap::try_collect`).
+const MARK_CHUNK: usize = 4096;
+
 /// The heap of one instance: one arena holding every heap-allocated value.
 #[derive(Debug)]
 pub struct Heap {
@@ -321,16 +325,25 @@ impl Heap {
 
     /// Adds one value to a list whose only language-visible reference is the
     /// caller's receiver register. Capacity growth is amortized by `Vec`.
-    pub(crate) fn append_list_in_place(&mut self, handle: Handle, value: Value) -> bool {
+    ///
+    /// # Errors
+    ///
+    /// [`crate::alloc::OutOfMemory`] if the list's buffer has to grow and the
+    /// host cannot give the memory; the list is unchanged.
+    pub(crate) fn append_list_in_place(
+        &mut self,
+        handle: Handle,
+        value: Value,
+    ) -> Result<bool, crate::alloc::OutOfMemory> {
         self.mark_list_shared(value);
         let Some(Object::List(list)) = self.objects.get_mut(handle) else {
-            return false;
+            return Ok(false);
         };
         let before = list.capacity();
-        list.push(value);
+        crate::alloc::push(list, value)?;
         let grown = list.capacity().saturating_sub(before);
         self.note_growth(grown, size_of::<Value>());
-        true
+        Ok(true)
     }
 
     /// Takes the entries of the map at `handle` out of it, leaving it empty
@@ -381,25 +394,50 @@ impl Heap {
     }
 
     fn object_node_cost(object: &Object) -> u64 {
-        let per =
-            |n: usize, each: u64, base: u64| base.saturating_add((n as u64).saturating_mul(each));
         match object {
-            Object::Str(s) | Object::Filter(s) => per(s.len(), 1, 16),
-            Object::List(items) => per(items.len(), 8, 16),
-            Object::Map(entries) => per(entries.len(), 24, 32),
-            Object::Set(items) => per(items.len(), 16, 32),
-            Object::Record { fields, .. } => per(fields.len(), 8, 16),
+            Object::Str(s) | Object::Filter(s) => Self::string_node_cost(s.len()),
+            Object::List(items) => Self::list_node_cost(items.len()),
+            Object::Map(entries) => Self::map_node_cost(entries.len()),
+            Object::Set(items) => Self::set_node_cost(items.len()),
+            Object::Record { fields, .. } => Self::list_node_cost(fields.len()),
             Object::Enum { payload, .. } => {
                 if payload.is_empty() {
                     0
                 } else {
-                    per(payload.len(), 8, 16)
+                    Self::list_node_cost(payload.len())
                 }
             }
-            Object::Closure { captures, .. } => per(captures.len(), 8, 32),
+            Object::Closure { captures, .. } => per_element(captures.len(), 8, 32),
             // A built-in function value holds only which one it is.
             Object::Builtin(_) | Object::Cell(_) => 0,
         }
+    }
+
+    /// The node cost of a string of `bytes` bytes, for a library function
+    /// that charges a result before building it (section 11.4).
+    pub(crate) fn string_node_cost(bytes: usize) -> u64 {
+        per_element(bytes, 1, 16)
+    }
+
+    /// The node cost of a list (or a record) of `n` elements.
+    pub(crate) fn list_node_cost(n: usize) -> u64 {
+        per_element(n, 8, 16)
+    }
+
+    /// The node cost of a map of `n` entries.
+    pub(crate) fn map_node_cost(n: usize) -> u64 {
+        per_element(n, 24, 32)
+    }
+
+    /// The node cost of a set of `n` elements.
+    pub(crate) fn set_node_cost(n: usize) -> u64 {
+        per_element(n, 16, 32)
+    }
+
+    /// Whether `paid` is exactly the node cost of `object`, for a caller
+    /// that charged it before building `object`.
+    pub(crate) fn paid_for(paid: u64, object: &Object) -> bool {
+        paid == Self::object_node_cost(object)
     }
 
     /// An estimate, in bytes, of how much of the host's actual heap one
@@ -424,10 +462,11 @@ impl Heap {
     /// from what "real" means. The two diverge most for a `List`: node cost
     /// charges the specification's 8-bytes-per-element figure (a `Value`'s
     /// own size chosen for the language, not this implementation's), where
-    /// a `Value` here is actually [`size_of::<Value>()`], 24 bytes
+    /// a `Value` here is actually [`size_of::<Value>()`], 32 bytes
     /// on a 64-bit host (`docs/design/security.md`'s "a list of scalars"
-    /// explains the gap: a tagged union wide enough to hold either a full
-    /// 64-bit scalar or a generational [`Handle`]). Only [`Heap::alloc`] and
+    /// explains the gap: a tag beside a payload wide enough to hold either a
+    /// full 64-bit scalar or a [`Handle`], which is 24 bytes by itself: the
+    /// arena's id and the slot's generation are `u64`, the index a `u32`). Only [`Heap::alloc`] and
     /// [`Heap::collect`] call this, to decide *when* [`Heap::due_for_collection`]
     /// answers `true`; nothing a program can observe depends on it, so it
     /// is free to be an estimate rather than an exact figure (no attempt is
@@ -505,39 +544,76 @@ impl Heap {
     /// through one filter) keeps the common case, a list or record of
     /// scalars, from allocating anything at all.
     fn children(object: &Object, out: &mut Vec<Value>) {
+        Self::children_in(object, 0, usize::MAX, false, out);
+    }
+
+    /// The heap children of elements `from .. from + count` of `object`
+    /// (clamped to what it has, counted by [`Heap::child_slots`]), and, with
+    /// `captures`, of a closure's captured cells too, for the collector's
+    /// chunked mark. Each element adds at most two values (a map entry's key
+    /// and value).
+    fn children_in(
+        object: &Object,
+        from: usize,
+        count: usize,
+        captures: bool,
+        out: &mut Vec<Value>,
+    ) {
         let key_value = |k: MapKey| match k {
             MapKey::Str(h) => Some(Value::Heap(h)),
             MapKey::Bool(_) | MapKey::Int(_) => None,
         };
         let is_heap = |v: &Value| matches!(v, Value::Heap(_));
         match object {
-            Object::Str(_) | Object::Filter(_) | Object::Closure { .. } | Object::Builtin(_) => {}
-            Object::List(items) => out.extend(items.iter().copied().filter(is_heap)),
+            Object::Str(_) | Object::Filter(_) | Object::Builtin(_) => {}
+            Object::Closure {
+                captures: cells, ..
+            } => {
+                if captures {
+                    out.extend(part(cells, from, count).iter().copied().map(Value::Heap));
+                }
+            }
+            Object::List(items)
+            | Object::Record { fields: items, .. }
+            | Object::Enum { payload: items, .. } => {
+                out.extend(part(items, from, count).iter().copied().filter(is_heap));
+            }
             Object::Map(entries) => {
-                for e in entries {
+                for e in part(entries, from, count) {
                     out.extend(key_value(e.key));
                     if is_heap(&e.value) {
                         out.push(e.value);
                     }
                 }
             }
-            Object::Set(items) => out.extend(items.iter().copied().filter_map(key_value)),
-            Object::Record { fields, .. } => out.extend(fields.iter().copied().filter(is_heap)),
-            Object::Enum { payload, .. } => out.extend(payload.iter().copied().filter(is_heap)),
+            Object::Set(items) => {
+                out.extend(
+                    part(items, from, count)
+                        .iter()
+                        .copied()
+                        .filter_map(key_value),
+                );
+            }
             Object::Cell(v) => {
-                if is_heap(v) {
+                if from == 0 && count > 0 && is_heap(v) {
                     out.push(*v);
                 }
             }
         }
     }
 
-    /// The handles a [`Object::Cell`] of a closure's captures should also
-    /// reach, kept apart from [`Heap::children`] because a closure's captures
-    /// are handles to cells directly, not through a [`Value`].
-    fn capture_handles(object: &Object, out: &mut Vec<Handle>) {
-        if let Object::Closure { captures, .. } = object {
-            out.extend(captures.iter().copied());
+    /// How many elements [`Heap::children_in`] walks for `object`, with a
+    /// closure's captures counted.
+    fn child_slots(object: &Object) -> usize {
+        match object {
+            Object::List(items)
+            | Object::Record { fields: items, .. }
+            | Object::Enum { payload: items, .. } => items.len(),
+            Object::Map(entries) => entries.len(),
+            Object::Set(items) => items.len(),
+            Object::Closure { captures, .. } => captures.len(),
+            Object::Cell(_) => 1,
+            Object::Str(_) | Object::Filter(_) | Object::Builtin(_) => 0,
         }
     }
 
@@ -613,7 +689,28 @@ impl Heap {
     /// `roots` should be the current values of every top-level binding of
     /// every module, per section 11.4's definition of what a retained-size
     /// walk (and so a collection) must keep.
+    ///
+    /// The mark bitmap and the work list grow with the heap, so they are
+    /// asked for fallibly (`crate::alloc`); the work list is bounded by depth
+    /// times a fixed chunk of children (`MARK_CHUNK`), not by the widest
+    /// object. A collection the host
+    /// has no memory for is skipped: it frees nothing and changes nothing,
+    /// the sweep only ever running after a complete mark, it answers 0 like
+    /// a collection that found nothing to free, and the next one waits for
+    /// another threshold of allocation. The next allocation that does not
+    /// fit is HS1015 at the operation that asked, rather than an abort
+    /// inside the collector.
     pub fn collect(&mut self, roots: &[Value]) -> usize {
+        self.try_collect(roots).unwrap_or_else(|_| {
+            // Wait for another threshold of allocation before trying again,
+            // rather than retrying (and failing) at the very next safepoint,
+            // which would make every instruction cost a heap walk.
+            self.bytes_since_collect = 0;
+            0
+        })
+    }
+
+    fn try_collect(&mut self, roots: &[Value]) -> Result<usize, crate::alloc::OutOfMemory> {
         // A mark bitmap the width of the arena's own slot count, rather
         // than a `BTreeSet<u32>` of marked indices: this collector is now
         // called far more often than the old between-runs-only policy ever
@@ -628,10 +725,16 @@ impl Heap {
         // arena's generation counter is wide enough (`u64`, see
         // `crate::arena`'s module doc) that no handle still reachable from a
         // root can be a stale alias of a slot that has since been reused.
-        let mut marked = vec![false; self.objects.slot_count()];
-        let mut work: Vec<Value> = roots.to_vec();
-        let mut scratch_values = Vec::new();
-        let mut scratch_handles = Vec::new();
+        let slots = self.objects.slot_count();
+        let mut marked = crate::alloc::vec_with_capacity(slots)?;
+        marked.resize(slots, false);
+        let mut work: Vec<Value> = crate::alloc::copy_of(roots, 0)?;
+        // An object with children is scanned a chunk of elements at a time
+        // (`MARK_CHUNK`), with its cursor kept here, so the work list holds
+        // at most two chunks of values (a map entry has two) and this list
+        // one cursor for each object being scanned on the way down: bounded
+        // by depth times chunk size, never by the widest object.
+        let mut scans: Vec<(Handle, usize)> = Vec::new();
         // Summed as each object is marked, not by a second pass over the
         // survivors after the sweep below: this is the same walk either
         // way, one object at a time, so folding the sum into it costs
@@ -642,21 +745,29 @@ impl Heap {
         // program-observable figure (section 11.4's own retained-size walk
         // is `Heap::tree_size`, entirely separate, still node cost).
         let mut live_bytes: u64 = 0;
-        while let Some(value) = work.pop() {
-            let Value::Heap(h) = value else { continue };
-            let index = h.index() as usize;
-            match marked.get_mut(index) {
-                Some(slot) if !*slot => *slot = true,
-                _ => continue,
+        loop {
+            if let Some(value) = work.pop() {
+                let Value::Heap(h) = value else { continue };
+                let index = h.index() as usize;
+                match marked.get_mut(index) {
+                    Some(slot) if !*slot => *slot = true,
+                    _ => continue,
+                }
+                let Some(object) = self.get(h) else { continue };
+                live_bytes = live_bytes.saturating_add(Self::object_real_bytes(object));
+                if Self::child_slots(object) > 0 {
+                    crate::alloc::push(&mut scans, (h, 0))?;
+                }
+                continue;
             }
+            let Some((h, from)) = scans.pop() else { break };
             let Some(object) = self.get(h) else { continue };
-            live_bytes = live_bytes.saturating_add(Self::object_real_bytes(object));
-            scratch_values.clear();
-            Self::children(object, &mut scratch_values);
-            work.append(&mut scratch_values);
-            scratch_handles.clear();
-            Self::capture_handles(object, &mut scratch_handles);
-            work.extend(scratch_handles.drain(..).map(Value::Heap));
+            // Room first, so neither push below grows a list without asking.
+            crate::alloc::reserve(&mut work, 2 * MARK_CHUNK)?;
+            if from + MARK_CHUNK < Self::child_slots(object) {
+                crate::alloc::push(&mut scans, (h, from + MARK_CHUNK))?;
+            }
+            Self::children_in(object, from, MARK_CHUNK, true, &mut work);
         }
         let freed = self
             .objects
@@ -672,8 +783,21 @@ impl Heap {
         self.collect_threshold = live_bytes
             .saturating_mul(COLLECT_GROWTH_FACTOR)
             .max(MIN_COLLECT_THRESHOLD_BYTES);
-        freed
+        Ok(freed)
     }
+}
+
+/// `base` plus `each` for every one of `n` elements: the shape of every row
+/// of section 11.4's node cost table.
+fn per_element(n: usize, each: u64, base: u64) -> u64 {
+    base.saturating_add((n as u64).saturating_mul(each))
+}
+
+/// Elements `from .. from + count` of `items`, clamped to what it has.
+fn part<T>(items: &[T], from: usize, count: usize) -> &[T] {
+    let from = from.min(items.len());
+    let to = from.saturating_add(count).min(items.len());
+    items.get(from..to).unwrap_or(&[])
 }
 
 #[cfg(test)]
@@ -724,8 +848,8 @@ mod tests {
     /// The two formulas cross [`MIN_COLLECT_THRESHOLD_BYTES`] (4 MiB) at
     /// different append counts for this shape: node cost only charges the
     /// specification's 8-bytes-per-list-element figure, so it takes roughly
-    /// 1,020 appends; real bytes charges [`Value`]'s own 24-byte
-    /// representation instead, so it takes roughly 589. A regression back
+    /// 1,020 appends; real bytes charges [`Value`]'s own 32-byte
+    /// representation instead, so it takes roughly 440. A regression back
     /// to node cost (charging `object_node_cost` in [`Heap::alloc`] and
     /// [`Heap::collect`] instead of `object_real_bytes`) would push this
     /// test's own first-due append count well past the bound checked here.
@@ -752,7 +876,7 @@ mod tests {
         assert!(
             first_due_at < 800,
             "a collection should already be due well before the 800th append once the trigger \
-             is fed real bytes (Value is 24 bytes, not the 8 the specification charges per list \
+             is fed real bytes (Value is 32 bytes, not the 8 the specification charges per list \
              element); it first fired at {first_due_at}, close to the roughly 1,020th append that \
              the specification's own node-cost formula alone would produce"
         );

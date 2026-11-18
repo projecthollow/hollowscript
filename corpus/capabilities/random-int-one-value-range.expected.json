@@ -1,0 +1,15 @@
+{
+  "title": "random.int accepts a range of exactly one value",
+  "spec": "16.4",
+  "parse": [],
+  "check": [],
+  "format": {
+    "output": "same",
+    "diagnostics": []
+  },
+  "run": {
+    "ok": true,
+    "output": [],
+    "result": "Int(3)"
+  }
+}

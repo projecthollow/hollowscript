@@ -135,6 +135,39 @@ impl Interpreter {
         Ok(())
     }
 
+    /// For each of the module's `cap_calls`, whether it is the standard
+    /// `random.int` of section 16.4: the function `int` of a capability called
+    /// `random`, declared `(Int, Int): Int`. A host-defined capability that
+    /// only reuses the name with another shape is not one (and section 16
+    /// does not let a host grant `random` in another shape).
+    pub(crate) fn find_random_int_calls(&self) -> Vec<bool> {
+        let module = self.module().module();
+        let types = &module.types;
+        let is_int = |ty: TypeRef| matches!(types.get(ty), Some(TransferType::Int));
+        module
+            .cap_calls
+            .iter()
+            .map(|call| {
+                let Some(capability) = module.capabilities.get(call.capability as usize) else {
+                    return false;
+                };
+                if module.string(capability.name) != "random" {
+                    return false;
+                }
+                let CapabilityKind::Namespace(functions) = &capability.kind else {
+                    return false;
+                };
+                let Some((name, signature)) = functions.get(call.function as usize) else {
+                    return false;
+                };
+                module.string(*name) == "int"
+                    && signature.params.len() == 2
+                    && signature.params.iter().all(|&ty| is_int(ty))
+                    && signature.ret.is_some_and(is_int)
+            })
+            .collect()
+    }
+
     /// The name of that capability function as a script writes it: `print`
     /// for a single function, `clock.now` for one of a namespace. Built only
     /// for a message, so an index out of range answers with a placeholder

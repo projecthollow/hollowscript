@@ -24,8 +24,8 @@ compiles the sample programs to bytecode in a temporary directory, and runs
 every check below: `main`, `output-check`, `async-check`, `deadline-check`,
 `load-result-check`, `results-check`, `bounds-check`, `memory-check`,
 `tooling-check`, `ide-check`, `deep-nesting-check`, `trap-check`,
-`instance-churn-check`, `limits-check`, `wrapper-hygiene-check` and
-`mutation-check`. A check passes only if it exits 0 and prints
+`capability-argument-check`, `instance-churn-check`, `limits-check`,
+`wrapper-hygiene-check` and `mutation-check`. A check passes only if it exits 0 and prints
 `all checks passed`. When `wasm-opt` is installed it also checks an optimised
 build of the VM for the memory ceiling. It takes about 90 seconds from cold and
 a little over a minute when repeated, `scripts/check` runs it when `node` and the
@@ -282,16 +282,28 @@ behaves the same.
 ## The memory ceiling
 
 `memory-check.mjs` checks the module's memory contract (see `web/README.md`'s
-"Memory"): the module imports `env.memory` and declares a maximum of 4,096
-pages (256 MiB); WebAssembly refuses a memory with a larger maximum or none;
+"Memory"): the module imports `env.memory` and declares a maximum of 8,192
+pages (512 MiB); WebAssembly refuses a memory with a larger maximum or none;
 the wrapper makes the memory with the module's maximum, or a lower one for
 `maxMemoryBytes` (and a `RangeError` for a value above or below what the module
 allows); an ordinary program runs under either; the language's own limit still
 faults (HS1002) first for a program that stays inside the ceiling; and an
 allocation loop, with the logical limit raised out of the way, is stopped at the
-ceiling by a trap, after which every call on the module throws
-`HollowScriptTrap`, `dispose()` does nothing, and a fresh instance is
-unaffected. It reports what 600,000 pairs takes as text and as JSON. Like
+ceiling by a fault (HS1015, a limit of the implementation) and not a trap, after
+which the same instance answers the next call. It also runs the two programs of
+PRO-1697 (`range(0, 8000000)` and `range(0, 2000000).map(...)`) on the VM-only
+and the `tooling` build at the default limits and at a lowered ceiling: never a
+trap, a result or HS1002 or HS1015, and the instance still runs a small program
+afterwards; and programs just over the language's default limit (a `range`, a
+`map`, a `chars`, and a `sort` whose answer is charged before it is copied),
+which must fault with HS1002 on both builds (the machine does not run out
+first), plus `chars` of 2.5 million code points, which must not trap. It
+checks that a refused upload frees the buffers uploaded before it: a call, a
+`format` and a `check` whose second argument does not fit are refused with a
+`RangeError` many times over, and the same call with a small second argument
+still reaches the module. That a
+trap leaves the module dead is checked by `trap-check.mjs`, which makes a real
+one. It reports what 600,000 pairs takes as text and as JSON. Like
 `bounds-check.mjs` it compiles `memory-sample.hws` with the `tooling` build and
 runs it on the VM-only one, and every `.wasm` after the second argument is a
 further build of the VM checked the same way, which is how an optimised build
@@ -314,7 +326,10 @@ fails here. `trap-check.mjs` hands an export a pointer outside the module's
 memory, which is a real trap, and requires the first call to throw a
 `HollowScriptTrap` and every later call on the instance (and on a handle made
 before the trap) to throw one before reaching the module. It takes the `tooling`
-`.wasm` and, optionally, the plain one.
+`.wasm` and, optionally, the plain one and then a bytecode file
+(`load-result-sample.hsb`): with those it also traps inside a `call` and requires
+the error that call throws to be the trap itself, not "trapped earlier" (the run
+puts the result format back in a `finally`, on the module it has just trapped).
 
 ```
 cargo build -p hollowscript-wasm --release --features tooling --target wasm32-unknown-unknown
@@ -327,6 +342,27 @@ node crates/hollowscript-wasm/web/node-e2e/trap-check.mjs \
 ```
 
 Both print `all checks passed` and exit 0.
+
+## Capability arguments the language checks
+
+`capability-argument-check.mjs` checks that the language, not the host, enforces
+what section 16.4 says about the arguments of `random.int`: it faults with HS1011
+if `min >= upTo`. A JavaScript handler can only fail with HS1012, so the VM checks
+the arguments before it calls any host. With `random-sample.hws` (`roll(lo, hi)`,
+compiled by `hollowscript build`) and a handler that counts its calls and does
+no checking of its own, `roll(5, 5)`, `roll(9, 2)` and the widest reversed range
+fault with HS1011, the handler is never called, the same instance answers
+`roll(1, 7)` (one call) and `roll(3, 4)` (a range of one value is valid), and a
+handler that throws is still HS1012. On the batched path an empty range is the
+same fault and not a suspension, and a valid call still suspends.
+
+```
+cargo run -p hollowscript-cli -- build crates/hollowscript-wasm/web/node-e2e/random-sample.hws \
+    -o crates/hollowscript-wasm/web/node-e2e/random-sample.hsb
+node crates/hollowscript-wasm/web/node-e2e/capability-argument-check.mjs \
+    target/wasm32-unknown-unknown/release/hollowscript_wasm.wasm \
+    crates/hollowscript-wasm/web/node-e2e/random-sample.hsb
+```
 
 ## Loading and disposing in a loop
 
